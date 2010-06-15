@@ -26,7 +26,7 @@ LOCAL_SRC_FILES := \
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
 # Include this library in the build server's output directory
-$(call dist-for-goals, droid, $(LOCAL_BUILT_MODULE):android-common.jar)
+$(call dist-for-goals, droidcore, $(LOCAL_BUILT_MODULE):android-common.jar)
 
 # Build the test package
 # we can't build the test for apps only build, because android.test.runner is not unbundled yet.
