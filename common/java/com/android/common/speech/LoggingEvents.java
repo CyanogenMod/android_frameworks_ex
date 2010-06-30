@@ -66,6 +66,8 @@ public class LoggingEvents {
 
         public static final int QUERY_UPDATED = 3;
         public static final String EXTRA_QUERY_UPDATED_VALUE = "value";  // value should be String
+        
+        public static final int RESULT_CLICKED = 4;
     }
 
     /**
