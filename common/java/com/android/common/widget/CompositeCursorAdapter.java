@@ -118,6 +118,22 @@ public abstract class CompositeCursorAdapter extends BaseAdapter {
         notifyDataSetChanged();
     }
 
+    /**
+     * Closes all cursors and removes all partitions.
+     */
+    public void close() {
+        for (int i = 0; i < mSize; i++) {
+            Cursor cursor = mPartitions[i].cursor;
+            if (cursor != null && !cursor.isClosed()) {
+                cursor.close();
+                mPartitions[i].cursor = null;
+            }
+        }
+        mSize = 0;
+        invalidate();
+        notifyDataSetChanged();
+    }
+
     public void setHasHeader(int partitionIndex, boolean flag) {
         mPartitions[partitionIndex].hasHeader = flag;
         invalidate();
