@@ -19,7 +19,6 @@ package com.android.common.contacts;
 import com.android.common.widget.CompositeCursorAdapter;
 
 import android.accounts.Account;
-import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -31,7 +30,6 @@ import android.net.Uri;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.Contacts;
-import android.provider.ContactsContract.Directory;
 import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.util.Log;
@@ -51,6 +49,15 @@ import java.util.List;
 public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter implements Filterable {
 
     private static final String TAG = "BaseEmailAddressAdapter";
+
+    // TODO: revert to references to the Directory class as soon as the
+    // issue with the dependency on SDK 8 is resolved
+
+    // This is Directory.LOCAL_INVISIBLE
+    private static final long DIRECTORY_LOCAL_INVISIBLE = 1;
+
+    // This is ContactsContract.DIRECTORY_PARAM_KEY
+    private static final String DIRECTORY_PARAM_KEY = "directory";
 
     /**
      * Model object for a {@link Directory} row. There is a partition in the
@@ -75,7 +82,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     private static class EmailQuery {
         public static final String[] PROJECTION = {
             Contacts.DISPLAY_NAME,  // 0
-            Email.ADDRESS           // 1
+            Email.DATA              // 1
         };
 
         public static final int NAME = 0;
@@ -83,13 +90,25 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     }
 
     private static class DirectoryListQuery {
+
+        // TODO: revert to references to the Directory class as soon as the
+        // issue with the dependency on SDK 8 is resolved
+        public static final Uri URI =
+                Uri.withAppendedPath(ContactsContract.AUTHORITY_URI, "directories");
+        private static final String DIRECTORY_ID = "_id";
+        private static final String DIRECTORY_ACCOUNT_NAME = "accountName";
+        private static final String DIRECTORY_ACCOUNT_TYPE = "accountType";
+        private static final String DIRECTORY_DISPLAY_NAME = "displayName";
+        private static final String DIRECTORY_PACKAGE_NAME = "packageName";
+        private static final String DIRECTORY_TYPE_RESOURCE_ID = "typeResourceId";
+
         public static final String[] PROJECTION = {
-            Directory._ID,              // 0
-            Directory.ACCOUNT_NAME,     // 1
-            Directory.ACCOUNT_TYPE,     // 2
-            Directory.DISPLAY_NAME,     // 3
-            Directory.PACKAGE_NAME,     // 4
-            Directory.TYPE_RESOURCE_ID, // 5
+            DIRECTORY_ID,               // 0
+            DIRECTORY_ACCOUNT_NAME,     // 1
+            DIRECTORY_ACCOUNT_TYPE,     // 2
+            DIRECTORY_DISPLAY_NAME,     // 3
+            DIRECTORY_PACKAGE_NAME,     // 4
+            DIRECTORY_TYPE_RESOURCE_ID, // 5
         };
 
         public static final int ID = 0;
@@ -115,7 +134,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             Cursor directoryCursor = null;
             if (!mDirectoriesLoaded) {
                 directoryCursor = mContentResolver.query(
-                        Directory.CONTENT_URI, DirectoryListQuery.PROJECTION, null, null, null);
+                        DirectoryListQuery.URI, DirectoryListQuery.PROJECTION, null, null, null);
                 mDirectoriesLoaded = true;
             }
 
@@ -165,8 +184,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             if (!TextUtils.isEmpty(constraint)) {
                 Uri uri = Email.CONTENT_FILTER_URI.buildUpon()
                         .appendPath(constraint.toString())
-                        .appendQueryParameter(
-                                ContactsContract.DIRECTORY_PARAM_KEY, String.valueOf(mDirectoryId))
+                        .appendQueryParameter(DIRECTORY_PARAM_KEY, String.valueOf(mDirectoryId))
                         .build();
                 Cursor cursor = mContentResolver.query(
                         uri, EmailQuery.PROJECTION, null, null, null);
@@ -284,7 +302,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
 
                 // Skip the local invisible directory, because the default directory
                 // already includes all local results.
-                if (id == Directory.LOCAL_INVISIBLE) {
+                if (id == DIRECTORY_LOCAL_INVISIBLE) {
                     continue;
                 }
 
