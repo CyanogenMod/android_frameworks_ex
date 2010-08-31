@@ -267,6 +267,10 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
         } else {
             String displayName = cursor.getString(EmailQuery.NAME);
             String emailAddress = cursor.getString(EmailQuery.ADDRESS);
+            if (TextUtils.isEmpty(displayName) || TextUtils.equals(displayName, emailAddress)) {
+                displayName = emailAddress;
+                emailAddress = null;
+            }
             bindView(v, directoryType, directoryName, displayName, emailAddress);
         }
     }
@@ -348,23 +352,36 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             }
         }
 
-        // The filter has loaded results for the default partition too.
-        if (defaultPartitionCursor != null && getPartitionCount() > 0) {
-            changeCursor(0, defaultPartitionCursor);
+        int count = getPartitionCount();
+
+        // Since we will be changing several partitions at once, hold the data change
+        // notifications
+        setNotificationsEnabled(false);
+        try {
+            // The filter has loaded results for the default partition too.
+            if (defaultPartitionCursor != null && getPartitionCount() > 0) {
+                changeCursor(0, defaultPartitionCursor);
+            }
+
+            // Show non-default directories as "loading"
+            // Note: skipping the default partition (index 0), which has already been loaded
+            for (int i = 1; i < count; i++) {
+                DirectoryPartition partition = (DirectoryPartition) getPartition(i);
+                partition.constraint = constraint;
+
+                if (!partition.loading) {
+                    partition.loading = true;
+                    changeCursor(i, createLoadingCursor());
+                }
+            }
+        } finally {
+            setNotificationsEnabled(true);
         }
 
         // Start search in other directories
-        int count = getPartitionCount();
         // Note: skipping the default partition (index 0), which has already been loaded
         for (int i = 1; i < count; i++) {
             DirectoryPartition partition = (DirectoryPartition) getPartition(i);
-            partition.constraint = constraint;
-
-            if (!partition.loading) {
-                partition.loading = true;
-                changeCursor(i, createLoadingCursor());
-            }
-
             if (partition.filter == null) {
                 partition.filter = new DirectoryPartitionFilter(i, partition.directoryId);
             }
@@ -408,8 +425,12 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             return "";
         }
 
-        String name = cursor.getString(EmailQuery.NAME);
-        String address = cursor.getString(EmailQuery.ADDRESS);
-        return new Rfc822Token(name, address, null).toString();
+        String displayName = cursor.getString(EmailQuery.NAME);
+        String emailAddress = cursor.getString(EmailQuery.ADDRESS);
+        if (TextUtils.isEmpty(displayName) || TextUtils.equals(displayName, emailAddress)) {
+             return emailAddress;
+        } else {
+            return new Rfc822Token(displayName, emailAddress, null).toString();
+        }
     }
 }

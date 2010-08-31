@@ -59,6 +59,8 @@ public abstract class CompositeCursorAdapter extends BaseAdapter {
     private int mSize = 0;
     private int mCount = 0;
     private boolean mCacheValid = true;
+    private boolean mNotificationsEnabled = true;
+    private boolean mNotificationNeeded;
 
     public CompositeCursorAdapter(Context context) {
         this(context, INITIAL_CAPACITY);
@@ -504,5 +506,26 @@ public abstract class CompositeCursorAdapter extends BaseAdapter {
      */
     protected boolean isEnabled(int partition, int position) {
         return true;
+    }
+
+    /**
+     * Enable or disable data change notifications.  It may be a good idea to
+     * disable notifications before making changes to several partitions at once.
+     */
+    public void setNotificationsEnabled(boolean flag) {
+        this.mNotificationsEnabled = flag;
+        if (mNotificationNeeded) {
+            notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    public void notifyDataSetChanged() {
+        if (mNotificationsEnabled) {
+            mNotificationNeeded = false;
+            super.notifyDataSetChanged();
+        } else {
+            mNotificationNeeded = true;
+        }
     }
 }
