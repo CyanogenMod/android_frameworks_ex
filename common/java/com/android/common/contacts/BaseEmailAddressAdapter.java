@@ -59,6 +59,16 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     // This is ContactsContract.DIRECTORY_PARAM_KEY
     private static final String DIRECTORY_PARAM_KEY = "directory";
 
+    // This is ContactsContract.LIMIT_PARAM_KEY
+    private static final String LIMIT_PARAM_KEY = "limit";
+
+    /**
+     *  The preferred number of results to be retrieved.  This number may be
+     *  exceeded if there are several directories configured, because we will
+     *  use the same limit for all directories.
+     */
+    private static final int DEFAULT_PREFERRED_MAX_RESULT_COUNT = 10;
+
     /**
      * Model object for a {@link Directory} row. There is a partition in the
      * {@link CompositeCursorAdapter} for every directory (except
@@ -129,6 +139,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
      * contact provider and the list of {@link Directory}'s.
      */
     private final class DefaultPartitionFilter extends Filter {
+
         @Override
         protected FilterResults performFiltering(CharSequence constraint) {
             Cursor directoryCursor = null;
@@ -141,8 +152,11 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             FilterResults results = new FilterResults();
             Cursor cursor = null;
             if (!TextUtils.isEmpty(constraint)) {
-                Uri uri = Uri.withAppendedPath(
-                        Email.CONTENT_FILTER_URI, Uri.encode(constraint.toString()));
+                Uri uri = Email.CONTENT_FILTER_URI.buildUpon()
+                        .appendPath(constraint.toString())
+                        .appendQueryParameter(LIMIT_PARAM_KEY,
+                                String.valueOf(mPreferredMaxResultCount))
+                        .build();
                 cursor = mContentResolver.query(uri, EmailQuery.PROJECTION, null, null, null);
                 results.count = cursor.getCount();
             }
@@ -169,13 +183,21 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
      * An asynchronous filter that performs search in a particular directory.
      */
     private final class DirectoryPartitionFilter extends Filter {
-
         private final int mPartitionIndex;
         private final long mDirectoryId;
+        private int mLimit;
 
         public DirectoryPartitionFilter(int partitionIndex, long directoryId) {
             this.mPartitionIndex = partitionIndex;
             this.mDirectoryId = directoryId;
+        }
+
+        public synchronized void setLimit(int limit) {
+            this.mLimit = limit;
+        }
+
+        public synchronized int getLimit() {
+            return this.mLimit;
         }
 
         @Override
@@ -185,6 +207,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
                 Uri uri = Email.CONTENT_FILTER_URI.buildUpon()
                         .appendPath(constraint.toString())
                         .appendQueryParameter(DIRECTORY_PARAM_KEY, String.valueOf(mDirectoryId))
+                        .appendQueryParameter(LIMIT_PARAM_KEY, String.valueOf(getLimit()))
                         .build();
                 Cursor cursor = mContentResolver.query(
                         uri, EmailQuery.PROJECTION, null, null, null);
@@ -204,10 +227,16 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     protected final ContentResolver mContentResolver;
     private boolean mDirectoriesLoaded;
     private Account mAccount;
+    private int mPreferredMaxResultCount;
 
     public BaseEmailAddressAdapter(Context context) {
+        this(context, DEFAULT_PREFERRED_MAX_RESULT_COUNT);
+    }
+
+    public BaseEmailAddressAdapter(Context context, int preferredMaxResultCount) {
         super(context);
         mContentResolver = context.getContentResolver();
+        mPreferredMaxResultCount = preferredMaxResultCount;
     }
 
     /**
@@ -353,6 +382,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
         }
 
         int count = getPartitionCount();
+        int limit = 0;
 
         // Since we will be changing several partitions at once, hold the data change
         // notifications
@@ -363,15 +393,25 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
                 changeCursor(0, defaultPartitionCursor);
             }
 
+            int defaultPartitionCount = (defaultPartitionCursor == null ? 0
+                    : defaultPartitionCursor.getCount());
+
+            limit = mPreferredMaxResultCount - defaultPartitionCount;
+
             // Show non-default directories as "loading"
             // Note: skipping the default partition (index 0), which has already been loaded
             for (int i = 1; i < count; i++) {
                 DirectoryPartition partition = (DirectoryPartition) getPartition(i);
                 partition.constraint = constraint;
 
-                if (!partition.loading) {
-                    partition.loading = true;
-                    changeCursor(i, createLoadingCursor());
+                if (limit > 0) {
+                    if (!partition.loading) {
+                        partition.loading = true;
+                        changeCursor(i, createLoadingCursor());
+                    }
+                } else {
+                    partition.loading = false;
+                    changeCursor(i, null);
                 }
             }
         } finally {
@@ -382,10 +422,18 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
         // Note: skipping the default partition (index 0), which has already been loaded
         for (int i = 1; i < count; i++) {
             DirectoryPartition partition = (DirectoryPartition) getPartition(i);
-            if (partition.filter == null) {
-                partition.filter = new DirectoryPartitionFilter(i, partition.directoryId);
+            if (partition.loading) {
+                if (partition.filter == null) {
+                    partition.filter = new DirectoryPartitionFilter(i, partition.directoryId);
+                }
+                partition.filter.setLimit(limit);
+                partition.filter.filter(constraint);
+            } else {
+                if (partition.filter != null) {
+                    // Cancel any previous loading request
+                    partition.filter.filter(null);
+                }
             }
-            partition.filter.filter(constraint);
         }
     }
 
@@ -405,7 +453,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             // Check if the received result matches the current constraint
             // If not - the user must have continued typing after the request
             // was issued
-            if (TextUtils.equals(constraint, partition.constraint)) {
+            if (partition.loading && TextUtils.equals(constraint, partition.constraint)) {
                 partition.loading = false;
                 changeCursor(partitionIndex, cursor);
             } else {
