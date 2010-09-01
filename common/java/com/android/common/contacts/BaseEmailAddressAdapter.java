@@ -27,6 +27,8 @@ import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.Contacts;
@@ -68,6 +70,14 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
      *  use the same limit for all directories.
      */
     private static final int DEFAULT_PREFERRED_MAX_RESULT_COUNT = 10;
+
+    /**
+     * The "Searching..." message will be displayed if search is not complete
+     * within this many milliseconds.
+     */
+    private static final int MESSAGE_SEARCH_PENDING_DELAY = 1000;
+
+    private static final int MESSAGE_SEARCH_PENDING = 1;
 
     /**
      * Model object for a {@link Directory} row. There is a partition in the
@@ -228,6 +238,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     private boolean mDirectoriesLoaded;
     private Account mAccount;
     private int mPreferredMaxResultCount;
+    private Handler mHandler;
 
     public BaseEmailAddressAdapter(Context context) {
         this(context, DEFAULT_PREFERRED_MAX_RESULT_COUNT);
@@ -237,6 +248,14 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
         super(context);
         mContentResolver = context.getContentResolver();
         mPreferredMaxResultCount = preferredMaxResultCount;
+
+        mHandler = new Handler() {
+
+            @Override
+            public void handleMessage(Message msg) {
+                showSearchPendingIfNotComplete(msg.arg1);
+            }
+        };
     }
 
     /**
@@ -407,7 +426,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
                 if (limit > 0) {
                     if (!partition.loading) {
                         partition.loading = true;
-                        changeCursor(i, createLoadingCursor());
+                        changeCursor(i, null);
                     }
                 } else {
                     partition.loading = false;
@@ -423,6 +442,9 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
         for (int i = 1; i < count; i++) {
             DirectoryPartition partition = (DirectoryPartition) getPartition(i);
             if (partition.loading) {
+                mHandler.removeMessages(MESSAGE_SEARCH_PENDING, partition);
+                Message msg = mHandler.obtainMessage(MESSAGE_SEARCH_PENDING, i, 0, partition);
+                mHandler.sendMessageDelayed(msg, MESSAGE_SEARCH_PENDING_DELAY);
                 if (partition.filter == null) {
                     partition.filter = new DirectoryPartitionFilter(i, partition.directoryId);
                 }
@@ -433,6 +455,15 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
                     // Cancel any previous loading request
                     partition.filter.filter(null);
                 }
+            }
+        }
+    }
+
+    void showSearchPendingIfNotComplete(int partitionIndex) {
+        if (partitionIndex < getPartitionCount()) {
+            DirectoryPartition partition = (DirectoryPartition) getPartition(partitionIndex);
+            if (partition.loading) {
+                changeCursor(partitionIndex, createLoadingCursor());
             }
         }
     }
@@ -450,11 +481,13 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             CharSequence constraint, int partitionIndex, Cursor cursor) {
         if (partitionIndex < getPartitionCount()) {
             DirectoryPartition partition = (DirectoryPartition) getPartition(partitionIndex);
+
             // Check if the received result matches the current constraint
             // If not - the user must have continued typing after the request
             // was issued
             if (partition.loading && TextUtils.equals(constraint, partition.constraint)) {
                 partition.loading = false;
+                mHandler.removeMessages(MESSAGE_SEARCH_PENDING, partition);
                 changeCursor(partitionIndex, cursor);
             } else {
                 // We got the result for an unexpected query (the user is still typing)
