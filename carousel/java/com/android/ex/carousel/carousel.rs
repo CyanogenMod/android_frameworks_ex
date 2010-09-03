@@ -688,7 +688,7 @@ static void updateCardResources()
             }
         } else {
             // ask the host to remove the texture
-            if (cards[i].textureState == STATE_LOADED) {
+            if (cards[i].textureState != STATE_INVALID) {
                 data[0] = i;
                 bool enqueued = rsSendToClient(CMD_INVALIDATE_TEXTURE, data, sizeof(data));
                 if (enqueued) {
@@ -698,7 +698,7 @@ static void updateCardResources()
                 }
             }
             // ask the host to remove the geometry
-            if (cards[i].geometryState == STATE_LOADED) {
+            if (cards[i].geometryState != STATE_INVALID) {
                 data[0] = i;
                 bool enqueued = rsSendToClient(CMD_INVALIDATE_GEOMETRY, data, sizeof(data));
                 if (enqueued) {
