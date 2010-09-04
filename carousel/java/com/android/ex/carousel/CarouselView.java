@@ -42,8 +42,11 @@ public abstract class CarouselView extends RSSurfaceView {
     private RenderScriptGL mRS;
     private Context mContext;
     private boolean mTracking;
+
+    // These are meant to shadow the state of the renderer in case the surface changes.
     private Bitmap mDefaultBitmap;
     private Bitmap mLoadingBitmap;
+    private Bitmap mBackgroundBitmap;
     private Mesh mDefaultGeometry;
     private Mesh mLoadingGeometry;
     private int mCardCount = 0;
@@ -52,7 +55,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private int mSlotCount = DEFAULT_SLOT_COUNT;
 
     public static class Info {
-        public Info(int _resId) { resId = _resId; } 
+        public Info(int _resId) { resId = _resId; }
         public int resId; // resource for renderscript resource (e.g. R.raw.carousel)
     }
 
@@ -92,6 +95,7 @@ public abstract class CarouselView extends RSSurfaceView {
         setLoadingBitmap(mLoadingBitmap);
         setDefaultGeometry(mDefaultGeometry);
         setLoadingGeometry(mLoadingGeometry);
+        setBackgroundBitmap(mBackgroundBitmap);
         setStartAngle(mStartAngle);
     }
 
@@ -144,13 +148,13 @@ public abstract class CarouselView extends RSSurfaceView {
     public void setTextureForItem(int n, Bitmap bitmap) {
         if (mRenderScript != null) {
             Log.v(TAG, "setTextureForItem(" + n + ")");
-            mRenderScript.setTexture(n, bitmap); 
+            mRenderScript.setTexture(n, bitmap);
             Log.v(TAG, "done");
         }
     }
 
     public void setDefaultBitmap(Bitmap bitmap) {
-        mDefaultBitmap = bitmap; 
+        mDefaultBitmap = bitmap;
         if (mRenderScript != null) {
             mRenderScript.setDefaultBitmap(bitmap);
         }
@@ -160,6 +164,13 @@ public abstract class CarouselView extends RSSurfaceView {
         mLoadingBitmap = bitmap;
         if (mRenderScript != null) {
             mRenderScript.setLoadingBitmap(bitmap);
+        }
+    }
+
+    public void setBackgroundBitmap(Bitmap bitmap) {
+        mBackgroundBitmap = bitmap;
+        if (mRenderScript != null) {
+            mRenderScript.setBackgroundTexture(bitmap);
         }
     }
 

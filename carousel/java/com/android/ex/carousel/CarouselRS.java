@@ -92,7 +92,7 @@ public class CarouselRS  {
         void onRequestGeometry(int n);
 
         /**
-         * Called when geometry is no longer needed for card n. This happens when the card goes 
+         * Called when geometry is no longer needed for card n. This happens when the card goes
          * out of view.
          * @param n the id of the card
          */
@@ -236,7 +236,7 @@ public class CarouselRS  {
     private void initProgramStore() {
         ProgramStore.Builder programStoreBuilder = new ProgramStore.Builder(mRS, null, null);
         programStoreBuilder.setDepthFunc(ProgramStore.DepthFunc.LESS);
-        programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.SRC_ALPHA, 
+        programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.SRC_ALPHA,
                 ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA);
         programStoreBuilder.setDitherEnable(false);
         programStoreBuilder.setDepthMask(true);
@@ -312,7 +312,7 @@ public class CarouselRS  {
                 Log.v(TAG, "unloading texture " + n);
                 // Don't wait for GC to free native memory.
                 // Only works if textures are not shared.
-                item.texture.destroy(); 
+                item.texture.destroy();
                 item.texture = null;
             }
         }
@@ -333,12 +333,21 @@ public class CarouselRS  {
         } else {
             Log.v(TAG, "unloading geometry " + n);
             if (item.geometry != null) {
-                // item.geometry.destroy(); 
+                // item.geometry.destroy();
                 item.geometry = null;
             }
         }
         mCards.set(item, n, false);
         mScript.invoke_setGeometry(n, item.geometry);
+    }
+
+    public void setBackgroundTexture(Bitmap bitmap) {
+        Allocation texture = null;
+        if (bitmap != null) {
+            texture = Allocation.createFromBitmap(mRS, bitmap, RGB_565(mRS), MIPMAP);
+            texture.uploadToTexture(0);
+        }
+        mScript.set_backgroundTexture(texture);
     }
 
     public void pauseRendering() {
