@@ -198,7 +198,10 @@ public class OperationScheduler {
      */
     private long getTimeBefore(String name, long max) {
         long time = mStorage.getLong(name, 0);
-        if (time > max) mStorage.edit().putLong(name, (time = max)).commit();
+        if (time > max) {
+            time = max;
+            SharedPreferencesCompat.apply(mStorage.edit().putLong(name, time));
+        }
         return time;
     }
 
@@ -211,7 +214,8 @@ public class OperationScheduler {
      * trigger another operation; 0 to trigger immediately
      */
     public void setTriggerTimeMillis(long millis) {
-        mStorage.edit().putLong(PREFIX + "triggerTimeMillis", millis).commit();
+        SharedPreferencesCompat.apply(
+                mStorage.edit().putLong(PREFIX + "triggerTimeMillis", millis));
     }
 
     /**
@@ -222,10 +226,9 @@ public class OperationScheduler {
      * when operations should be allowed again; 0 to remove moratorium
      */
     public void setMoratoriumTimeMillis(long millis) {
-        mStorage.edit()
-                .putLong(PREFIX + "moratoriumTimeMillis", millis)
-                .putLong(PREFIX + "moratoriumSetTimeMillis", currentTimeMillis())
-                .commit();
+        SharedPreferencesCompat.apply(mStorage.edit()
+                   .putLong(PREFIX + "moratoriumTimeMillis", millis)
+                   .putLong(PREFIX + "moratoriumSetTimeMillis", currentTimeMillis()));
     }
 
     /**
@@ -259,7 +262,8 @@ public class OperationScheduler {
      * @param enabled if operations can be performed
      */
     public void setEnabledState(boolean enabled) {
-        mStorage.edit().putBoolean(PREFIX + "enabledState", enabled).commit();
+        SharedPreferencesCompat.apply(
+                mStorage.edit().putBoolean(PREFIX + "enabledState", enabled));
     }
 
     /**
@@ -269,12 +273,12 @@ public class OperationScheduler {
     public void onSuccess() {
         resetTransientError();
         resetPermanentError();
-        mStorage.edit()
+        SharedPreferencesCompat.apply(mStorage.edit()
                 .remove(PREFIX + "errorCount")
                 .remove(PREFIX + "lastErrorTimeMillis")
                 .remove(PREFIX + "permanentError")
                 .remove(PREFIX + "triggerTimeMillis")
-                .putLong(PREFIX + "lastSuccessTimeMillis", currentTimeMillis()).commit();
+                .putLong(PREFIX + "lastSuccessTimeMillis", currentTimeMillis()));
     }
 
     /**
@@ -283,9 +287,11 @@ public class OperationScheduler {
      * purposes.
      */
     public void onTransientError() {
-        mStorage.edit().putLong(PREFIX + "lastErrorTimeMillis", currentTimeMillis()).commit();
-        mStorage.edit().putInt(PREFIX + "errorCount",
-                mStorage.getInt(PREFIX + "errorCount", 0) + 1).commit();
+        SharedPreferences.Editor editor = mStorage.edit();
+        editor.putLong(PREFIX + "lastErrorTimeMillis", currentTimeMillis());
+        editor.putInt(PREFIX + "errorCount",
+                mStorage.getInt(PREFIX + "errorCount", 0) + 1);
+        SharedPreferencesCompat.apply(editor);
     }
 
     /**
@@ -295,7 +301,7 @@ public class OperationScheduler {
      * where there is reason to hope things might start working better.
      */
     public void resetTransientError() {
-        mStorage.edit().remove(PREFIX + "errorCount").commit();
+        SharedPreferencesCompat.apply(mStorage.edit().remove(PREFIX + "errorCount"));
     }
 
     /**
@@ -305,7 +311,7 @@ public class OperationScheduler {
      * when the accounts database is updated).
      */
     public void onPermanentError() {
-        mStorage.edit().putBoolean(PREFIX + "permanentError", true).commit();
+        SharedPreferencesCompat.apply(mStorage.edit().putBoolean(PREFIX + "permanentError", true));
     }
 
     /**
@@ -313,7 +319,7 @@ public class OperationScheduler {
      * allowing operations to be scheduled as normal.
      */
     public void resetPermanentError() {
-        mStorage.edit().remove(PREFIX + "permanentError").commit();
+        SharedPreferencesCompat.apply(mStorage.edit().remove(PREFIX + "permanentError"));
     }
 
     /**
