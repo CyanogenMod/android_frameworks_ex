@@ -135,6 +135,7 @@ public class MusicDemoActivity extends Activity {
         mView.setStartAngle((float) -(2.0f*Math.PI * 5 / CARD_SLOTS));
         mView.setDefaultBitmap(BitmapFactory.decodeResource(res, R.drawable.wait));
         mView.setLoadingBitmap(BitmapFactory.decodeResource(res, R.drawable.blank_album));
+        mView.setBackgroundBitmap(BitmapFactory.decodeResource(res, R.drawable.background));
         mView.setDefaultGeometry(mView.loadGeometry(CD_GEOMETRY));
     }
 

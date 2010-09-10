@@ -84,13 +84,14 @@ rs_program_vertex vertexProgram;
 rs_program_raster rasterProgram;
 rs_allocation defaultTexture; // shown when no other texture is assigned
 rs_allocation loadingTexture; // progress texture (shown when app is fetching the texture)
+rs_allocation backgroundTexture; // drawn behind everything, if set
 rs_mesh defaultGeometry; // shown when no geometry is loaded
 rs_mesh loadingGeometry; // shown when geometry is loading
 rs_matrix4x4 projectionMatrix;
 rs_matrix4x4 modelviewMatrix;
 
 #pragma rs export_var(radius, cards, slotCount, visibleSlotCount, cardRotation)
-#pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram)
+#pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram, backgroundTexture)
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
 #pragma rs export_func(createCards, lookAt, doStart, doStop, doMotion, doSelection, setTexture)
 #pragma rs export_func(setGeometry, debugCamera, debugPicking)
@@ -307,6 +308,38 @@ static void drawCards()
                     cardVertices[3].x, cardVertices[3].y, cardVertices[3].z);
             }
         }
+    }
+}
+
+static void drawBackground()
+{
+    if (backgroundTexture.p != 0) {
+        rsgClearDepth(1.0f);
+        rs_matrix4x4 projection, model;
+        rsMatrixLoadOrtho(&projection, -1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f);
+        rsgProgramVertexLoadProjectionMatrix(&projection);
+        rsMatrixLoadIdentity(&model);
+        rsgProgramVertexLoadModelMatrix(&model);
+        rsgBindTexture(fragmentProgram, 0, backgroundTexture);
+        float z = -0.9999f;
+        rsgDrawQuad(
+            cardVertices[0].x, cardVertices[0].y, z,
+            cardVertices[1].x, cardVertices[1].y, z,
+            cardVertices[2].x, cardVertices[2].y, z,
+            cardVertices[3].x, cardVertices[3].y, z);
+        updateCamera = true; // we mucked with the matrix.
+    } else {
+        rsgClearDepth(1.0f);
+        if (false) { // for debugging - flash the screen so we know we're still rendering
+            static bool toggle;
+            if (toggle)
+               rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0);
+            else
+               rsgClearColor(1.0f, 0.0f, 0.0f, 1.f);
+            toggle = !toggle;
+       } else {
+           rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0);
+       }
     }
 }
 
@@ -739,7 +772,6 @@ static void renderWithRays()
 int root() {
     int64_t currentTime = rsUptimeMillis();
 
-    rsgClearDepth(1.0f);
     rsgBindProgramVertex(vertexProgram);
     rsgBindProgramFragment(fragmentProgram);
     rsgBindProgramStore(programStore);
@@ -753,16 +785,7 @@ int root() {
         initialized = true;
     }
 
-    if (false) { // for debugging - flash the screen so we know we're still rendering
-        static bool toggle;
-        if (toggle)
-            rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0);
-        else
-            rsgClearColor(1.0f, 0.0f, 0.0f, 1.f);
-        toggle = !toggle;
-    } else {
-        rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0);
-    }
+    drawBackground();
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
 
