@@ -202,6 +202,22 @@ public class CarouselRS  {
         mScript.set_radius(radius);
     }
 
+    public void setCardRotation(float cardRotation) {
+        mScript.set_cardRotation(cardRotation);
+    }
+
+    public void setSwaySensitivity(float swaySensitivity) {
+        mScript.set_swaySensitivity(swaySensitivity);
+    }
+
+    public void setFrictionCoefficient(float frictionCoeff) {
+        mScript.set_frictionCoeff(frictionCoeff);
+    }
+
+    public void setDragFactor(float dragFactor) {
+        mScript.set_dragFactor(dragFactor);
+    }
+
     private void initVertexProgram() {
         ProgramVertex.Builder pvb = new ProgramVertex.Builder(mRS, null, null);
         mVertexProgram = pvb.create();

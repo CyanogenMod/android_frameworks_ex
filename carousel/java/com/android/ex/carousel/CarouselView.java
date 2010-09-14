@@ -37,6 +37,10 @@ public abstract class CarouselView extends RSSurfaceView {
     private static final boolean USE_DEPTH_BUFFER = true;
     private final int DEFAULT_SLOT_COUNT = 10;
     private final Bitmap DEFAULT_BITMAP = Bitmap.createBitmap(1, 1, Config.RGB_565);
+    private final float DEFAULT_RADIUS = 20.0f;
+    private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
+    private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
+    private final float DEFAULT_DRAG_FACTOR = 0.25f;
     private static final String TAG = "CarouselView";
     private CarouselRS mRenderScript;
     private RenderScriptGL mRS;
@@ -52,7 +56,15 @@ public abstract class CarouselView extends RSSurfaceView {
     private int mCardCount = 0;
     private int mVisibleSlots = 0;
     private float mStartAngle;
+    private float mRadius = DEFAULT_RADIUS;
+    private float mCardRotation = 0.0f;
+    private float mSwaySensitivity = DEFAULT_SWAY_SENSITIVITY;
+    private float mFrictionCoefficient = DEFAULT_FRICTION_COEFFICIENT;
+    private float mDragFactor = DEFAULT_DRAG_FACTOR;
     private int mSlotCount = DEFAULT_SLOT_COUNT;
+    private float mEye[] = { 20.6829f, 2.77081f, 16.7314f };
+    private float mAt[] = { 14.7255f, -3.40001f, -1.30184f };
+    private float mUp[] = { 0.0f, 1.0f, 0.0f };
 
     public static class Info {
         public Info(int _resId) { resId = _resId; }
@@ -97,6 +109,12 @@ public abstract class CarouselView extends RSSurfaceView {
         setLoadingGeometry(mLoadingGeometry);
         setBackgroundBitmap(mBackgroundBitmap);
         setStartAngle(mStartAngle);
+        setRadius(mRadius);
+        setCardRotation(mCardRotation);
+        setSwaySensitivity(mSwaySensitivity);
+        setFrictionCoefficient(mFrictionCoefficient);
+        setDragFactor(mDragFactor);
+        setLookAt(mEye, mAt, mUp);
     }
 
     /**
@@ -121,7 +139,9 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param resId
      */
     public void setGeometryForItem(int n, Mesh mesh) {
-        mRenderScript.setGeometry(n, mesh);
+        if (mRenderScript != null) {
+            mRenderScript.setGeometry(n, mesh);
+        }
     }
 
     public void setSlotCount(int n) {
@@ -146,7 +166,9 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     public void setTextureForItem(int n, Bitmap bitmap) {
-        if (mRenderScript != null) {
+        // Also check against mRS, to handle the case where the result is being delivered by a
+        // background thread but the sender no longer exists.
+        if (mRenderScript != null && mRS != null) {
             Log.v(TAG, "setTextureForItem(" + n + ")");
             mRenderScript.setTexture(n, bitmap);
             Log.v(TAG, "done");
@@ -201,6 +223,50 @@ public abstract class CarouselView extends RSSurfaceView {
         mStartAngle = angle;
         if (mRenderScript != null) {
             mRenderScript.setStartAngle(angle);
+        }
+    }
+
+    public void setRadius(float radius) {
+        mRadius = radius;
+        if (mRenderScript != null) {
+            mRenderScript.setRadius(radius);
+        }
+    }
+
+    public void setCardRotation(float cardRotation) {
+        mCardRotation = cardRotation;
+        if (mRenderScript != null) {
+            mRenderScript.setCardRotation(cardRotation);
+        }
+    }
+
+    public void setSwaySensitivity(float swaySensitivity) {
+        mSwaySensitivity = swaySensitivity;
+        if (mRenderScript != null) {
+            mRenderScript.setSwaySensitivity(swaySensitivity);
+        }
+    }
+
+    public void setFrictionCoefficient(float frictionCoefficient) {
+        mFrictionCoefficient = frictionCoefficient;
+        if (mRenderScript != null) {
+            mRenderScript.setFrictionCoefficient(frictionCoefficient);
+        }
+    }
+
+    public void setDragFactor(float dragFactor) {
+        mDragFactor = dragFactor;
+        if (mRenderScript != null) {
+            mRenderScript.setDragFactor(dragFactor);
+        }
+    }
+
+    public void setLookAt(float[] eye, float[] at, float[] up) {
+        mEye = eye;
+        mAt = at;
+        mUp = up;
+        if (mRenderScript != null) {
+            mRenderScript.setLookAt(eye, at, up);
         }
     }
 

@@ -78,6 +78,9 @@ int cardCount; // number of cards in stack
 int visibleSlotCount; // number of visible slots (for culling)
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
+float swaySensitivity; // how much to rotate cards in relation to the rotation velocity
+float frictionCoeff; // how much to slow down the carousel over time
+float dragFactor; // a scale factor for how sensitive the carousel is to user dragging
 rs_program_store programStore;
 rs_program_fragment fragmentProgram;
 rs_program_vertex vertexProgram;
@@ -91,6 +94,7 @@ rs_matrix4x4 projectionMatrix;
 rs_matrix4x4 modelviewMatrix;
 
 #pragma rs export_var(radius, cards, slotCount, visibleSlotCount, cardRotation)
+#pragma rs export_var(swaySensitivity, frictionCoeff, dragFactor)
 #pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram, backgroundTexture)
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
 #pragma rs export_func(createCards, lookAt, doStart, doStop, doMotion, doSelection, setTexture)
@@ -105,6 +109,7 @@ static const float FLT_MAX = 1.0e37;
 static int currentSelection = -1;
 static int64_t touchTime = -1;  // time of first touch (see doStart())
 static float touchBias = 0.0f; // bias on first touch
+static float velocity = 0.0f;  // angular velocity in radians/s
 
 // Default geometry when card.geometry is not set.
 static const float3 cardVertices[4] = {
@@ -262,12 +267,29 @@ static float3 getAnimatedScaleForSelected()
     return one + fraction * SELECTED_SCALE_FACTOR;
 }
 
+// The Verhulst logistic function: http://en.wikipedia.org/wiki/Logistic_function
+//    P(t) = 1 / (1 + e^(-t))
+// Parameter t: Any real number
+// Returns: A float in the range (0,1), with P(0.5)=0
+static float logistic(float t) {
+    return 1. / (1. + exp(-t));
+}
+
+static float getSwayAngleForVelocity(float v)
+{
+    const float range = M_PI; // How far we can deviate from center, peak-to-peak
+    float sway = M_PI * (logistic(-v * swaySensitivity) - 0.5);
+
+    return sway;
+}
+
 static void getMatrixForCard(rs_matrix4x4* matrix, int i)
 {
     float theta = cardPosition(i);
+    float swayAngle = getSwayAngleForVelocity(velocity);
     rsMatrixRotate(matrix, degrees(theta), 0, 1, 0);
     rsMatrixTranslate(matrix, radius, 0, 0);
-    rsMatrixRotate(matrix, degrees(-theta + cardRotation), 0, 1, 0);
+    rsMatrixRotate(matrix, degrees(-theta + cardRotation + swayAngle), 0, 1, 0);
     if (i == currentSelection) {
         float3 scale = getAnimatedScaleForSelected();
         rsMatrixScale(matrix, scale.x, scale.y, scale.z);
@@ -360,7 +382,6 @@ static void updateCameraMatrix(float width, float height)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Behavior/Physics
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-static float velocity = 0.0f;  // angular velocity in radians/s
 static bool isDragging;
 static int64_t lastTime = 0L; // keep track of how much time has passed between frames
 static float2 lastPosition;
@@ -372,8 +393,6 @@ static float mass = 5.0f; // kg
 
 static const float G = 9.80f; // gravity constant, in m/s
 static const float springConstant = 0.0f;
-static const float frictionCoeff = 10.0f;
-static const float dragFactor = 0.25f;
 
 static float dragFunction(float x, float y)
 {
@@ -451,6 +470,8 @@ void doMotion(float x, float y)
         //    velocityTrackerCount = 1;
         //}
     }
+    velocity = velocityTrackerCount > 0 ?
+                (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
 
     // Drop current selection if user drags position +- a partial slot
     if (currentSelection != -1) {
@@ -635,30 +656,28 @@ static bool updateNextPosition(int64_t currentTime)
             bias += velocity * dt;
         }
 
-        // TODO: Add animation to smoothly move back to slots. Currently snaps to location.
-        if (cardCount <= visibleSlotCount) {
-            // TODO: this aligns the cards to the first slot (theta = startAngle) when there aren't
-            // enough visible cards. It should be generalized to allow alignment to front,
-            // middle or back of the stack.
-            if (cardPosition(0) != slotPosition(0)) {
-                bias = 0.0f;
-            }
-        } else {
-            if (cardPosition(cardCount) < 0.0f) {
-                bias = -slotPosition(cardCount);
-            } else if (cardPosition(0) > slotPosition(0)) {
-                bias = 0.0f;
-            }
-        }
-
         animating = fabs(velocity) > velocityThreshold;
         if (!animating) {
-            const float dtheta = 2.0f * M_PI / slotCount;
-            bias = round((startAngle + bias) / dtheta) * dtheta - startAngle;
             rsSendToClient(CMD_ANIMATION_FINISHED);
         }
     }
     lastTime = currentTime;
+
+    // TODO: Add animation to smoothly move back to slots. Currently snaps to location.
+    if (cardCount <= visibleSlotCount) {
+        // TODO: this aligns the cards to the first slot (theta = startAngle) when there aren't
+        // enough visible cards. It should be generalized to allow alignment to front,
+        // middle or back of the stack.
+        if (cardPosition(0) != slotPosition(0)) {
+            bias = 0.0f;
+        }
+    } else {
+        if (cardPosition(cardCount) < 0.0f) {
+            bias = -slotPosition(cardCount);
+        } else if (cardPosition(0) > slotPosition(0)) {
+            bias = 0.0f;
+        }
+    }
 
     return animating;
 }
