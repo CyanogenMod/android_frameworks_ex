@@ -20,9 +20,7 @@ import com.android.ex.carousel.CarouselRS.CarouselCallback;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.content.res.TypedArray;
 import android.graphics.Bitmap;
-import android.graphics.Rect;
 import android.graphics.Bitmap.Config;
 import android.renderscript.FileA3D;
 import android.renderscript.Mesh;
@@ -33,24 +31,35 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
+/**
+ * <p>
+ * This class represents the basic building block for using a 3D Carousel. The Carousel is
+ * basically a scene of cards and slots.  The spacing between cards is dictated by the number
+ * of slots and the radius. The number of visible cards dictates how far the Carousel can be moved.
+ * If the number of cards exceeds the number of slots, then the Carousel will continue to go
+ * around until the last card can be seen.
+ */
 public abstract class CarouselView extends RSSurfaceView {
     private static final boolean USE_DEPTH_BUFFER = true;
     private final int DEFAULT_SLOT_COUNT = 10;
-    private final Bitmap DEFAULT_BITMAP = Bitmap.createBitmap(1, 1, Config.RGB_565);
     private final float DEFAULT_RADIUS = 20.0f;
     private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
     private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
     private final float DEFAULT_DRAG_FACTOR = 0.25f;
     private static final String TAG = "CarouselView";
+    private static final boolean DBG = false;
     private CarouselRS mRenderScript;
     private RenderScriptGL mRS;
     private Context mContext;
     private boolean mTracking;
 
-    // These are meant to shadow the state of the renderer in case the surface changes.
+    // These shadow the state of the renderer in case the surface changes so the surface
+    // can be restored to its previous state.
     private Bitmap mDefaultBitmap;
     private Bitmap mLoadingBitmap;
     private Bitmap mBackgroundBitmap;
+    private Bitmap mDefaultLineBitmap = Bitmap.createBitmap(
+            new int[] {0x80ffffff, 0xffffffff, 0x80ffffff}, 0, 3, 3, 1, Bitmap.Config.ARGB_4444);
     private Mesh mDefaultGeometry;
     private Mesh mLoadingGeometry;
     private int mCardCount = 0;
@@ -108,6 +117,7 @@ public abstract class CarouselView extends RSSurfaceView {
         setDefaultGeometry(mDefaultGeometry);
         setLoadingGeometry(mLoadingGeometry);
         setBackgroundBitmap(mBackgroundBitmap);
+        setDetailLineBitmap(mDefaultLineBitmap);
         setStartAngle(mStartAngle);
         setRadius(mRadius);
         setCardRotation(mCardRotation);
@@ -144,6 +154,12 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * Set the number of slots around the Carousel. Basically equivalent to the poles horses
+     * might attach to on a real Carousel.
+     *
+     * @param n the number of slots
+     */
     public void setSlotCount(int n) {
         mSlotCount = n;
         if (mRenderScript != null) {
@@ -151,6 +167,11 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * Sets the number of visible slots around the Carousel.  This is primarily used as a cheap
+     * form of clipping. The Carousel will never show more than this many cards.
+     * @param n the number of visible slots
+     */
     public void setVisibleSlots(int n) {
         mVisibleSlots = n;
         if (mRenderScript != null) {
@@ -158,6 +179,14 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * This dictates how many cards are in the deck.  If the number of cards is greater than the
+     * number of slots, then the Carousel goes around n / slot_count times.
+     *
+     * Can be called again to increase or decrease the number of cards.
+     *
+     * @param n the number of cards to create.
+     */
     public void createCards(int n) {
         mCardCount = n;
         if (mRenderScript != null) {
@@ -165,16 +194,54 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * This sets the texture on card n.  It should only be called in response to
+     * {@link CarouselCallback#onRequestTexture(int)}.  Since there's no guarantee
+     * that a given texture is still on the screen, replacing this texture should be done
+     * by first setting it to null and then waiting for the next
+     * {@link CarouselCallback#onRequestTexture(int)} to swap it with the new one.
+     *
+     * @param n the card given by {@link CarouselCallback#onRequestTexture(int)}
+     * @param bitmap the bitmap image to show
+     */
     public void setTextureForItem(int n, Bitmap bitmap) {
         // Also check against mRS, to handle the case where the result is being delivered by a
         // background thread but the sender no longer exists.
         if (mRenderScript != null && mRS != null) {
-            Log.v(TAG, "setTextureForItem(" + n + ")");
+            if (DBG) Log.v(TAG, "setTextureForItem(" + n + ")");
             mRenderScript.setTexture(n, bitmap);
-            Log.v(TAG, "done");
+            if (DBG) Log.v(TAG, "done");
         }
     }
 
+    /**
+     * This sets the detail texture that floats above card n. It should only be called in response
+     * to {@link CarouselCallback#onRequestDetailTexture(int)}.  Since there's no guarantee
+     * that a given texture is still on the screen, replacing this texture should be done
+     * by first setting it to null and then waiting for the next
+     * {@link CarouselCallback#onRequestDetailTexture(int)} to swap it with the new one.
+     *
+     * @param n the card to set the help text
+     * @param offx an optional offset to apply to the texture, in pixel coordinates
+     * @param offy an optional offset to apply to the texture, in pixel coordinates
+     * @param bitmap the bitmap to show as the detail
+     */
+    public void setDetailTextureForItem(int n, float offx, float offy, Bitmap bitmap) {
+        if (mRenderScript != null) {
+            if (DBG) Log.v(TAG, "setDetailTextureForItem(" + n + ")");
+            mRenderScript.setDetailTexture(n, offx, offy, bitmap);
+            if (DBG) Log.v(TAG, "done");
+        }
+    }
+
+    /**
+     * Sets the bitmap to show on a card when the card draws the very first time.
+     * Generally, this bitmap will only be seen during the first few frames of startup
+     * or when the number of cards are changed.  It can be ignored in most cases,
+     * as the cards will generally only be in the loading or loaded state.
+     *
+     * @param bitmap
+     */
     public void setDefaultBitmap(Bitmap bitmap) {
         mDefaultBitmap = bitmap;
         if (mRenderScript != null) {
@@ -182,6 +249,14 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * Sets the bitmap to show on the card while the texture is loading. It is set to this
+     * value just before {@link CarouselCallback#onRequestTexture(int)} is called and changed
+     * when {@link CarouselView#setTextureForItem(int, Bitmap)} is called. It is shared by all
+     * cards.
+     *
+     * @param bitmap
+     */
     public void setLoadingBitmap(Bitmap bitmap) {
         mLoadingBitmap = bitmap;
         if (mRenderScript != null) {
@@ -189,6 +264,11 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * Can be used to optionally set the background to a bitmap.
+     *
+     * @param bitmap
+     */
     public void setBackgroundBitmap(Bitmap bitmap) {
         mBackgroundBitmap = bitmap;
         if (mRenderScript != null) {
@@ -196,6 +276,26 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * This texture is used to draw a line from the card alongside the texture detail. The line
+     * will be as wide as the texture. It can be used to give the line glow effects as well as
+     * allowing other blending effects. It is typically one dimensional, e.g. 3x1.
+     *
+     * @param bitmap
+     */
+    public void setDetailLineBitmap(Bitmap bitmap) {
+        mDefaultLineBitmap = bitmap;
+        if (mRenderScript != null) {
+            mRenderScript.setDetailLineTexture(bitmap);
+        }
+    }
+
+    /**
+     * This geometry will be shown when no geometry has been loaded for a given slot. If not set,
+     * a quad will be drawn in its place. It is shared for all cards.
+     *
+     * @param mesh
+     */
     public void setDefaultGeometry(Mesh mesh) {
         mDefaultGeometry = mesh;
         if (mRenderScript != null) {
@@ -203,6 +303,12 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * This is an intermediate version of the object to show while geometry is loading. If not set,
+     * a quad will be drawn in its place.  It is shared for all cards.
+     *
+     * @param mesh
+     */
     public void setLoadingGeometry(Mesh mesh) {
         mLoadingGeometry = mesh;
         if (mRenderScript != null) {
@@ -210,6 +316,11 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * Sets the callback for receiving events from RenderScript.
+     *
+     * @param callback
+     */
     public void setCallback(CarouselCallback callback)
     {
         mCarouselCallback = callback;
@@ -218,6 +329,13 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    /**
+     * Sets the startAngle for the Carousel. The start angle is the first position of the first
+     * slot draw.  Cards will be drawn from this angle in a counter-clockwise manner around the
+     * Carousel.
+     *
+     * @param angle the angle, in radians.
+     */
     public void setStartAngle(float angle)
     {
         mStartAngle = angle;
@@ -325,37 +443,45 @@ public abstract class CarouselView extends RSSurfaceView {
     private final CarouselCallback DEBUG_CALLBACK = new CarouselCallback() {
         @Override
         public void onAnimationStarted() {
-            Log.v(TAG, "onAnimationStarted()");
+            if (DBG) Log.v(TAG, "onAnimationStarted()");
         }
 
         @Override
         public void onAnimationFinished() {
-            Log.v(TAG, "onAnimationFinished()");
+            if (DBG) Log.v(TAG, "onAnimationFinished()");
         }
 
         @Override
         public void onCardSelected(int n) {
-            Log.v(TAG, "onCardSelected(" + n + ")");
+            if (DBG) Log.v(TAG, "onCardSelected(" + n + ")");
         }
 
         @Override
         public void onRequestGeometry(int n) {
-            Log.v(TAG, "onRequestGeometry(" + n + ")");
+            if (DBG) Log.v(TAG, "onRequestGeometry(" + n + ")");
         }
 
         @Override
         public void onInvalidateGeometry(int n) {
-            Log.v(TAG, "onInvalidateGeometry(" + n + ")");
+            if (DBG) Log.v(TAG, "onInvalidateGeometry(" + n + ")");
         }
 
         @Override
-        public void onRequestTexture(final int n) {
-            Log.v(TAG, "onRequestTexture(" + n + ")");
+        public void onRequestTexture(int n) {
+            if (DBG) Log.v(TAG, "onRequestTexture(" + n + ")");
         }
 
         @Override
         public void onInvalidateTexture(int n) {
-            Log.v(TAG, "onInvalidateTexture(" + n + ")");
+            if (DBG) Log.v(TAG, "onInvalidateTexture(" + n + ")");
+        }
+
+        public void onRequestDetailTexture(int n) {
+            if (DBG) Log.v(TAG, "onRequestDetailTexture(" + n + ")");
+        }
+
+        public void onInvalidateDetailTexture(int n) {
+            if (DBG) Log.v(TAG, "onInvalidateDetailTexture(" + n + ")");
         }
 
         @Override
@@ -365,4 +491,5 @@ public abstract class CarouselView extends RSSurfaceView {
     };
 
     private CarouselCallback mCarouselCallback = DEBUG_CALLBACK;
+
 }

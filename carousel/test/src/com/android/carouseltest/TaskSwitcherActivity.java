@@ -50,6 +50,7 @@ public class TaskSwitcherActivity extends Activity {
     private static final int CARD_SLOTS = 56;
     private static final int MAX_TASKS = 20;
     private static final int VISIBLE_SLOTS = 7;
+    protected static final boolean DBG = false;
     private ActivityManager mActivityManager;
     private List<RunningTaskInfo> mRunningTaskList;
     private boolean mPortraitMode = true;
@@ -128,6 +129,18 @@ public class TaskSwitcherActivity extends Activity {
 
         public void onInvalidateTexture(int n) {
 
+        }
+
+        public void onRequestDetailTexture(int n) {
+            if (DBG) Log.v(TAG, "onRequestDetailTexture(" + n + ")" );
+            //mDetailTextureHandler.removeMessages(n);
+            //Message message = mDetailTextureHandler.obtainMessage(n, n, 0);
+            //mDetailTextureHandler.sendMessageDelayed(message, HOLDOFF_DELAY);
+        }
+
+        public void onInvalidateDetailTexture(int n) {
+            if (DBG) Log.v(TAG, "onInvalidateDetailTexture(" + n + ")");
+            //mDetailTextureHandler.removeMessages(n);
         }
 
         public void onRequestGeometry(int n) {

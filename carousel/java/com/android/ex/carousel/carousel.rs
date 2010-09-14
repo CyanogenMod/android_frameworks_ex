@@ -21,10 +21,13 @@
 #include "rs_graphics.rsh"
 
 typedef struct __attribute__((aligned(4))) Card {
-    rs_allocation texture;
+    rs_allocation texture; // basic card texture
+    rs_allocation detailTexture; // screen-aligned detail texture
+    float2 detailTextureOffset; // offset to add, in screen coordinates
     rs_mesh geometry;
-    //rs_matrix4x4 matrix; // custom transform for this card/geometry
-    int textureState;  // whether or not the texture is loaded.
+    rs_matrix4x4 matrix; // custom transform for this card/geometry
+    int textureState;  // whether or not the primary card texture is loaded.
+    int detailTextureState; // whether or not the detail for the card is loaded.
     int geometryState; // whether or not geometry is loaded
     int visible; // not bool because of packing bug?
 } Card_t;
@@ -60,16 +63,20 @@ static const int CMD_REQUEST_GEOMETRY = 300;
 static const int CMD_INVALIDATE_GEOMETRY = 310;
 static const int CMD_ANIMATION_STARTED = 400;
 static const int CMD_ANIMATION_FINISHED = 500;
-static const int CMD_REPORT_FIRST_CARD_POSITION = 600;
-static const int CMD_PING = 700;
+static const int CMD_REQUEST_DETAIL_TEXTURE = 600;
+static const int CMD_INVALIDATE_DETAIL_TEXTURE = 610;
+static const int CMD_REPORT_FIRST_CARD_POSITION = 700;
+static const int CMD_PING = 1000;
 
 // Constants
 static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
 static const float3 SELECTED_SCALE_FACTOR = { 0.2f, 0.2f, 0.2f }; // increase by this %
 
 // Debug flags
-bool debugCamera = false; // dumps ray/camera coordinate stuff
-bool debugPicking = false; // renders picking area on top of geometry
+const bool debugCamera = false; // dumps ray/camera coordinate stuff
+const bool debugPicking = false; // renders picking area on top of geometry
+const bool debugTextureLoading = false; // for debugging texture load/unload
+const bool debugGeometryLoading = false; // for debugging geometry load/unload
 
 // Exported variables. These will be reflected to Java set_* variables.
 Card_t *cards; // array of cards to draw
@@ -77,6 +84,7 @@ float startAngle; // position of initial card, in radians
 int slotCount; // number of positions where a card can be
 int cardCount; // number of cards in stack
 int visibleSlotCount; // number of visible slots (for culling)
+int visibleDetailCount; // number of visible detail textures to show
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
 float swaySensitivity; // how much to rotate cards in relation to the rotation velocity
@@ -89,6 +97,7 @@ rs_program_raster rasterProgram;
 rs_allocation defaultTexture; // shown when no other texture is assigned
 rs_allocation loadingTexture; // progress texture (shown when app is fetching the texture)
 rs_allocation backgroundTexture; // drawn behind everything, if set
+rs_allocation detailLineTexture; // used to draw detail line (as a quad, of course)
 rs_mesh defaultGeometry; // shown when no geometry is loaded
 rs_mesh loadingGeometry; // shown when geometry is loading
 rs_matrix4x4 projectionMatrix;
@@ -96,17 +105,18 @@ rs_matrix4x4 modelviewMatrix;
 
 #pragma rs export_var(radius, cards, slotCount, visibleSlotCount, cardRotation)
 #pragma rs export_var(swaySensitivity, frictionCoeff, dragFactor)
-#pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram, backgroundTexture)
+#pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram)
+#pragma rs export_var(detailLineTexture, backgroundTexture)
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
-#pragma rs export_func(createCards, lookAt, doStart, doStop, doMotion, doSelection, setTexture)
-#pragma rs export_func(setGeometry, debugCamera, debugPicking)
+#pragma rs export_func(createCards, lookAt, doStart, doStop, doMotion, doSelection)
+#pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera, debugPicking)
 #pragma rs export_func(requestFirstCardPosition)
 
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
 static bool initialized;
-static float3 backgroundColor = { 0.0f, 0.0f, 0.0f };
+static float4 backgroundColor = { 0.0f, 0.0f, 0.0f, 0.5f };
 static const float FLT_MAX = 1.0e37;
 static int currentSelection = -1;
 static int currentFirstCard = -1;
@@ -141,10 +151,11 @@ static float deltaTimeInSeconds(int64_t current);
 void init() {
     // initializers currently have a problem when the variables are exported, so initialize
     // globals here.
-    rsDebug("Renderscript: init()", 0);
+    // rsDebug("Renderscript: init()", 0);
     startAngle = 0.0f;
     slotCount = 10;
     visibleSlotCount = 1;
+    visibleDetailCount = 3;
     bias = 0.0f;
     radius = 1.0f;
     cardRotation = 0.0f;
@@ -162,7 +173,7 @@ static void updateAllocationVars()
 
 void createCards(int n)
 {
-    rsDebug("CreateCards: ", n);
+    if (debugTextureLoading) rsDebug("CreateCards: ", n);
     initialized = false;
     updateAllocationVars();
 }
@@ -247,10 +258,15 @@ static void loadLookatMatrix(rs_matrix4x4* matrix, float3 eye, float3 center, fl
 void setTexture(int n, rs_allocation texture)
 {
     cards[n].texture = texture;
-    if (cards[n].texture.p != 0)
-        cards[n].textureState = STATE_LOADED;
-    else
-        cards[n].textureState = STATE_INVALID;
+    cards[n].textureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
+}
+
+void setDetailTexture(int n, float offx, float offy, rs_allocation texture)
+{
+    cards[n].detailTexture = texture;
+    cards[n].detailTextureOffset.x = offx;
+    cards[n].detailTextureOffset.y = offy;
+    cards[n].detailTextureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
 }
 
 void setGeometry(int n, rs_mesh geometry)
@@ -312,7 +328,6 @@ static void getMatrixForCard(rs_matrix4x4* matrix, int i)
 
 static void drawCards()
 {
-    float depth = 1.0f;
     for (int i = 0; i < cardCount; i++) {
         if (cards[i].visible) {
             // Bind texture
@@ -346,6 +361,79 @@ static void drawCards()
     }
 }
 
+/*
+ * Draws a screen-aligned card with the exact dimensions from the detail texture.
+ * This is used to display information about the object being displayed above the geomertry.
+ */
+static void drawDetails()
+{
+    const float width = rsgGetWidth();
+    const float height = rsgGetHeight();
+
+    // We'll be drawing in screen space, sampled on pixel centers
+    rs_matrix4x4 projection, model;
+    rsMatrixLoadOrtho(&projection, 0.0f, width, 0.0f, height, 0.0f, 1.0f);
+    rsgProgramVertexLoadProjectionMatrix(&projection);
+    rsMatrixLoadIdentity(&model);
+    rsgProgramVertexLoadModelMatrix(&model);
+    updateCamera = true; // we messed with the projection matrix. Reload on next pass...
+
+    const float yPadding = 5.0f; // draw line this far (in pixels) away from top and geometry
+
+    int drawn = 0; // number of details drawn
+    for (int i = 0; i < cardCount && drawn < visibleDetailCount; i++) {
+        if (cards[i].visible) {
+            if (cards[i].detailTextureState == STATE_LOADED && cards[i].detailTexture.p != 0) {
+                const float lineWidth = rsAllocationGetDimX(detailLineTexture);
+
+                // Compute position in screen space of upper left corner of card
+                rs_matrix4x4 model = modelviewMatrix;
+                getMatrixForCard(&model, i);
+                rs_matrix4x4 matrix;
+                rsMatrixLoadMultiply(&matrix, &projectionMatrix, &model);
+                float4 screenCoord = rsMatrixMultiply(&matrix, cardVertices[3]);
+                if (screenCoord.w == 0.0f) {
+                    // this shouldn't happen
+                    rsDebug("Bad transform: ", screenCoord);
+                    continue;
+                }
+
+                // Convert projection from normalized coordinates to pixel coordinates.
+                // This is probably cheaper than pre-multiplying the above with another matrix.
+                screenCoord *= 1.0f / screenCoord.w;
+                screenCoord.x += 1.0f;
+                screenCoord.y += 1.0f;
+                screenCoord.z = 0.0f; // make sure it's in front
+                screenCoord.x = round(screenCoord.x * 0.5f * width);
+                screenCoord.y = round(screenCoord.y * 0.5f * height);
+
+                // Draw line from upper left card corner to the top of the screen
+                rsgBindTexture(fragmentProgram, 0, detailLineTexture);
+                const float halfWidth = lineWidth * 0.5f;
+                rsgDrawQuad(
+                        screenCoord.x - halfWidth, screenCoord.y + yPadding, 0,
+                        screenCoord.x + halfWidth, screenCoord.y + yPadding, 0,
+                        screenCoord.x + halfWidth, height - yPadding, 0,
+                        screenCoord.x - halfWidth, height - yPadding, 0);
+
+                // Draw the detail texture next to it using the offsets provided.
+                rsgBindTexture(fragmentProgram, 0, cards[i].detailTexture);
+                const float textureWidth = rsAllocationGetDimX(cards[i].detailTexture);
+                const float textureHeight = rsAllocationGetDimY(cards[i].detailTexture);
+                const float offx = cards[i].detailTextureOffset.x;
+                const float offy = -cards[i].detailTextureOffset.y;
+                rsgDrawQuad(
+                        screenCoord.x + offx, height + offy - textureHeight, 0,
+                        screenCoord.x + offx + textureWidth, height + offy - textureHeight, 0,
+                        screenCoord.x + offx + textureWidth, height + offy, 0,
+                        screenCoord.x + offx, height + offy, 0);
+
+                drawn++;
+            }
+        }
+    }
+}
+
 static void drawBackground()
 {
     if (backgroundTexture.p != 0) {
@@ -368,12 +456,14 @@ static void drawBackground()
         if (false) { // for debugging - flash the screen so we know we're still rendering
             static bool toggle;
             if (toggle)
-               rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0);
+               rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z,
+                       backgroundColor.w);
             else
                rsgClearColor(1.0f, 0.0f, 0.0f, 1.f);
             toggle = !toggle;
        } else {
-           rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.0);
+           rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z,
+                   backgroundColor.w);
        }
     }
 }
@@ -449,7 +539,7 @@ void doStop(float x, float y)
     int64_t currentTime = rsUptimeMillis();
     updateAllocationVars();
     if (currentSelection != -1 && (currentTime - touchTime) < ANIMATION_SCALE_TIME) {
-        rsDebug("HIT!", currentSelection);
+        // rsDebug("HIT!", currentSelection);
         int data[1];
         data[0] = currentSelection;
         rsSendToClientBlocking(CMD_CARD_SELECTED, data, sizeof(data));
@@ -747,7 +837,17 @@ static void updateCardResources()
                 if (enqueued) {
                     cards[i].textureState = STATE_LOADING;
                 } else {
-                    rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
+                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
+                }
+            }
+            // request detail texture from client if not loaded
+            if (cards[i].detailTextureState == STATE_INVALID) {
+                data[0] = i;
+                bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
+                if (enqueued) {
+                    cards[i].detailTextureState = STATE_LOADING;
+                } else {
+                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
                 }
             }
             // request geometry from client if not loaded
@@ -757,7 +857,7 @@ static void updateCardResources()
                 if (enqueued) {
                     cards[i].geometryState = STATE_LOADING;
                 } else {
-                    rsDebug("Couldn't send CMD_REQUEST_GEOMETRY", 0);
+                    if (debugGeometryLoading) rsDebug("Couldn't send CMD_REQUEST_GEOMETRY", 0);
                 }
             }
         } else {
@@ -768,7 +868,17 @@ static void updateCardResources()
                 if (enqueued) {
                     cards[i].textureState = STATE_INVALID;
                 } else {
-                    rsDebug("Couldn't send CMD_INVALIDATE_TEXTURE", 0);
+                    if (debugTextureLoading) rsDebug("Couldn't send CMD_INVALIDATE_TEXTURE", 0);
+                }
+            }
+            // ask the host to remove the detail texture
+            if (cards[i].detailTextureState != STATE_INVALID) {
+                data[0] = i;
+                bool enqueued = rsSendToClient(CMD_INVALIDATE_DETAIL_TEXTURE, data, sizeof(data));
+                if (enqueued) {
+                    cards[i].detailTextureState = STATE_INVALID;
+                } else {
+                    if (debugTextureLoading) rsDebug("Can't send CMD_INVALIDATE_DETAIL_TEXTURE", 0);
                 }
             }
             // ask the host to remove the geometry
@@ -778,7 +888,7 @@ static void updateCardResources()
                 if (enqueued) {
                     cards[i].geometryState = STATE_INVALID;
                 } else {
-                    rsDebug("Couldn't send CMD_INVALIDATE_GEOMETRY", 0);
+                    if (debugGeometryLoading) rsDebug("Couldn't send CMD_INVALIDATE_GEOMETRY", 0);
                 }
             }
 
@@ -821,8 +931,12 @@ int root() {
     updateAllocationVars();
 
     if (!initialized) {
-        for (int i = 0; i < cardCount; i++)
+        const float2 zero = {0.0f, 0.0f};
+        for (int i = 0; i < cardCount; i++) {
             cards[i].textureState = STATE_INVALID;
+            cards[i].detailTextureState = STATE_INVALID;
+            cards[i].detailTextureOffset = zero;
+        }
         initialized = true;
     }
 
@@ -831,9 +945,6 @@ int root() {
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
 
     const bool timeExpired = (currentTime - touchTime) > ANIMATION_SCALE_TIME;
-    if (timeExpired) {
-        //currentSelection = -1;
-    }
     bool stillAnimating = updateNextPosition(currentTime) || !timeExpired;
 
     cullCards();
@@ -841,6 +952,7 @@ int root() {
     updateCardResources();
 
     drawCards();
+    drawDetails();
 
     if (debugPicking) {
         renderWithRays();

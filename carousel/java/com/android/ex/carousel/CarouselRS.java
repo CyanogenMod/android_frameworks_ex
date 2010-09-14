@@ -31,6 +31,11 @@ import static android.renderscript.Sampler.Value.LINEAR;
 import static android.renderscript.Sampler.Value.WRAP;
 import static android.renderscript.Sampler.Value.CLAMP;
 
+/**
+ * This is a support class for Carousel renderscript.  It handles most of the low-level interactions
+ * with Renderscript as well as dispatching events.
+ *
+ */
 public class CarouselRS  {
     private static final int DEFAULT_VISIBLE_SLOTS = 1;
     private static final int DEFAULT_CARD_COUNT = 1;
@@ -43,12 +48,15 @@ public class CarouselRS  {
     public static final int CMD_INVALIDATE_GEOMETRY = 310;
     public static final int CMD_ANIMATION_STARTED = 400;
     public static final int CMD_ANIMATION_FINISHED = 500;
-    public static final int CMD_REPORT_FIRST_CARD_POSITION = 600;
-    public static final int CMD_PING = 700; // for debugging
+    public static final int CMD_REQUEST_DETAIL_TEXTURE = 600;
+    public static final int CMD_INVALIDATE_DETAIL_TEXTURE = 610;
+    public static final int CMD_REPORT_FIRST_CARD_POSITION = 700;
+    public static final int CMD_PING = 1000; // for debugging
 
     private static final String TAG = "CarouselRS";
     private static final int DEFAULT_SLOT_COUNT = 10;
     private static final boolean MIPMAP = false;
+    private static final boolean DBG = false;
 
     private RenderScriptGL mRS;
     private Resources mRes;
@@ -85,6 +93,20 @@ public class CarouselRS  {
          * @param n the id of the card
          */
         void onInvalidateTexture(int n);
+
+        /**
+         * Called when detail texture is needed for card n.  This happens when the given card
+         * becomes visible.
+         * @param n the id of the card
+         */
+        void onRequestDetailTexture(int n);
+
+        /**
+         * Called when a detail texture is no longer needed for card n.  This happens when the card
+         * goes out of view.
+         * @param n the id of the card
+         */
+        void onInvalidateDetailTexture(int n);
 
         /**
          * Called when geometry is needed for card n.
@@ -131,6 +153,14 @@ public class CarouselRS  {
                     mCallback.onInvalidateTexture(mData[0]);
                     break;
 
+                case CMD_REQUEST_DETAIL_TEXTURE:
+                    mCallback.onRequestDetailTexture(mData[0]);
+                    break;
+
+                case CMD_INVALIDATE_DETAIL_TEXTURE:
+                    mCallback.onInvalidateDetailTexture(mData[0]);
+                    break;
+
                 case CMD_REQUEST_GEOMETRY:
                     mCallback.onRequestGeometry(mData[0]);
                     break;
@@ -152,7 +182,7 @@ public class CarouselRS  {
                     break;
 
                 case CMD_PING:
-                    Log.v(TAG, "PING...");
+                    if (DBG) Log.v(TAG, "PING...");
                     break;
 
                 default:
@@ -324,18 +354,18 @@ public class CarouselRS  {
     {
         ScriptField_Card.Item item = mCards.get(n);
         if (item == null) {
-            Log.v(TAG, "setTexture(): no item at index " + n);
+            if (DBG) Log.v(TAG, "setTexture(): no item at index " + n);
             item = new ScriptField_Card.Item();
         }
         if (bitmap != null) {
-            Log.v(TAG, "creating new bitmap");
+            if (DBG) Log.v(TAG, "creating new bitmap");
             item.texture = Allocation.createFromBitmap(mRS, bitmap, RGB_565(mRS), MIPMAP);
-            Log.v(TAG, "uploadToTexture(" + n + ")");
+            if (DBG) Log.v(TAG, "uploadToTexture(" + n + ")");
             item.texture.uploadToTexture(0);
-            Log.v(TAG, "done...");
+            if (DBG) Log.v(TAG, "done...");
         } else {
             if (item.texture != null) {
-                Log.v(TAG, "unloading texture " + n);
+                if (DBG) Log.v(TAG, "unloading texture " + n);
                 // Don't wait for GC to free native memory.
                 // Only works if textures are not shared.
                 item.texture.destroy();
@@ -346,18 +376,45 @@ public class CarouselRS  {
         mScript.invoke_setTexture(n, item.texture);
     }
 
+    void setDetailTexture(int n, float offx, float offy, Bitmap bitmap)
+    {
+        ScriptField_Card.Item item = mCards.get(n);
+        if (item == null) {
+            if (DBG) Log.v(TAG, "setDetailTexture(): no item at index " + n);
+            item = new ScriptField_Card.Item();
+        }
+        float width = 0.0f;
+        float height = 0.0f;
+        if (bitmap != null) {
+            item.detailTexture = Allocation.createFromBitmap(mRS, bitmap, RGBA_8888(mRS), MIPMAP);
+            item.detailTexture.uploadToTexture(0);
+            width = bitmap.getWidth();
+            height = bitmap.getHeight();
+        } else {
+            if (item.detailTexture != null) {
+                if (DBG) Log.v(TAG, "unloading texture " + n);
+                // Don't wait for GC to free native memory.
+                // Only works if textures are not shared.
+                item.detailTexture.destroy();
+                item.detailTexture = null;
+            }
+        }
+        mCards.set(item, n, false); // This is primarily used for reference counting.
+        mScript.invoke_setDetailTexture(n, offx, offy, item.detailTexture);
+    }
+
     public void setGeometry(int n, Mesh geometry)
     {
         final boolean mipmap = false;
         ScriptField_Card.Item item = mCards.get(n);
         if (item == null) {
-            Log.v(TAG, "setGeometry(): no item at index " + n);
+            if (DBG) Log.v(TAG, "setGeometry(): no item at index " + n);
             item = new ScriptField_Card.Item();
         }
         if (geometry != null) {
             item.geometry = geometry;
         } else {
-            Log.v(TAG, "unloading geometry " + n);
+            if (DBG) Log.v(TAG, "unloading geometry " + n);
             if (item.geometry != null) {
                 // item.geometry.destroy();
                 item.geometry = null;
@@ -374,6 +431,15 @@ public class CarouselRS  {
             texture.uploadToTexture(0);
         }
         mScript.set_backgroundTexture(texture);
+    }
+
+    public void setDetailLineTexture(Bitmap bitmap) {
+        Allocation texture = null;
+        if (bitmap != null) {
+            texture = Allocation.createFromBitmap(mRS, bitmap, RGBA_4444(mRS), MIPMAP);
+            texture.uploadToTexture(0);
+        }
+        mScript.set_detailLineTexture(texture);
     }
 
     public void pauseRendering() {

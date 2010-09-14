@@ -17,14 +17,10 @@
 package com.android.carouseltest;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
 
-import com.android.carouseltest.MyCarouselView;
 import com.android.ex.carousel.CarouselView;
 import com.android.ex.carousel.CarouselRS.CarouselCallback;
 
@@ -32,12 +28,6 @@ import android.app.Activity;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.PaintFlagsDrawFilter;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
-import android.graphics.Xfermode;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
@@ -56,7 +46,6 @@ public class MusicDemoActivity extends Activity {
     private static final int TOTAL_CARDS = 10000;
     private static final String TAG = "MusicDemoActivity";
     protected static final boolean DBG = true;
-    private static final boolean TEST_ON_DEMAND_GEOMETRY = false; // for testing.. geometry per card
     protected static final int SET_TEXTURE_N = 1000;
     private CarouselView mView;
     private int imageResources[] = {
@@ -78,10 +67,7 @@ public class MusicDemoActivity extends Activity {
         R.drawable.emo_im_yelling
     };
     private Bitmap mSpecularMap;
-    private Mesh mGeometry;
-
-    private HandlerThread mTextureThread;
-    private HandlerThread mGeometryThread;
+    private HandlerThread mHandlerThread;
     private Handler mTextureHandler;
     private Handler mGeometryHandler;
     private Handler mSetTextureHandler;
@@ -90,12 +76,10 @@ public class MusicDemoActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mTextureThread = new HandlerThread(TAG);
-        mGeometryThread = new HandlerThread(TAG);
-        mTextureThread.start();
-        mGeometryThread.start();
+        mHandlerThread = new HandlerThread(TAG + ".handler");
+        mHandlerThread.start();
 
-        mTextureHandler = new Handler(mTextureThread.getLooper()) {
+        mTextureHandler = new Handler(mHandlerThread.getLooper()) {
             @Override
             public void handleMessage(Message msg) {
                 if (msg.what < TOTAL_CARDS) {
@@ -107,7 +91,7 @@ public class MusicDemoActivity extends Activity {
             }
         };
 
-        mGeometryHandler = new Handler(mGeometryThread.getLooper()) {
+        mGeometryHandler = new Handler(mHandlerThread.getLooper()) {
             @Override
             public void handleMessage(Message msg) {
                 // TODO
@@ -126,7 +110,6 @@ public class MusicDemoActivity extends Activity {
 
         final Resources res = getResources();
         setContentView(R.layout.music_demo);
-        // mView = new MyCarouselView(this);
         mView = (CarouselView) findViewById(R.id.carousel);
         mView.setCallback(mCallback);
         mView.setSlotCount(CARD_SLOTS);
@@ -232,6 +215,18 @@ public class MusicDemoActivity extends Activity {
             mGeometryHandler.removeMessages(n);
         }
 
+        public void onRequestDetailTexture(int n) {
+            if (DBG) Log.v(TAG, "onRequestDetailTexture(" + n + ")" );
+            //mDetailTextureHandler.removeMessages(n);
+            //Message message = mDetailTextureHandler.obtainMessage(n, n, 0);
+            //mDetailTextureHandler.sendMessageDelayed(message, HOLDOFF_DELAY);
+        }
+
+        public void onInvalidateDetailTexture(int n) {
+            if (DBG) Log.v(TAG, "onInvalidateDetailTexture(" + n + ")");
+            //mDetailTextureHandler.removeMessages(n);
+        }
+
         public void onCardSelected(int n) {
             if (DBG) Log.v(TAG, "onCardSelected(" + n + ")");
         }
@@ -247,6 +242,7 @@ public class MusicDemoActivity extends Activity {
         public void onReportFirstCardPosition(int n) {
 
         }
+
     };
 
 }
