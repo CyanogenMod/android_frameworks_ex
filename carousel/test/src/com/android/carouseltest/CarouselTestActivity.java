@@ -178,6 +178,9 @@ public class CarouselTestActivity extends Activity {
 
         }
 
+        public void onReportFirstCardPosition(int n) {
+
+        }
     };
 
 }

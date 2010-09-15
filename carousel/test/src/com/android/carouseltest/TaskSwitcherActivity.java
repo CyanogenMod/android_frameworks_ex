@@ -155,6 +155,10 @@ public class TaskSwitcherActivity extends Activity {
                 });
             }
         }
+
+        public void onReportFirstCardPosition(int n) {
+
+        }
     };
 
     private final IThumbnailReceiver mThumbnailReceiver = new IThumbnailReceiver.Stub() {

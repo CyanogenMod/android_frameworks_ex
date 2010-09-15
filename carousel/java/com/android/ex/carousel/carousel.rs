@@ -60,7 +60,8 @@ static const int CMD_REQUEST_GEOMETRY = 300;
 static const int CMD_INVALIDATE_GEOMETRY = 310;
 static const int CMD_ANIMATION_STARTED = 400;
 static const int CMD_ANIMATION_FINISHED = 500;
-static const int CMD_PING = 600;
+static const int CMD_REPORT_FIRST_CARD_POSITION = 600;
+static const int CMD_PING = 700;
 
 // Constants
 static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
@@ -99,6 +100,7 @@ rs_matrix4x4 modelviewMatrix;
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
 #pragma rs export_func(createCards, lookAt, doStart, doStop, doMotion, doSelection, setTexture)
 #pragma rs export_func(setGeometry, debugCamera, debugPicking)
+#pragma rs export_func(requestFirstCardPosition)
 
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
@@ -107,6 +109,7 @@ static bool initialized;
 static float3 backgroundColor = { 0.0f, 0.0f, 0.0f };
 static const float FLT_MAX = 1.0e37;
 static int currentSelection = -1;
+static int currentFirstCard = -1;
 static int64_t touchTime = -1;  // time of first touch (see doStart())
 static float touchBias = 0.0f; // bias on first touch
 static float velocity = 0.0f;  // angular velocity in radians/s
@@ -257,6 +260,16 @@ void setGeometry(int n, rs_mesh geometry)
         cards[n].geometryState = STATE_LOADED;
     else
         cards[n].geometryState = STATE_INVALID;
+}
+
+void requestFirstCardPosition()
+{
+    int data[1];
+    data[0] = currentFirstCard;
+    bool enqueued = rsSendToClient(CMD_REPORT_FIRST_CARD_POSITION, data, sizeof(data));
+    if (!enqueued) {
+        rsDebug("Couldn't send CMD_REPORT_FIRST_CARD_POSITION", 0);
+    }
 }
 
 static float3 getAnimatedScaleForSelected()
@@ -688,14 +701,22 @@ static bool updateNextPosition(int64_t currentTime)
 static int cullCards()
 {
     const float thetaFirst = slotPosition(-1); // -1 keeps the card in front around a bit longer
+    const float thetaSelected = slotPosition(0);
+    const float thetaHalfAngle = (thetaSelected - thetaFirst) * 0.5f;
+    const float thetaSelectedLow = thetaSelected - thetaHalfAngle;
+    const float thetaSelectedHigh = thetaSelected + thetaHalfAngle;
     const float thetaLast = slotPosition(visibleSlotCount);
 
     int count = 0;
+    int firstVisible = -1;
     for (int i = 0; i < cardCount; i++) {
         if (visibleSlotCount > 0) {
             // If visibleSlotCount is specified, then only show up to visibleSlotCount cards.
             float p = cardPosition(i);
             if (p >= thetaFirst && p < thetaLast) {
+                if (firstVisible == -1 && p >= thetaSelectedLow && p < thetaSelectedHigh) {
+                    firstVisible = i;
+                }
                 cards[i].visible = true;
                 count++;
             } else {
@@ -708,6 +729,7 @@ static int cullCards()
             count++;
         }
     }
+    currentFirstCard = firstVisible;
     return count;
 }
 

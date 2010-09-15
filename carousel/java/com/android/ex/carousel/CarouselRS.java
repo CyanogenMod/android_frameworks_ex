@@ -43,7 +43,8 @@ public class CarouselRS  {
     public static final int CMD_INVALIDATE_GEOMETRY = 310;
     public static final int CMD_ANIMATION_STARTED = 400;
     public static final int CMD_ANIMATION_FINISHED = 500;
-    public static final int CMD_PING = 600; // for debugging
+    public static final int CMD_REPORT_FIRST_CARD_POSITION = 600;
+    public static final int CMD_PING = 700; // for debugging
 
     private static final String TAG = "CarouselRS";
     private static final int DEFAULT_SLOT_COUNT = 10;
@@ -107,6 +108,11 @@ public class CarouselRS  {
          * Called when card animation has stopped.
          */
         void onAnimationFinished();
+
+        /**
+         * Called when the current position has been requested.
+         */
+        void onReportFirstCardPosition(int n);
     };
 
     private RSMessage mRsMessage = new RSMessage() {
@@ -139,6 +145,10 @@ public class CarouselRS  {
 
                 case CMD_ANIMATION_FINISHED:
                     mCallback.onAnimationFinished();
+                    break;
+
+                case CMD_REPORT_FIRST_CARD_POSITION:
+                    mCallback.onReportFirstCardPosition(mData[0]);
                     break;
 
                 case CMD_PING:
@@ -393,5 +403,9 @@ public class CarouselRS  {
 
     public void setSlotCount(int n) {
         mScript.set_slotCount(n);
+    }
+
+    public void requestFirstCardPosition() {
+        mScript.invoke_requestFirstCardPosition();
     }
 }

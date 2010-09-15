@@ -270,6 +270,12 @@ public abstract class CarouselView extends RSSurfaceView {
         }
     }
 
+    public void requestFirstCardPosition() {
+        if (mRenderScript != null) {
+            mRenderScript.requestFirstCardPosition();
+        }
+    }
+
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
@@ -317,34 +323,45 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     private final CarouselCallback DEBUG_CALLBACK = new CarouselCallback() {
+        @Override
         public void onAnimationStarted() {
             Log.v(TAG, "onAnimationStarted()");
         }
 
+        @Override
         public void onAnimationFinished() {
             Log.v(TAG, "onAnimationFinished()");
         }
 
+        @Override
         public void onCardSelected(int n) {
             Log.v(TAG, "onCardSelected(" + n + ")");
         }
 
+        @Override
         public void onRequestGeometry(int n) {
             Log.v(TAG, "onRequestGeometry(" + n + ")");
         }
 
+        @Override
         public void onInvalidateGeometry(int n) {
             Log.v(TAG, "onInvalidateGeometry(" + n + ")");
         }
 
+        @Override
         public void onRequestTexture(final int n) {
             Log.v(TAG, "onRequestTexture(" + n + ")");
         }
 
+        @Override
         public void onInvalidateTexture(int n) {
             Log.v(TAG, "onInvalidateTexture(" + n + ")");
         }
 
+        @Override
+        public void onReportFirstCardPosition(int n) {
+            Log.v(TAG, "onReportFirstCardPosition(" + n + ")");
+        }
     };
 
     private CarouselCallback mCarouselCallback = DEBUG_CALLBACK;

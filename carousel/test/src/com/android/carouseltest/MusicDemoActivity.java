@@ -244,6 +244,9 @@ public class MusicDemoActivity extends Activity {
 
         }
 
+        public void onReportFirstCardPosition(int n) {
+
+        }
     };
 
 }
