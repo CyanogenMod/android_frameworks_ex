@@ -103,7 +103,7 @@ rs_mesh loadingGeometry; // shown when geometry is loading
 rs_matrix4x4 projectionMatrix;
 rs_matrix4x4 modelviewMatrix;
 
-#pragma rs export_var(radius, cards, slotCount, visibleSlotCount, cardRotation)
+#pragma rs export_var(radius, cards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
 #pragma rs export_var(swaySensitivity, frictionCoeff, dragFactor)
 #pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram)
 #pragma rs export_var(detailLineTexture, backgroundTexture)
@@ -116,7 +116,7 @@ rs_matrix4x4 modelviewMatrix;
 static float bias; // rotation bias, in radians. Used for animation and dragging.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
 static bool initialized;
-static float4 backgroundColor = { 0.0f, 0.0f, 0.0f, 0.5f };
+static float4 backgroundColor;
 static const float FLT_MAX = 1.0e37;
 static int currentSelection = -1;
 static int currentFirstCard = -1;
@@ -161,6 +161,7 @@ void init() {
     cardRotation = 0.0f;
     updateCamera = true;
     initialized = false;
+    backgroundColor = (float4) { 0.0f, 0.0f, 0.0f, 1.0f };
 }
 
 static void updateAllocationVars()

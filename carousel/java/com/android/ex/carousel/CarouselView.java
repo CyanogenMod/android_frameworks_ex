@@ -23,6 +23,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.renderscript.FileA3D;
+import android.renderscript.Float4;
 import android.renderscript.Mesh;
 import android.renderscript.RSSurfaceView;
 import android.renderscript.RenderScriptGL;
@@ -74,6 +75,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private float mEye[] = { 20.6829f, 2.77081f, 16.7314f };
     private float mAt[] = { 14.7255f, -3.40001f, -1.30184f };
     private float mUp[] = { 0.0f, 1.0f, 0.0f };
+    private Float4 mBackgroundColor;
 
     public static class Info {
         public Info(int _resId) { resId = _resId; }
@@ -116,6 +118,8 @@ public abstract class CarouselView extends RSSurfaceView {
         setLoadingBitmap(mLoadingBitmap);
         setDefaultGeometry(mDefaultGeometry);
         setLoadingGeometry(mLoadingGeometry);
+        setBackgroundColor(mBackgroundColor.x, mBackgroundColor.y, mBackgroundColor.z,
+                mBackgroundColor.w);
         setBackgroundBitmap(mBackgroundBitmap);
         setDetailLineBitmap(mDefaultLineBitmap);
         setStartAngle(mStartAngle);
@@ -265,7 +269,23 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
-     * Can be used to optionally set the background to a bitmap.
+     * Sets background to specified color.  If a background texture is specified with
+     * {@link CarouselView#setBackgroundBitmap(Bitmap)}, then this call has no effect.
+     *
+     * @param red the amount of red
+     * @param green the amount of green
+     * @param blue the amount of blue
+     * @param alpha the amount of alpha
+     */
+    public void setBackgroundColor(float red, float green, float blue, float alpha) {
+        mBackgroundColor = new Float4(red, green, blue, alpha);
+        if (mRenderScript != null) {
+            mRenderScript.setBackgroundColor(mBackgroundColor);
+        }
+    }
+    /**
+     * Can be used to optionally set the background to a bitmap. When set to something other than
+     * null, this overrides {@link CarouselView#setBackgroundColor(Float4)}.
      *
      * @param bitmap
      */

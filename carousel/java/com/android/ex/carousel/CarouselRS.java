@@ -424,6 +424,10 @@ public class CarouselRS  {
         mScript.invoke_setGeometry(n, item.geometry);
     }
 
+    public void setBackgroundColor(Float4 color) {
+        mScript.set_backgroundColor(color);
+    }
+
     public void setBackgroundTexture(Bitmap bitmap) {
         Allocation texture = null;
         if (bitmap != null) {

@@ -41,6 +41,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.renderscript.Float4;
 import android.util.Log;
 
 public class CarouselTestActivity extends Activity {
@@ -138,6 +139,7 @@ public class CarouselTestActivity extends Activity {
         mView.setStartAngle((float) -(2.0f*Math.PI * 5 / CARD_SLOTS));
         mView.setDefaultBitmap(BitmapFactory.decodeResource(res, R.drawable.unknown));
         mView.setLoadingBitmap(BitmapFactory.decodeResource(res, R.drawable.wait));
+        mView.setBackgroundColor(0.25f, 0.25f, 0.5f, 1.0f);
 
         /*
         int flags = WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER;
@@ -167,7 +169,7 @@ public class CarouselTestActivity extends Activity {
         Bitmap bitmap = Bitmap.createBitmap(TEXTURE_WIDTH, TEXTURE_HEIGHT,
                 Bitmap.Config.RGB_565);
         Canvas canvas = new Canvas(bitmap);
-        canvas.drawARGB(255, 64, 64, 64);
+        canvas.drawARGB(255, 128, 128, 128);
         mPaint.setTextSize(100.0f);
         mPaint.setAntiAlias(true);
         canvas.drawText(""+n, 0, TEXTURE_HEIGHT-10, mPaint);
@@ -178,7 +180,7 @@ public class CarouselTestActivity extends Activity {
         Bitmap bitmap = Bitmap.createBitmap(DETAIL_TEXTURE_WIDTH, DETAIL_TEXTURE_HEIGHT,
                 Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        canvas.drawARGB(128, 0, 0, 255);
+        canvas.drawARGB(200, 200, 200, 255);
         mPaint.setTextSize(15.0f);
         mPaint.setAntiAlias(true);
         canvas.drawText("Detail text for card " + n, 0, DETAIL_TEXTURE_HEIGHT/2, mPaint);
