@@ -63,7 +63,6 @@ public class CarouselRS  {
     private ScriptC_Carousel mScript;
     private ScriptField_Card mCards;
     private Sampler mSampler;
-    private ProgramRaster mProgramRaster;
     private ProgramStore mProgramStore;
     private ProgramFragment mFragmentProgram;
     private ProgramVertex mVertexProgram;
@@ -276,7 +275,7 @@ public class CarouselRS  {
 
     private void initFragmentProgram() {
         Sampler.Builder sampleBuilder = new Sampler.Builder(mRS);
-        sampleBuilder.setMin(Value.LINEAR_MIP_LINEAR);
+        sampleBuilder.setMin(Value.LINEAR);
         sampleBuilder.setMag(LINEAR);
         sampleBuilder.setWrapS(CLAMP);
         sampleBuilder.setWrapT(CLAMP);
