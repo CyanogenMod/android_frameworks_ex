@@ -75,7 +75,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private float mEye[] = { 20.6829f, 2.77081f, 16.7314f };
     private float mAt[] = { 14.7255f, -3.40001f, -1.30184f };
     private float mUp[] = { 0.0f, 1.0f, 0.0f };
-    private Float4 mBackgroundColor;
+    private Float4 mBackgroundColor = new Float4(0.0f, 0.0f, 0.0f, 1.0f);
 
     public static class Info {
         public Info(int _resId) { resId = _resId; }
