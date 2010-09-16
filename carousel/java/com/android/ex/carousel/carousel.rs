@@ -124,6 +124,11 @@ static int64_t touchTime = -1;  // time of first touch (see doStart())
 static float touchBias = 0.0f; // bias on first touch
 static float velocity = 0.0f;  // angular velocity in radians/s
 
+// Because allocations can't have 0 dimensions, we have to track whether or not
+// cards are valid separately.
+// TODO: Remove this dependency once allocations can have a zero dimension.
+static bool cardAllocationValid = false;
+
 // Default geometry when card.geometry is not set.
 static const float3 cardVertices[4] = {
         { -1.0, -1.0, 0.0 },
@@ -162,6 +167,8 @@ void init() {
     updateCamera = true;
     initialized = false;
     backgroundColor = (float4) { 0.0f, 0.0f, 0.0f, 1.0f };
+    cardAllocationValid = false;
+    cardCount = 0;
 }
 
 static void updateAllocationVars()
@@ -169,12 +176,13 @@ static void updateAllocationVars()
     // Cards
     rs_allocation cardAlloc = rsGetAllocation(cards);
     // TODO: use new rsIsObject()
-    cardCount = cardAlloc.p != 0 ? rsAllocationGetDimX(cardAlloc) : 0;
+    cardCount = (cardAllocationValid && cardAlloc.p != 0) ? rsAllocationGetDimX(cardAlloc) : 0;
 }
 
 void createCards(int n)
 {
     if (debugTextureLoading) rsDebug("CreateCards: ", n);
+    cardAllocationValid = n > 0;
     initialized = false;
     updateAllocationVars();
 }
@@ -258,12 +266,14 @@ static void loadLookatMatrix(rs_matrix4x4* matrix, float3 eye, float3 center, fl
 
 void setTexture(int n, rs_allocation texture)
 {
+    if (n < 0 || n >= cardCount) return;
     cards[n].texture = texture;
     cards[n].textureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
 }
 
 void setDetailTexture(int n, float offx, float offy, rs_allocation texture)
 {
+    if (n < 0 || n >= cardCount) return;
     cards[n].detailTexture = texture;
     cards[n].detailTextureOffset.x = offx;
     cards[n].detailTextureOffset.y = offy;
@@ -272,6 +282,7 @@ void setDetailTexture(int n, float offx, float offy, rs_allocation texture)
 
 void setGeometry(int n, rs_mesh geometry)
 {
+    if (n < 0 || n >= cardCount) return;
     cards[n].geometry = geometry;
     if (cards[n].geometry.p != 0)
         cards[n].geometryState = STATE_LOADED;

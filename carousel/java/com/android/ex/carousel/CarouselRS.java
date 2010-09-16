@@ -302,7 +302,10 @@ public class CarouselRS  {
 
     public void createCards(int count)
     {
-        mCards = count > 0 ? new ScriptField_Card(mRS, count) : null;
+        // Because RenderScript can't have allocations with 0 dimensions, we always create
+        // an allocation of at least one card. This relies on invoke_createCards() to keep
+        // track of when the allocation is not valid.
+        mCards = new ScriptField_Card(mRS, count > 0 ? count : 1);
         mScript.bind_cards(mCards);
         mScript.invoke_createCards(count);
     }
@@ -352,6 +355,8 @@ public class CarouselRS  {
 
     public void setTexture(int n, Bitmap bitmap)
     {
+        if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
+
         ScriptField_Card.Item item = mCards.get(n);
         if (item == null) {
             if (DBG) Log.v(TAG, "setTexture(): no item at index " + n);
@@ -378,6 +383,8 @@ public class CarouselRS  {
 
     void setDetailTexture(int n, float offx, float offy, Bitmap bitmap)
     {
+        if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
+
         ScriptField_Card.Item item = mCards.get(n);
         if (item == null) {
             if (DBG) Log.v(TAG, "setDetailTexture(): no item at index " + n);
@@ -405,6 +412,8 @@ public class CarouselRS  {
 
     public void setGeometry(int n, Mesh geometry)
     {
+        if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
+
         final boolean mipmap = false;
         ScriptField_Card.Item item = mCards.get(n);
         if (item == null) {
