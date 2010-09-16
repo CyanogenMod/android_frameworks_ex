@@ -95,7 +95,6 @@ public abstract class CarouselView extends RSSurfaceView {
         super(context, attrs);
         mContext = context;
         boolean useDepthBuffer = true;
-        ensureRenderScript();
         // TODO: add parameters to layout
     }
 
