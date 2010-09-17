@@ -60,7 +60,7 @@ public class CarouselRS  {
 
     private RenderScriptGL mRS;
     private Resources mRes;
-    private ScriptC_Carousel mScript;
+    private ScriptC_carousel mScript;
     private ScriptField_Card mCards;
     private Sampler mSampler;
     private ProgramStore mProgramStore;
@@ -195,7 +195,7 @@ public class CarouselRS  {
         mRes = res;
 
         // create the script object
-        mScript = new ScriptC_Carousel(mRS, mRes, resId, true);
+        mScript = new ScriptC_carousel(mRS, mRes, resId, true);
         mRS.mMessageCallback = mRsMessage;
 
         initProgramStore();
