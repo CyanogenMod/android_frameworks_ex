@@ -44,8 +44,8 @@ public class CarouselTestActivity extends Activity {
     private static final int HOLDOFF_DELAY = 0;
     private static final int CARD_SLOTS = 56;
     private static final int TOTAL_CARDS = 1000;
-    private static final int TEXTURE_HEIGHT = 511;
-    private static final int TEXTURE_WIDTH = 511;
+    private static final int TEXTURE_HEIGHT = 512;
+    private static final int TEXTURE_WIDTH = 512;
     private static final String TAG = "CarouselTestActivity";
 
     private static final int SLOTS_VISIBLE = 7;
