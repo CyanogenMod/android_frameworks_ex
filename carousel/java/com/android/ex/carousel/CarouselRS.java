@@ -60,7 +60,7 @@ public class CarouselRS  {
 
     private RenderScriptGL mRS;
     private Resources mRes;
-    private ScriptC_Carousel mScript;
+    private ScriptC_carousel mScript;
     private ScriptField_Card mCards;
     private Sampler mSampler;
     private ProgramStore mProgramStore;
@@ -149,6 +149,7 @@ public class CarouselRS  {
                     break;
 
                 case CMD_INVALIDATE_TEXTURE:
+                    setTexture(mData[0], null);
                     mCallback.onInvalidateTexture(mData[0]);
                     break;
 
@@ -157,6 +158,7 @@ public class CarouselRS  {
                     break;
 
                 case CMD_INVALIDATE_DETAIL_TEXTURE:
+                    setDetailTexture(mData[0], 0, 0, null);
                     mCallback.onInvalidateDetailTexture(mData[0]);
                     break;
 
@@ -165,6 +167,7 @@ public class CarouselRS  {
                     break;
 
                 case CMD_INVALIDATE_GEOMETRY:
+                    setGeometry(mData[0], null);
                     mCallback.onInvalidateGeometry(mData[0]);
                     break;
 
@@ -195,7 +198,7 @@ public class CarouselRS  {
         mRes = res;
 
         // create the script object
-        mScript = new ScriptC_Carousel(mRS, mRes, resId, true);
+        mScript = new ScriptC_carousel(mRS, mRes, resId, true);
         mRS.mMessageCallback = mRsMessage;
 
         initProgramStore();
@@ -356,80 +359,86 @@ public class CarouselRS  {
     {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
-        ScriptField_Card.Item item = mCards.get(n);
-        if (item == null) {
-            if (DBG) Log.v(TAG, "setTexture(): no item at index " + n);
-            item = new ScriptField_Card.Item();
-        }
-        if (bitmap != null) {
-            if (DBG) Log.v(TAG, "creating new bitmap");
-            item.texture = Allocation.createFromBitmap(mRS, bitmap, RGB_565(mRS), MIPMAP);
-            if (DBG) Log.v(TAG, "uploadToTexture(" + n + ")");
-            item.texture.uploadToTexture(0);
-            if (DBG) Log.v(TAG, "done...");
-        } else {
-            if (item.texture != null) {
-                if (DBG) Log.v(TAG, "unloading texture " + n);
-                // Don't wait for GC to free native memory.
-                // Only works if textures are not shared.
-                item.texture.destroy();
-                item.texture = null;
+        synchronized(this) {
+            ScriptField_Card.Item item = mCards.get(n);
+            if (item == null) {
+                if (DBG) Log.v(TAG, "setTexture(): no item at index " + n);
+                item = new ScriptField_Card.Item();
             }
+            if (bitmap != null) {
+                if (DBG) Log.v(TAG, "creating new bitmap");
+                item.texture = Allocation.createFromBitmap(mRS, bitmap, RGB_565(mRS), MIPMAP);
+                if (DBG) Log.v(TAG, "uploadToTexture(" + n + ")");
+                item.texture.uploadToTexture(0);
+                if (DBG) Log.v(TAG, "done...");
+            } else {
+                if (item.texture != null) {
+                    if (DBG) Log.v(TAG, "unloading texture " + n);
+                    // Don't wait for GC to free native memory.
+                    // Only works if textures are not shared.
+                    item.texture.destroy();
+                    item.texture = null;
+                }
+            }
+            mCards.set(item, n, false); // This is primarily used for reference counting.
+            mScript.invoke_setTexture(n, item.texture);
         }
-        mCards.set(item, n, false); // This is primarily used for reference counting.
-        mScript.invoke_setTexture(n, item.texture);
     }
 
     void setDetailTexture(int n, float offx, float offy, Bitmap bitmap)
     {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
-        ScriptField_Card.Item item = mCards.get(n);
-        if (item == null) {
-            if (DBG) Log.v(TAG, "setDetailTexture(): no item at index " + n);
-            item = new ScriptField_Card.Item();
-        }
-        float width = 0.0f;
-        float height = 0.0f;
-        if (bitmap != null) {
-            item.detailTexture = Allocation.createFromBitmap(mRS, bitmap, RGBA_8888(mRS), MIPMAP);
-            item.detailTexture.uploadToTexture(0);
-            width = bitmap.getWidth();
-            height = bitmap.getHeight();
-        } else {
-            if (item.detailTexture != null) {
-                if (DBG) Log.v(TAG, "unloading texture " + n);
-                // Don't wait for GC to free native memory.
-                // Only works if textures are not shared.
-                item.detailTexture.destroy();
-                item.detailTexture = null;
+        synchronized(this) {
+            ScriptField_Card.Item item = mCards.get(n);
+            if (item == null) {
+                if (DBG) Log.v(TAG, "setDetailTexture(): no item at index " + n);
+                item = new ScriptField_Card.Item();
             }
+            float width = 0.0f;
+            float height = 0.0f;
+            if (bitmap != null) {
+                item.detailTexture = Allocation.createFromBitmap(mRS, bitmap, RGBA_8888(mRS), MIPMAP);
+                item.detailTexture.uploadToTexture(0);
+                width = bitmap.getWidth();
+                height = bitmap.getHeight();
+            } else {
+                if (item.detailTexture != null) {
+                    if (DBG) Log.v(TAG, "unloading texture " + n);
+                    // Don't wait for GC to free native memory.
+                    // Only works if textures are not shared.
+                    item.detailTexture.destroy();
+                    item.detailTexture = null;
+                }
+            }
+            mCards.set(item, n, false); // This is primarily used for reference counting.
+            mScript.invoke_setDetailTexture(n, offx, offy, item.detailTexture);
         }
-        mCards.set(item, n, false); // This is primarily used for reference counting.
-        mScript.invoke_setDetailTexture(n, offx, offy, item.detailTexture);
     }
 
     public void setGeometry(int n, Mesh geometry)
     {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
-        final boolean mipmap = false;
-        ScriptField_Card.Item item = mCards.get(n);
-        if (item == null) {
-            if (DBG) Log.v(TAG, "setGeometry(): no item at index " + n);
-            item = new ScriptField_Card.Item();
-        }
-        if (geometry != null) {
-            item.geometry = geometry;
-        } else {
-            if (DBG) Log.v(TAG, "unloading geometry " + n);
-            if (item.geometry != null) {
-                // item.geometry.destroy();
-                item.geometry = null;
+        synchronized(this) {
+            final boolean mipmap = false;
+            ScriptField_Card.Item item = mCards.get(n);
+            if (item == null) {
+                if (DBG) Log.v(TAG, "setGeometry(): no item at index " + n);
+                item = new ScriptField_Card.Item();
             }
+            if (geometry != null) {
+                item.geometry = geometry;
+            } else {
+                if (DBG) Log.v(TAG, "unloading geometry " + n);
+                if (item.geometry != null) {
+                    // item.geometry.destroy();
+                    item.geometry = null;
+                }
+            }
+            mCards.set(item, n, false);
+            mScript.invoke_setGeometry(n, item.geometry);
         }
-        mCards.set(item, n, false);
-        mScript.invoke_setGeometry(n, item.geometry);
     }
 
     public void setBackgroundColor(Float4 color) {

@@ -95,11 +95,14 @@ public abstract class CarouselView extends RSSurfaceView {
         super(context, attrs);
         mContext = context;
         boolean useDepthBuffer = true;
+        ensureRenderScript();
         // TODO: add parameters to layout
     }
 
     private void ensureRenderScript() {
-        mRS = createRenderScript(USE_DEPTH_BUFFER);
+        if (mRS == null) {
+            mRS = createRenderScript(USE_DEPTH_BUFFER);
+        }
         mRenderScript = new CarouselRS();
         mRenderScript.init(mRS, getResources(), getRenderScriptInfo().resId);
     }

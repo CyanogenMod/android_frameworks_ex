@@ -267,14 +267,14 @@ static void loadLookatMatrix(rs_matrix4x4* matrix, float3 eye, float3 center, fl
 void setTexture(int n, rs_allocation texture)
 {
     if (n < 0 || n >= cardCount) return;
-    cards[n].texture = texture;
+    rsSetObject(&cards[n].texture, texture);
     cards[n].textureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
 }
 
 void setDetailTexture(int n, float offx, float offy, rs_allocation texture)
 {
     if (n < 0 || n >= cardCount) return;
-    cards[n].detailTexture = texture;
+    rsSetObject(&cards[n].detailTexture, texture);
     cards[n].detailTextureOffset.x = offx;
     cards[n].detailTextureOffset.y = offy;
     cards[n].detailTextureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
@@ -283,7 +283,7 @@ void setDetailTexture(int n, float offx, float offy, rs_allocation texture)
 void setGeometry(int n, rs_mesh geometry)
 {
     if (n < 0 || n >= cardCount) return;
-    cards[n].geometry = geometry;
+    rsSetObject(&cards[n].geometry, geometry);
     if (cards[n].geometry.p != 0)
         cards[n].geometryState = STATE_LOADED;
     else
