@@ -317,6 +317,18 @@ public class CarouselRS  {
         mScript.set_visibleSlotCount(count);
     }
 
+    public void setVisibleDetails(int count) {
+        mScript.set_visibleDetailCount(count);
+    }
+
+    public void setDrawDetailBelowCard(boolean below) {
+        mScript.set_drawDetailBelowCard(below);
+    }
+
+    public void setDrawRuler(boolean drawRuler) {
+        mScript.set_drawRuler(drawRuler);
+    }
+
     public void setDefaultBitmap(Bitmap bitmap)
     {
         mScript.set_defaultTexture(allocationFromBitmap(bitmap, MIPMAP));
