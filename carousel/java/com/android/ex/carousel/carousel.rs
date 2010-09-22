@@ -77,6 +77,7 @@ const bool debugCamera = false; // dumps ray/camera coordinate stuff
 const bool debugPicking = false; // renders picking area on top of geometry
 const bool debugTextureLoading = false; // for debugging texture load/unload
 const bool debugGeometryLoading = false; // for debugging geometry load/unload
+const bool debugDetails = false; // for debugging detail texture geometry
 
 // Exported variables. These will be reflected to Java set_* variables.
 Card_t *cards; // array of cards to draw
@@ -85,6 +86,8 @@ int slotCount; // number of positions where a card can be
 int cardCount; // number of cards in stack
 int visibleSlotCount; // number of visible slots (for culling)
 int visibleDetailCount; // number of visible detail textures to show
+bool drawDetailBelowCard; // whether detail goes above (false) or below (true) the card
+bool drawRuler; // whether to draw a ruler from the card to the detail texture
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
 float swaySensitivity; // how much to rotate cards in relation to the rotation velocity
@@ -105,6 +108,7 @@ rs_matrix4x4 modelviewMatrix;
 
 #pragma rs export_var(radius, cards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
 #pragma rs export_var(swaySensitivity, frictionCoeff, dragFactor)
+#pragma rs export_var(visibleDetailCount, drawDetailBelowCard, drawRuler)
 #pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram)
 #pragma rs export_var(detailLineTexture, backgroundTexture)
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
@@ -316,18 +320,25 @@ static float logistic(float t) {
     return 1. / (1. + exp(-t));
 }
 
-static float getSwayAngleForVelocity(float v)
+static float getSwayAngleForVelocity(float v, bool enableSway)
 {
-    const float range = M_PI; // How far we can deviate from center, peak-to-peak
-    float sway = M_PI * (logistic(-v * swaySensitivity) - 0.5);
+    float sway = 0.0f;
+
+    if (enableSway) {
+        const float range = M_PI; // How far we can deviate from center, peak-to-peak
+        sway = M_PI * (logistic(-v * swaySensitivity) - 0.5);
+    }
 
     return sway;
 }
 
-static void getMatrixForCard(rs_matrix4x4* matrix, int i)
+// matrix: The output matrix.
+// i: The card we're getting the matrix for.
+// enableSway: Whether to enable swaying. (We want it on for cards, and off for detail textures.)
+static void getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
 {
     float theta = cardPosition(i);
-    float swayAngle = getSwayAngleForVelocity(velocity);
+    float swayAngle = getSwayAngleForVelocity(velocity, enableSway);
     rsMatrixRotate(matrix, degrees(theta), 0, 1, 0);
     rsMatrixTranslate(matrix, radius, 0, 0);
     rsMatrixRotate(matrix, degrees(-theta + cardRotation + swayAngle), 0, 1, 0);
@@ -353,7 +364,7 @@ static void drawCards()
 
             // Draw geometry
             rs_matrix4x4 matrix = modelviewMatrix;
-            getMatrixForCard(&matrix, i);
+            getMatrixForCard(&matrix, i, true);
             rsgProgramVertexLoadModelMatrix(&matrix);
             if (cards[i].geometryState == STATE_LOADED && cards[i].geometry.p != 0) {
                 rsgDrawMesh(cards[i].geometry);
@@ -400,10 +411,11 @@ static void drawDetails()
 
                 // Compute position in screen space of upper left corner of card
                 rs_matrix4x4 model = modelviewMatrix;
-                getMatrixForCard(&model, i);
+                getMatrixForCard(&model, i, false);
                 rs_matrix4x4 matrix;
                 rsMatrixLoadMultiply(&matrix, &projectionMatrix, &model);
-                float4 screenCoord = rsMatrixMultiply(&matrix, cardVertices[3]);
+                float4 screenCoord = rsMatrixMultiply(&matrix,
+                    cardVertices[drawDetailBelowCard ? 0 : 3]);
                 if (screenCoord.w == 0.0f) {
                     // this shouldn't happen
                     rsDebug("Bad transform: ", screenCoord);
@@ -418,15 +430,22 @@ static void drawDetails()
                 screenCoord.z = 0.0f; // make sure it's in front
                 screenCoord.x = round(screenCoord.x * 0.5f * width);
                 screenCoord.y = round(screenCoord.y * 0.5f * height);
+                if (debugDetails) {
+                    RS_DEBUG(screenCoord);
+                }
 
                 // Draw line from upper left card corner to the top of the screen
-                rsgBindTexture(fragmentProgram, 0, detailLineTexture);
-                const float halfWidth = lineWidth * 0.5f;
-                rsgDrawQuad(
-                        screenCoord.x - halfWidth, screenCoord.y + yPadding, 0,
-                        screenCoord.x + halfWidth, screenCoord.y + yPadding, 0,
-                        screenCoord.x + halfWidth, height - yPadding, 0,
-                        screenCoord.x - halfWidth, height - yPadding, 0);
+                if (drawRuler) {
+                    rsgBindTexture(fragmentProgram, 0, detailLineTexture);
+                    const float halfWidth = lineWidth * 0.5f;
+                    const float rulerTop = drawDetailBelowCard ? screenCoord.y : height;
+                    const float rulerBottom = drawDetailBelowCard ? 0 : screenCoord.y;
+                    rsgDrawQuad(
+                            screenCoord.x - halfWidth, rulerBottom + yPadding, 0,
+                            screenCoord.x + halfWidth, rulerBottom + yPadding, 0,
+                            screenCoord.x + halfWidth, rulerTop - yPadding, 0,
+                            screenCoord.x - halfWidth, rulerTop - yPadding, 0);
+                }
 
                 // Draw the detail texture next to it using the offsets provided.
                 rsgBindTexture(fragmentProgram, 0, cards[i].detailTexture);
@@ -434,11 +453,12 @@ static void drawDetails()
                 const float textureHeight = rsAllocationGetDimY(cards[i].detailTexture);
                 const float offx = cards[i].detailTextureOffset.x;
                 const float offy = -cards[i].detailTextureOffset.y;
+                const float textureTop = drawDetailBelowCard ? screenCoord.y : height;
                 rsgDrawQuad(
-                        screenCoord.x + offx, height + offy - textureHeight, 0,
-                        screenCoord.x + offx + textureWidth, height + offy - textureHeight, 0,
-                        screenCoord.x + offx + textureWidth, height + offy, 0,
-                        screenCoord.x + offx, height + offy, 0);
+                        screenCoord.x + offx, textureTop + offy - textureHeight, 0,
+                        screenCoord.x + offx + textureWidth, textureTop + offy - textureHeight, 0,
+                        screenCoord.x + offx + textureWidth, textureTop + offy, 0,
+                        screenCoord.x + offx, textureTop + offy, 0);
 
                 drawn++;
             }
@@ -713,7 +733,7 @@ static int intersectGeometry(Ray* ray, float *bestTime)
 
             // Transform card vertices to world space
             rsMatrixLoadIdentity(&matrix);
-            getMatrixForCard(&matrix, id);
+            getMatrixForCard(&matrix, id, true);
             for (int vertex = 0; vertex < 4; vertex++) {
                 float4 tmp = rsMatrixMultiply(&matrix, cardVertices[vertex]);
                 if (tmp.w != 0.0f) {

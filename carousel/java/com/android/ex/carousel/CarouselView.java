@@ -44,6 +44,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private static final boolean USE_DEPTH_BUFFER = true;
     private final int DEFAULT_SLOT_COUNT = 10;
     private final float DEFAULT_RADIUS = 20.0f;
+    private final int DEFAULT_VISIBLE_DETAIL_COUNT = 3;
     private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
     private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
     private final float DEFAULT_DRAG_FACTOR = 0.25f;
@@ -65,6 +66,9 @@ public abstract class CarouselView extends RSSurfaceView {
     private Mesh mLoadingGeometry;
     private int mCardCount = 0;
     private int mVisibleSlots = 0;
+    private int mVisibleDetails = DEFAULT_VISIBLE_DETAIL_COUNT;
+    private boolean mDrawDetailBelowCard = false;
+    private boolean mDrawRuler = true;
     private float mStartAngle;
     private float mRadius = DEFAULT_RADIUS;
     private float mCardRotation = 0.0f;
@@ -115,6 +119,9 @@ public abstract class CarouselView extends RSSurfaceView {
         setSlotCount(mSlotCount);
         createCards(mCardCount);
         setVisibleSlots(mVisibleSlots);
+        setVisibleDetails(mVisibleDetails);
+        setDrawDetailBelowCard(mDrawDetailBelowCard);
+        setDrawRuler(mDrawRuler);
         setCallback(mCarouselCallback);
         setDefaultBitmap(mDefaultBitmap);
         setLoadingBitmap(mLoadingBitmap);
@@ -182,6 +189,42 @@ public abstract class CarouselView extends RSSurfaceView {
         mVisibleSlots = n;
         if (mRenderScript != null) {
             mRenderScript.setVisibleSlots(n);
+        }
+    }
+
+    /**
+     * Set the number of detail textures that can be visible at one time.
+     *
+     * @param n the number of slots
+     */
+    public void setVisibleDetails(int n) {
+        mVisibleDetails = n;
+        if (mRenderScript != null) {
+            mRenderScript.setVisibleDetails(n);
+        }
+    }
+
+    /**
+     * Set whether to draw the detail texture above or below the card.
+     *
+     * @param below False for above, true for below.
+     */
+    public void setDrawDetailBelowCard(boolean below) {
+        mDrawDetailBelowCard = below;
+        if (mRenderScript != null) {
+            mRenderScript.setDrawDetailBelowCard(below);
+        }
+    }
+
+    /**
+     * Set whether to draw a ruler from the card to the detail texture
+     *
+     * @param drawRuler True to draw a ruler, false to draw nothing where the ruler would go.
+     */
+    public void setDrawRuler(boolean drawRuler) {
+        mDrawRuler = drawRuler;
+        if (mRenderScript != null) {
+            mRenderScript.setDrawRuler(drawRuler);
         }
     }
 
