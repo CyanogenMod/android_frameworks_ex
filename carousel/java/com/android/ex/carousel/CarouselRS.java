@@ -362,7 +362,8 @@ public class CarouselRS  {
     private Allocation allocationFromBitmap(Bitmap bitmap, boolean mipmap)
     {
         if (bitmap == null) return null;
-        Allocation allocation = Allocation.createFromBitmap(mRS, bitmap, RGB_565(mRS), mipmap);
+        Allocation allocation = Allocation.createFromBitmap(mRS, bitmap,
+                elementForBitmap(bitmap, Bitmap.Config.RGB_565), mipmap);
         allocation.uploadToTexture(0);
         return allocation;
     }
@@ -410,7 +411,8 @@ public class CarouselRS  {
             float width = 0.0f;
             float height = 0.0f;
             if (bitmap != null) {
-                item.detailTexture = Allocation.createFromBitmap(mRS, bitmap, RGBA_8888(mRS), MIPMAP);
+                item.detailTexture = Allocation.createFromBitmap(mRS, bitmap,
+                        elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
                 item.detailTexture.uploadToTexture(0);
                 width = bitmap.getWidth();
                 height = bitmap.getHeight();
@@ -460,7 +462,8 @@ public class CarouselRS  {
     public void setBackgroundTexture(Bitmap bitmap) {
         Allocation texture = null;
         if (bitmap != null) {
-            texture = Allocation.createFromBitmap(mRS, bitmap, RGB_565(mRS), MIPMAP);
+            texture = Allocation.createFromBitmap(mRS, bitmap,
+                    elementForBitmap(bitmap, Bitmap.Config.RGB_565), MIPMAP);
             texture.uploadToTexture(0);
         }
         mScript.set_backgroundTexture(texture);
@@ -469,7 +472,8 @@ public class CarouselRS  {
     public void setDetailLineTexture(Bitmap bitmap) {
         Allocation texture = null;
         if (bitmap != null) {
-            texture = Allocation.createFromBitmap(mRS, bitmap, RGBA_4444(mRS), MIPMAP);
+            texture = Allocation.createFromBitmap(mRS, bitmap,
+                    elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
             texture.uploadToTexture(0);
         }
         mScript.set_detailLineTexture(texture);
@@ -506,5 +510,23 @@ public class CarouselRS  {
 
     public void requestFirstCardPosition() {
         mScript.invoke_requestFirstCardPosition();
+    }
+
+    private Element elementForBitmap(Bitmap bitmap, Bitmap.Config defaultConfig) {
+        Bitmap.Config config = bitmap.getConfig();
+        if (config == null) {
+            config = defaultConfig;
+        }
+        if (config == Bitmap.Config.ALPHA_8) {
+            return A_8(mRS);
+        } else if (config == Bitmap.Config.RGB_565) {
+            return RGB_565(mRS);
+        } else if (config == Bitmap.Config.ARGB_4444) {
+            return RGBA_4444(mRS);
+        } else if (config == Bitmap.Config.ARGB_8888) {
+            return RGBA_8888(mRS);
+        } else {
+            throw new IllegalArgumentException("Unknown configuration");
+        }
     }
 }
