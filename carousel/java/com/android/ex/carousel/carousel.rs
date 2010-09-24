@@ -414,6 +414,9 @@ static void drawDetails()
                 getMatrixForCard(&model, i, false);
                 rs_matrix4x4 matrix;
                 rsMatrixLoadMultiply(&matrix, &projectionMatrix, &model);
+
+                rsDebug("******", 0); // Strategic printf!!! TODO: Remove when LLMV fixed
+
                 float4 screenCoord = rsMatrixMultiply(&matrix,
                     cardVertices[drawDetailBelowCard ? 0 : 3]);
                 if (screenCoord.w == 0.0f) {
