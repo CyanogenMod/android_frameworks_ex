@@ -560,12 +560,14 @@ void doStart(float x, float y)
     if (animating) {
         rsSendToClient(CMD_ANIMATION_FINISHED);
         animating = false;
+        currentSelection = -1;
+    } else {
+        currentSelection = doSelection(x, y);
     }
     velocityTracker = 0.0f;
     velocityTrackerCount = 0;
     touchTime = rsUptimeMillis();
     touchBias = bias;
-    currentSelection = doSelection(x, y);
 }
 
 
