@@ -317,7 +317,7 @@ static float3 getAnimatedScaleForSelected()
 // Parameter t: Any real number
 // Returns: A float in the range (0,1), with P(0.5)=0
 static float logistic(float t) {
-    return 1. / (1. + exp(-t));
+    return 1.f / (1.f + exp(-t));
 }
 
 static float getSwayAngleForVelocity(float v, bool enableSway)
@@ -326,7 +326,7 @@ static float getSwayAngleForVelocity(float v, bool enableSway)
 
     if (enableSway) {
         const float range = M_PI; // How far we can deviate from center, peak-to-peak
-        sway = M_PI * (logistic(-v * swaySensitivity) - 0.5);
+        sway = M_PI * (logistic(-v * swaySensitivity) - 0.5f);
     }
 
     return sway;
@@ -410,10 +410,13 @@ static void drawDetails()
                 const float lineWidth = rsAllocationGetDimX(detailLineTexture);
 
                 // Compute position in screen space of upper left corner of card
-                rs_matrix4x4 model = modelviewMatrix;
+                rsMatrixLoad(&model, &modelviewMatrix);
                 getMatrixForCard(&model, i, false);
                 rs_matrix4x4 matrix;
                 rsMatrixLoadMultiply(&matrix, &projectionMatrix, &model);
+
+                rsDebug("******", 0); // Strategic printf!!! TODO: Remove when LLMV fixed
+
                 float4 screenCoord = rsMatrixMultiply(&matrix,
                     cardVertices[drawDetailBelowCard ? 0 : 3]);
                 if (screenCoord.w == 0.0f) {
@@ -557,12 +560,14 @@ void doStart(float x, float y)
     if (animating) {
         rsSendToClient(CMD_ANIMATION_FINISHED);
         animating = false;
+        currentSelection = -1;
+    } else {
+        currentSelection = doSelection(x, y);
     }
     velocityTracker = 0.0f;
     velocityTrackerCount = 0;
     touchTime = rsUptimeMillis();
     touchBias = bias;
-    currentSelection = doSelection(x, y);
 }
 
 
