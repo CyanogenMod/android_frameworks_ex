@@ -296,7 +296,7 @@ public class CarouselRS  {
         programStoreBuilder.setDepthFunc(ProgramStore.DepthFunc.LESS);
         programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.SRC_ALPHA,
                 ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA);
-        programStoreBuilder.setDitherEnable(false);
+        programStoreBuilder.setDitherEnable(true);
         programStoreBuilder.setDepthMask(true);
         mProgramStore = programStoreBuilder.create();
         mScript.set_programStore(mProgramStore);
@@ -363,7 +363,7 @@ public class CarouselRS  {
     {
         if (bitmap == null) return null;
         Allocation allocation = Allocation.createFromBitmap(mRS, bitmap,
-                elementForBitmap(bitmap, Bitmap.Config.RGB_565), mipmap);
+                elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), mipmap);
         allocation.uploadToTexture(0);
         return allocation;
     }
@@ -380,7 +380,8 @@ public class CarouselRS  {
             }
             if (bitmap != null) {
                 if (DBG) Log.v(TAG, "creating new bitmap");
-                item.texture = Allocation.createFromBitmap(mRS, bitmap, RGB_565(mRS), MIPMAP);
+                item.texture = Allocation.createFromBitmap(mRS, bitmap,
+                        elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
                 if (DBG) Log.v(TAG, "uploadToTexture(" + n + ")");
                 item.texture.uploadToTexture(0);
                 if (DBG) Log.v(TAG, "done...");

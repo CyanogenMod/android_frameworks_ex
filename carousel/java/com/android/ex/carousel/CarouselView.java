@@ -21,6 +21,7 @@ import com.android.ex.carousel.CarouselRS.CarouselCallback;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.PixelFormat;
 import android.graphics.Bitmap.Config;
 import android.renderscript.FileA3D;
 import android.renderscript.Float4;
@@ -80,6 +81,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private float mAt[] = { 14.7255f, -3.40001f, -1.30184f };
     private float mUp[] = { 0.0f, 1.0f, 0.0f };
     private Float4 mBackgroundColor = new Float4(0.0f, 0.0f, 0.0f, 1.0f);
+    private CarouselCallback mCarouselCallback;
 
     public static class Info {
         public Info(int _resId) { resId = _resId; }
@@ -241,6 +243,10 @@ public abstract class CarouselView extends RSSurfaceView {
         if (mRenderScript != null) {
             mRenderScript.createCards(n);
         }
+    }
+
+    public int getCardCount() {
+        return mCardCount;
     }
 
     /**
@@ -504,57 +510,4 @@ public abstract class CarouselView extends RSSurfaceView {
 
         return true;
     }
-
-    private final CarouselCallback DEBUG_CALLBACK = new CarouselCallback() {
-        @Override
-        public void onAnimationStarted() {
-            if (DBG) Log.v(TAG, "onAnimationStarted()");
-        }
-
-        @Override
-        public void onAnimationFinished() {
-            if (DBG) Log.v(TAG, "onAnimationFinished()");
-        }
-
-        @Override
-        public void onCardSelected(int n) {
-            if (DBG) Log.v(TAG, "onCardSelected(" + n + ")");
-        }
-
-        @Override
-        public void onRequestGeometry(int n) {
-            if (DBG) Log.v(TAG, "onRequestGeometry(" + n + ")");
-        }
-
-        @Override
-        public void onInvalidateGeometry(int n) {
-            if (DBG) Log.v(TAG, "onInvalidateGeometry(" + n + ")");
-        }
-
-        @Override
-        public void onRequestTexture(int n) {
-            if (DBG) Log.v(TAG, "onRequestTexture(" + n + ")");
-        }
-
-        @Override
-        public void onInvalidateTexture(int n) {
-            if (DBG) Log.v(TAG, "onInvalidateTexture(" + n + ")");
-        }
-
-        public void onRequestDetailTexture(int n) {
-            if (DBG) Log.v(TAG, "onRequestDetailTexture(" + n + ")");
-        }
-
-        public void onInvalidateDetailTexture(int n) {
-            if (DBG) Log.v(TAG, "onInvalidateDetailTexture(" + n + ")");
-        }
-
-        @Override
-        public void onReportFirstCardPosition(int n) {
-            Log.v(TAG, "onReportFirstCardPosition(" + n + ")");
-        }
-    };
-
-    private CarouselCallback mCarouselCallback = DEBUG_CALLBACK;
-
 }

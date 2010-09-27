@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import com.android.carouseltest.R;
 
-import com.android.ex.carousel.CarouselRS.CarouselCallback;
+import com.android.ex.carousel.CarouselViewHelper;
 
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -37,7 +37,9 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Bitmap.Config;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -58,13 +60,14 @@ public class TaskSwitcherActivity extends Activity {
             = new ArrayList<ActivityDescription>();
     private MyCarouselView mView;
     private Bitmap mBlankBitmap = Bitmap.createBitmap(128, 128, Config.RGB_565);
+    private LocalCarouselViewHelper mHelper;
 
     static class ActivityDescription {
         int id;
         Bitmap thumbnail;
         Drawable icon;
-        String label;
-        String description;
+        CharSequence label;
+        CharSequence description;
         Intent intent;
         Matrix matrix;
 
@@ -99,16 +102,23 @@ public class TaskSwitcherActivity extends Activity {
         return null;
     }
 
-    final CarouselCallback mCarouselCallback = new CarouselCallback() {
+    class LocalCarouselViewHelper extends CarouselViewHelper {
+        private static final int DETAIL_TEXTURE_WIDTH = 256;
+        private static final int DETAIL_TEXTURE_HEIGHT = 80;
+        private Paint mPaint = new Paint();
+        private DetailTextureParameters mDetailTextureParameters
+                = new DetailTextureParameters(5.0f, 5.0f);
 
-        public void onAnimationFinished() {
-
+        public LocalCarouselViewHelper(Context context) {
+            super(context);
         }
 
-        public void onAnimationStarted() {
-
+        @Override
+        public DetailTextureParameters getDetailTextureParameters(int id) {
+            return mDetailTextureParameters;
         }
 
+        @Override
         public void onCardSelected(int n) {
             if (n < mActivityDescriptions.size()) {
                 ActivityDescription item = mActivityDescriptions.get(n);
@@ -127,50 +137,28 @@ public class TaskSwitcherActivity extends Activity {
             }
         }
 
-        public void onInvalidateTexture(int n) {
-
+        @Override
+        public Bitmap getTexture(int n) {
+            ActivityDescription desc = mActivityDescriptions.get(n);
+            Bitmap bitmap = desc.thumbnail == null ? mBlankBitmap : desc.thumbnail;
+            return bitmap;
         }
 
-        public void onRequestDetailTexture(int n) {
-            if (DBG) Log.v(TAG, "onRequestDetailTexture(" + n + ")" );
-            //mDetailTextureHandler.removeMessages(n);
-            //Message message = mDetailTextureHandler.obtainMessage(n, n, 0);
-            //mDetailTextureHandler.sendMessageDelayed(message, HOLDOFF_DELAY);
-        }
-
-        public void onInvalidateDetailTexture(int n) {
-            if (DBG) Log.v(TAG, "onInvalidateDetailTexture(" + n + ")");
-            //mDetailTextureHandler.removeMessages(n);
-        }
-
-        public void onRequestGeometry(int n) {
-
-        }
-
-        public void onInvalidateGeometry(int n) {
-
-        }
-
-        public void onRequestTexture(final int n) {
-            Log.v(TAG, "onRequestTexture(" + n + ")");
+        @Override
+        public Bitmap getDetailTexture(int n) {
+            Bitmap bitmap = null;
             if (n < mActivityDescriptions.size()) {
-                mView.post(new Runnable() {
-                    public void run() {
-                        ActivityDescription desc = mActivityDescriptions.get(n);
-                        if (desc != null) {
-                            Log.v(TAG, "FOUND ACTIVITY THUMBNAIL " + desc.thumbnail);
-                            Bitmap bitmap = desc.thumbnail == null ? mBlankBitmap : desc.thumbnail;
-                            mView.setTextureForItem(n, bitmap);
-                        } else {
-                            Log.v(TAG, "FAILED TO GET ACTIVITY THUMBNAIL FOR ITEM " + n);
-                        }
-                    }
-                });
+                ActivityDescription item = mActivityDescriptions.get(n);
+                bitmap = Bitmap.createBitmap(DETAIL_TEXTURE_WIDTH, DETAIL_TEXTURE_HEIGHT,
+                    Bitmap.Config.ARGB_8888);
+                Canvas canvas = new Canvas(bitmap);
+                canvas.drawARGB(128,128,128,255);
+                mPaint.setTextSize(15.0f);
+                mPaint.setColor(0xffffffff);
+                mPaint.setAntiAlias(true);
+                canvas.drawText(item.label.toString(),0, DETAIL_TEXTURE_HEIGHT/2, mPaint);
             }
-        }
-
-        public void onReportFirstCardPosition(int n) {
-
+            return bitmap;
         }
     };
 
@@ -213,26 +201,34 @@ public class TaskSwitcherActivity extends Activity {
         final View decorView = getWindow().getDecorView();
 
         mView = new MyCarouselView(this);
+        mHelper = new LocalCarouselViewHelper(this);
+        mHelper.setCarouselView(mView);
         mView.setSlotCount(CARD_SLOTS);
         mView.setVisibleSlots(VISIBLE_SLOTS);
         mView.createCards(1);
         mView.setStartAngle((float) -(2.0f*Math.PI * 5 / CARD_SLOTS));
         mView.setDefaultBitmap(BitmapFactory.decodeResource(res, R.drawable.wait));
         mView.setLoadingBitmap(BitmapFactory.decodeResource(res, R.drawable.wait));
-        mView.setCallback(mCarouselCallback);
+        mView.setBackgroundColor(0.1f, 0.1f, 0.1f, 1.0f);
 
         mActivityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         mPortraitMode = decorView.getHeight() > decorView.getWidth();
 
         refresh();
-
         setContentView(mView);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        mHelper.onResume();
         refresh();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mHelper.onPause();
     }
 
     @Override
@@ -254,7 +250,7 @@ public class TaskSwitcherActivity extends Activity {
                 ActivityDescription desc = findActivityDescription(r.id);
                 if (desc != null) {
                     desc.thumbnail = r.thumbnail;
-                    desc.label = r.topActivity.flattenToShortString();
+                    desc.description = r.description;
                     if ((mPortraitMode && thumbWidth > thumbHeight)
                             || (!mPortraitMode && thumbWidth < thumbHeight)) {
                         Matrix matrix = new Matrix();
@@ -309,7 +305,7 @@ public class TaskSwitcherActivity extends Activity {
                 final String title = info.loadLabel(pm).toString();
                 Drawable icon = info.loadIcon(pm);
 
-                int id = recentTasks.get(i).id;
+                int id = recentInfo.id;
                 if (id != -1 && title != null && title.length() > 0 && icon != null) {
                     //icon = iconUtilities.createIconDrawable(icon);
                     ActivityDescription item = new ActivityDescription(null, icon, title, null, id);
