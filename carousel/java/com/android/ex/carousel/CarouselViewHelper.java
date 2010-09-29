@@ -171,7 +171,7 @@ public class CarouselViewHelper implements CarouselCallback {
      * @param id
      * @return
      */
-    private Mesh getGeometry(int id) {
+    public Mesh getGeometry(int id) {
         return null;
     }
 
@@ -256,5 +256,13 @@ public class CarouselViewHelper implements CarouselCallback {
 
     public void onPause() {
         mCarouselView.onPause();
+    }
+
+    protected Handler getAsyncHandler() {
+        return mAsyncHandler;
+    }
+
+    protected CarouselView getCarouselView() {
+        return mCarouselView;
     }
 }
