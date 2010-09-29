@@ -62,15 +62,23 @@ public class CarouselRS  {
     private Resources mRes;
     private ScriptC_carousel mScript;
     private ScriptField_Card mCards;
-    private Sampler mSampler;
+    private ScriptField_FragmentShaderConstants_s mFSConst;
     private ProgramStore mProgramStore;
-    private ProgramFragment mFragmentProgram;
+    private ProgramFragment mSingleTextureFragmentProgram;
+    private ProgramFragment mMultiTextureFragmentProgram;
     private ProgramVertex mVertexProgram;
     private ProgramRaster mRasterProgram;
     private CarouselCallback mCallback;
     private float[] mEyePoint = new float[3];
     private float[] mAtPoint = new float[3];
     private float[] mUp = new float[3];
+    private static final String mShaderString = new String(
+            "varying vec4 varTex0;" +
+            "void main() {" +
+            "vec2 t0 = varTex0.xy;" +
+            "vec4 col = texture2D(UNI_Tex0, t0);" +
+            "vec4 col2 = texture2D(UNI_Tex1, t0);" +
+            "gl_FragColor = mix(col, col2, UNI_fadeAmount);}");
 
     public static interface CarouselCallback {
         /**
@@ -277,24 +285,41 @@ public class CarouselRS  {
     }
 
     private void initFragmentProgram() {
-        Sampler.Builder sampleBuilder = new Sampler.Builder(mRS);
-        sampleBuilder.setMin(Value.LINEAR);
-        sampleBuilder.setMag(LINEAR);
-        sampleBuilder.setWrapS(CLAMP);
-        sampleBuilder.setWrapT(CLAMP);
-        mSampler = sampleBuilder.create();
-        ProgramFragment.Builder fragmentBuilder = new ProgramFragment.Builder(mRS);
-        fragmentBuilder.setTexture(ProgramFragment.Builder.EnvMode.DECAL,
-                           ProgramFragment.Builder.Format.RGBA, 0);
-        mFragmentProgram = fragmentBuilder.create();
-        mFragmentProgram.bindSampler(mSampler, 0);
-        mScript.set_fragmentProgram(mFragmentProgram);
+        boolean old = false;
+        if (old) {
+            ProgramFragment.Builder fragmentBuilder = new ProgramFragment.Builder(mRS);
+            fragmentBuilder.setTexture(ProgramFragment.Builder.EnvMode.DECAL,
+                               ProgramFragment.Builder.Format.RGBA, 0);
+            mSingleTextureFragmentProgram = fragmentBuilder.create();
+            mSingleTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
+        } else {
+            mScript.set_linearClamp(Sampler.CLAMP_LINEAR(mRS));
+            //mScript.set_linearWrap(Sampler.CLAMP_NEAREST(mRS));
+            //mScript.set_mipLinearWrap(Sampler.WRAP_LINEAR_MIP_LINEAR(mRS));
+
+            mFSConst = new ScriptField_FragmentShaderConstants_s(mRS, 1);
+            mScript.bind_shaderConstants(mFSConst);
+
+            ProgramFragment.ShaderBuilder pfbCustom = new ProgramFragment.ShaderBuilder(mRS);
+            // Specify the resource that contains the shader string
+            pfbCustom.setShader(mShaderString);
+            // Tell the builder how many textures we have
+            pfbCustom.setTextureCount(2);
+            // Define the constant input layout
+            pfbCustom.addConstant(mFSConst.getAllocation().getType());
+            mMultiTextureFragmentProgram = pfbCustom.create();
+            // Bind the source of constant data
+            mMultiTextureFragmentProgram.bindConstants(mFSConst.getAllocation(), 0);
+            mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
+            mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 1);
+        }
+        mScript.set_fragmentProgram(mMultiTextureFragmentProgram);
     }
 
     private void initProgramStore() {
         ProgramStore.Builder programStoreBuilder = new ProgramStore.Builder(mRS, null, null);
         programStoreBuilder.setDepthFunc(ProgramStore.DepthFunc.LESS);
-        programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.SRC_ALPHA,
+        programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
                 ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA);
         programStoreBuilder.setDitherEnable(true);
         programStoreBuilder.setDepthMask(true);
@@ -480,6 +505,16 @@ public class CarouselRS  {
         mScript.set_detailLineTexture(texture);
     }
 
+    public void setDetailLoadingTexture(Bitmap bitmap) {
+        Allocation texture = null;
+        if (bitmap != null) {
+            texture = Allocation.createFromBitmap(mRS, bitmap,
+                    elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
+            texture.uploadToTexture(0);
+        }
+        mScript.set_detailLoadingTexture(texture);
+    }
+
     public void pauseRendering() {
         // Used to update multiple states at once w/o redrawing for each.
         mRS.contextBindRootScript(null);
@@ -511,6 +546,14 @@ public class CarouselRS  {
 
     public void requestFirstCardPosition() {
         mScript.invoke_requestFirstCardPosition();
+    }
+
+    public void setRezInCardCount(float alpha) {
+        mScript.set_rezInCardCount(alpha);
+    }
+
+    public void setFadeInDuration(long t) {
+        mScript.set_fadeInDuration((int)t); // TODO: Remove cast when RS supports exporting longs
     }
 
     private Element elementForBitmap(Bitmap bitmap, Bitmap.Config defaultConfig) {
