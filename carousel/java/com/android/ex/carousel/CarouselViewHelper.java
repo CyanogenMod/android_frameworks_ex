@@ -171,7 +171,7 @@ public class CarouselViewHelper implements CarouselCallback {
      * @param id
      * @return
      */
-    private Mesh getGeometry(int id) {
+    public Mesh getGeometry(int id) {
         return null;
     }
 
