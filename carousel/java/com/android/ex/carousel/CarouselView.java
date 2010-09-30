@@ -468,7 +468,8 @@ public abstract class CarouselView extends RSSurfaceView {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        if(mRS != null) {
+        mRenderScript = null;
+        if (mRS != null) {
             mRS = null;
             destroyRenderScript();
         }
