@@ -39,12 +39,12 @@ public class CarouselViewHelper implements CarouselCallback {
     private Handler mAsyncHandler; // Background thread handler for reading textures, geometry, etc.
     private Handler mSyncHandler; // Synchronous handler for interacting with UI elements.
 
-    public class TextureParameters {
+    public static class TextureParameters {
         public TextureParameters(Matrix _matrix) { matrix = _matrix; }
         public Matrix matrix;
     };
 
-    public class DetailTextureParameters {
+    public static class DetailTextureParameters {
         public DetailTextureParameters(float offX, float offY) {
             offsetX = offX;
             offsetY = offY;
@@ -256,6 +256,10 @@ public class CarouselViewHelper implements CarouselCallback {
 
     public void onPause() {
         mCarouselView.onPause();
+    }
+
+    public void onDestroy() {
+        mHandlerThread.quit();
     }
 
     protected Handler getAsyncHandler() {

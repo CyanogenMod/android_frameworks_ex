@@ -65,11 +65,17 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     private static final String LIMIT_PARAM_KEY = "limit";
 
     /**
-     *  The preferred number of results to be retrieved.  This number may be
-     *  exceeded if there are several directories configured, because we will
-     *  use the same limit for all directories.
+     * The preferred number of results to be retrieved. This number may be
+     * exceeded if there are several directories configured, because we will use
+     * the same limit for all directories.
      */
     private static final int DEFAULT_PREFERRED_MAX_RESULT_COUNT = 10;
+
+    /**
+     * The number of extra entries requested to allow for duplicates. Duplicates
+     * are removed from the overall result.
+     */
+    private static final int ALLOWANCE_FOR_DUPLICATES = 5;
 
     /**
      * The "Searching..." message will be displayed if search is not complete
@@ -217,7 +223,8 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
                 Uri uri = Email.CONTENT_FILTER_URI.buildUpon()
                         .appendPath(constraint.toString())
                         .appendQueryParameter(DIRECTORY_PARAM_KEY, String.valueOf(mDirectoryId))
-                        .appendQueryParameter(LIMIT_PARAM_KEY, String.valueOf(getLimit()))
+                        .appendQueryParameter(LIMIT_PARAM_KEY,
+                                String.valueOf(getLimit() + ALLOWANCE_FOR_DUPLICATES))
                         .build();
                 Cursor cursor = mContentResolver.query(
                         uri, EmailQuery.PROJECTION, null, null, null);
@@ -331,7 +338,11 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     @Override
     protected boolean isEnabled(int partitionIndex, int position) {
         // The "Searching..." item should not be selectable
-        return !((DirectoryPartition)getPartition(partitionIndex)).loading;
+        return !isLoading(partitionIndex);
+    }
+
+    private boolean isLoading(int partitionIndex) {
+        return ((DirectoryPartition)getPartition(partitionIndex)).loading;
     }
 
     @Override
@@ -488,7 +499,7 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             if (partition.loading && TextUtils.equals(constraint, partition.constraint)) {
                 partition.loading = false;
                 mHandler.removeMessages(MESSAGE_SEARCH_PENDING, partition);
-                changeCursor(partitionIndex, cursor);
+                changeCursor(partitionIndex, removeDuplicatesAndTruncate(partitionIndex, cursor));
             } else {
                 // We got the result for an unexpected query (the user is still typing)
                 // Just ignore this result
@@ -499,6 +510,71 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
         } else if (cursor != null) {
             cursor.close();
         }
+    }
+
+    /**
+     * Post-process the cursor to eliminate duplicates.  Closes the original cursor
+     * and returns a new one.
+     */
+    private Cursor removeDuplicatesAndTruncate(int partition, Cursor cursor) {
+        if (cursor == null) {
+            return null;
+        }
+
+        if (cursor.getCount() <= DEFAULT_PREFERRED_MAX_RESULT_COUNT
+                && !hasDuplicates(cursor, partition)) {
+            return cursor;
+        }
+
+        int count = 0;
+        MatrixCursor newCursor = new MatrixCursor(EmailQuery.PROJECTION);
+        cursor.moveToPosition(-1);
+        while (cursor.moveToNext() && count < DEFAULT_PREFERRED_MAX_RESULT_COUNT) {
+            String displayName = cursor.getString(EmailQuery.NAME);
+            String emailAddress = cursor.getString(EmailQuery.ADDRESS);
+            if (!isDuplicate(emailAddress, partition)) {
+                newCursor.addRow(new Object[]{displayName, emailAddress});
+                count++;
+            }
+        }
+        cursor.close();
+
+        return newCursor;
+    }
+
+    private boolean hasDuplicates(Cursor cursor, int partition) {
+        cursor.moveToPosition(-1);
+        while (cursor.moveToNext()) {
+            String emailAddress = cursor.getString(EmailQuery.ADDRESS);
+            if (isDuplicate(emailAddress, partition)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if the supplied email address is already present in partitions other
+     * than the supplied one.
+     */
+    private boolean isDuplicate(String emailAddress, int excludePartition) {
+        int partitionCount = getPartitionCount();
+        for (int partition = 0; partition < partitionCount; partition++) {
+            if (partition != excludePartition && !isLoading(partition)) {
+                Cursor cursor = getCursor(partition);
+                if (cursor != null) {
+                    cursor.moveToPosition(-1);
+                    while (cursor.moveToNext()) {
+                        String address = cursor.getString(EmailQuery.ADDRESS);
+                        if (TextUtils.equals(emailAddress, address)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private final String makeDisplayString(Cursor cursor) {
