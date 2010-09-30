@@ -45,7 +45,7 @@ public class Rfc822Validator implements AutoCompleteTextView.Validator {
      * ".com", ".fr", etc...
      */
     private static final Pattern EMAIL_ADDRESS_PATTERN =
-            Pattern.compile("[^\\s@]+@[^\\s@]+\\.[a-zA-z][a-zA-Z][a-zA-Z]*");
+            Pattern.compile("[^\\s@]+@([^\\s@\\.]+\\.)+[a-zA-z][a-zA-Z][a-zA-Z]*");
 
     private String mDomain;
 
