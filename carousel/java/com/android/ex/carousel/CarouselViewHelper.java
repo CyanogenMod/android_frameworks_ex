@@ -258,6 +258,10 @@ public class CarouselViewHelper implements CarouselCallback {
         mCarouselView.onPause();
     }
 
+    public void onDestroy() {
+        mHandlerThread.quit();
+    }
+
     protected Handler getAsyncHandler() {
         return mAsyncHandler;
     }
