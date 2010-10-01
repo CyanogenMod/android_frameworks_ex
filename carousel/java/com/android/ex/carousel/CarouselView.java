@@ -82,6 +82,10 @@ public abstract class CarouselView extends RSSurfaceView {
     private float mUp[] = { 0.0f, 1.0f, 0.0f };
     private Float4 mBackgroundColor = new Float4(0.0f, 0.0f, 0.0f, 1.0f);
     private CarouselCallback mCarouselCallback;
+    private float mRezInCardCount = 0.0f;
+    private long mFadeInDuration = 250L;
+    private Bitmap mDetailLoadingBitmap = Bitmap.createBitmap(
+            new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
 
     public static class Info {
         public Info(int _resId) { resId = _resId; }
@@ -140,6 +144,9 @@ public abstract class CarouselView extends RSSurfaceView {
         setFrictionCoefficient(mFrictionCoefficient);
         setDragFactor(mDragFactor);
         setLookAt(mEye, mAt, mUp);
+        setRezInCardCount(mRezInCardCount);
+        setFadeInDuration(mFadeInDuration);
+        setDetailLoadingBitmap(mDetailLoadingBitmap);
     }
 
     /**
@@ -334,6 +341,7 @@ public abstract class CarouselView extends RSSurfaceView {
             mRenderScript.setBackgroundColor(mBackgroundColor);
         }
     }
+
     /**
      * Can be used to optionally set the background to a bitmap. When set to something other than
      * null, this overrides {@link CarouselView#setBackgroundColor(Float4)}.
@@ -344,6 +352,19 @@ public abstract class CarouselView extends RSSurfaceView {
         mBackgroundBitmap = bitmap;
         if (mRenderScript != null) {
             mRenderScript.setBackgroundTexture(bitmap);
+        }
+    }
+
+    /**
+     * Can be used to optionally set a "loading" detail bitmap. Typically, this is just a black
+     * texture with alpha = 0 to allow details to slowly fade in.
+     *
+     * @param bitmap
+     */
+    public void setDetailLoadingBitmap(Bitmap bitmap) {
+        mDetailLoadingBitmap = bitmap;
+        if (mRenderScript != null) {
+            mRenderScript.setDetailLoadingTexture(bitmap);
         }
     }
 
@@ -462,6 +483,37 @@ public abstract class CarouselView extends RSSurfaceView {
     public void requestFirstCardPosition() {
         if (mRenderScript != null) {
             mRenderScript.requestFirstCardPosition();
+        }
+    }
+
+    /**
+     * This sets the number of cards in the distance that will be shown "rezzing in".
+     * These alpha values will be faded in from the background to the foreground over
+     * 'n' cards.  A floating point value is used to allow subtly changing the rezzing in
+     * position.
+     *
+     * @param n the number of cards to rez in.
+     */
+    public void setRezInCardCount(float n) {
+        mRezInCardCount = n;
+        if (mRenderScript != null) {
+            mRenderScript.setRezInCardCount(n);
+        }
+    }
+
+    /**
+     * This sets the duration (in ms) that a card takes to fade in when loaded via a call
+     * to {@link CarouselView#setTextureForItem(int, Bitmap)}. The timer starts the
+     * moment {@link CarouselView#setTextureForItem(int, Bitmap)} is called and continues
+     * until all of the cards have faded in.  Note: using large values will extend the
+     * animation until all cards have faded in.
+     *
+     * @param t
+     */
+    public void setFadeInDuration(long t) {
+        mFadeInDuration = t;
+        if (mRenderScript != null) {
+            mRenderScript.setFadeInDuration(t);
         }
     }
 

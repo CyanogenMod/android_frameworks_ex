@@ -31,16 +31,18 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.WindowManager;
 
 public class CarouselTestActivity extends Activity {
     private static final String TAG = "CarouselTestActivity";
     private static final int CARD_SLOTS = 56;
     private static final int TOTAL_CARDS = 1000;
-    private static final int TEXTURE_HEIGHT = 512;
-    private static final int TEXTURE_WIDTH = 512;
+    private static final int TEXTURE_HEIGHT = 256;
+    private static final int TEXTURE_WIDTH = 256;
     private static final int SLOTS_VISIBLE = 7;
 
     protected static final boolean DBG = false;
@@ -77,10 +79,12 @@ public class CarouselTestActivity extends Activity {
                     Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
             canvas.drawARGB(0, 0, 0, 0);
+            mPaint.setColor(0x40808080);
+            canvas.drawRect(2, 2, TEXTURE_WIDTH-2, TEXTURE_HEIGHT-2, mPaint);
             mPaint.setTextSize(100.0f);
             mPaint.setAntiAlias(true);
             mPaint.setColor(0xffffffff);
-            canvas.drawText(""+n, 0, TEXTURE_HEIGHT-10, mPaint);
+            canvas.drawText("" + n, 2, TEXTURE_HEIGHT-10, mPaint);
             canvas.drawBitmap(mGlossyOverlay, null,
                     new Rect(PIXEL_BORDER, PIXEL_BORDER,
                             TEXTURE_WIDTH - PIXEL_BORDER, TEXTURE_HEIGHT - PIXEL_BORDER), mPaint);
@@ -92,7 +96,7 @@ public class CarouselTestActivity extends Activity {
             Bitmap bitmap = Bitmap.createBitmap(DETAIL_TEXTURE_WIDTH, DETAIL_TEXTURE_HEIGHT,
                     Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
-            canvas.drawARGB(200, 200, 200, 255);
+            canvas.drawARGB(32, 10, 10, 10);
             mPaint.setTextSize(15.0f);
             mPaint.setAntiAlias(true);
             canvas.drawText("Detail text for card " + n, 0, DETAIL_TEXTURE_HEIGHT/2, mPaint);
@@ -101,10 +105,16 @@ public class CarouselTestActivity extends Activity {
     };
 
     @Override
+    public CharSequence onCreateDescription() {
+        return getText(R.string.carousel_test_activity_description);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         mView = new MyCarouselView(this);
+        mView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
         mPaint.setColor(0xffffffff);
         final Resources res = getResources();
 
@@ -117,9 +127,22 @@ public class CarouselTestActivity extends Activity {
         mBorder = BitmapFactory.decodeResource(res, R.drawable.border);
         mView.setDefaultBitmap(mBorder);
         mView.setLoadingBitmap(mBorder);
-        mView.setBackgroundColor(0.25f, 0.25f, 0.5f, 1.0f);
+        mView.setBackgroundColor(0.25f, 0.25f, 0.5f, 0.5f);
+        mView.setRezInCardCount(3.0f);
+        mView.setFadeInDuration(250);
 
         mGlossyOverlay = BitmapFactory.decodeResource(res, R.drawable.glossy_overlay);
+
+        /*
+        mView.setBackgroundColor(0x80ffffff);
+        int flags = WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER;
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                mView.getWidth(), mView.getHeight(),
+                WindowManager.LayoutParams.TYPE_APPLICATION,
+                flags, PixelFormat.TRANSLUCENT);
+        getWindow().setAttributes(lp);
+        */
+
         setContentView(mView);
     }
 

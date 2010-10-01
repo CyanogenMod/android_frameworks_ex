@@ -21,6 +21,7 @@
     <!-- General --><skip />
     <string name="music_demo_activity_label">MusicCarousel2</string>
     <string name="carousel_test_activity_label">CarouselTest2</string>
+    <string name="carousel_test_activity_description">An application to show the use of Carousel</string>
     <string name="task_switcher_activity_label">TaskSwitcher2</string>
 
     <string name="recent_tasks_title">Recent Applications</string>
