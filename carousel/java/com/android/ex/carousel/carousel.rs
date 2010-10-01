@@ -21,6 +21,7 @@
 #include "rs_graphics.rsh"
 
 typedef struct __attribute__((aligned(4))) Card {
+    // *** Update copyCard if you add/remove fields here.
     rs_allocation texture; // basic card texture
     rs_allocation detailTexture; // screen-aligned detail texture
     float2 detailTextureOffset; // offset to add, in screen coordinates
@@ -88,6 +89,8 @@ const bool debugDetails = false; // for debugging detail texture geometry
 
 // Exported variables. These will be reflected to Java set_* variables.
 Card_t *cards; // array of cards to draw
+// TODO: remove tmpCards code when allocations support resizing
+Card_t *tmpCards; // temporary array used to prevent flashing when we add more cards
 float startAngle; // position of initial card, in radians
 int slotCount; // number of positions where a card can be
 int cardCount; // number of cards in stack
@@ -118,7 +121,7 @@ rs_matrix4x4 modelviewMatrix;
 FragmentShaderConstants* shaderConstants;
 rs_sampler linearClamp;
 
-#pragma rs export_var(radius, cards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
+#pragma rs export_var(radius, cards, tmpCards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
 #pragma rs export_var(swaySensitivity, frictionCoeff, dragFactor)
 #pragma rs export_var(visibleDetailCount, drawDetailBelowCard, drawRuler)
 #pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram)
@@ -126,7 +129,7 @@ rs_sampler linearClamp;
 #pragma rs export_var(linearClamp, shaderConstants)
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
 #pragma rs export_var(fadeInDuration, rezInCardCount)
-#pragma rs export_func(createCards, lookAt, doStart, doStop, doMotion, doSelection)
+#pragma rs export_func(createCards, copyCards, lookAt, doStart, doStop, doMotion, doSelection)
 #pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera, debugPicking)
 #pragma rs export_func(requestFirstCardPosition)
 
@@ -191,10 +194,10 @@ void init() {
     rezInCardCount = 0.0f; // alpha will ramp to 1.0f over this many cards (0.0f means disabled)
 }
 
-static void updateAllocationVars()
+static void updateAllocationVars(Card_t* newcards)
 {
     // Cards
-    rs_allocation cardAlloc = rsGetAllocation(cards);
+    rs_allocation cardAlloc = rsGetAllocation(newcards);
     // TODO: use new rsIsObject()
     cardCount = (cardAllocationValid && cardAlloc.p != 0) ? rsAllocationGetDimX(cardAlloc) : 0;
 }
@@ -204,7 +207,36 @@ void createCards(int n)
     if (debugTextureLoading) rsDebug("CreateCards: ", n);
     cardAllocationValid = n > 0;
     initialized = false;
-    updateAllocationVars();
+    updateAllocationVars(cards);
+}
+
+void copyCard(Card_t* dest, Card_t * src)
+{
+    rsSetObject(&dest->texture, src->texture);
+    rsSetObject(&dest->detailTexture, src->detailTexture);
+    dest->detailTextureOffset = src->detailTextureOffset;
+    rsSetObject(&dest->geometry, src->geometry);
+    dest->matrix = src->matrix;
+    dest->textureState = src->textureState;
+    dest->detailTextureState = src->detailTextureState;
+    dest->geometryState = src->geometryState;
+    dest->visible = src->visible;
+    dest->textureTimeStamp = src->textureTimeStamp;
+    dest->detailTextureTimeStamp = src->detailTextureTimeStamp;
+ }
+
+void copyCards()
+{
+    unsigned int newsize = rsAllocationGetDimX(rsGetAllocation(tmpCards));
+    if (cardAllocationValid) {
+        int size = min(rsAllocationGetDimX(rsGetAllocation(cards)), newsize);
+        for (int i = 0; i < size; i++) {
+            rsDebug("copying card ", i);
+            copyCard(tmpCards + i, cards + i);
+        }
+    }
+    cardAllocationValid = newsize > 0;
+    updateAllocationVars(tmpCards);
 }
 
 // Computes an alpha value for a card using elapsed time and constant fadeInDuration
@@ -651,7 +683,7 @@ void doStart(float x, float y)
 void doStop(float x, float y)
 {
     int64_t currentTime = rsUptimeMillis();
-    updateAllocationVars();
+    updateAllocationVars(cards);
     if (currentSelection != -1 && (currentTime - touchTime) < ANIMATION_SCALE_TIME) {
         // rsDebug("HIT!", currentSelection);
         int data[1];
@@ -1044,7 +1076,7 @@ int root() {
     rsgBindProgramStore(programStore);
     rsgBindProgramRaster(rasterProgram);
 
-    updateAllocationVars();
+    updateAllocationVars(cards);
 
     if (!initialized) {
         const float2 zero = {0.0f, 0.0f};

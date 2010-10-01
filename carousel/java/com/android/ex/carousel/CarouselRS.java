@@ -332,9 +332,20 @@ public class CarouselRS  {
         // Because RenderScript can't have allocations with 0 dimensions, we always create
         // an allocation of at least one card. This relies on invoke_createCards() to keep
         // track of when the allocation is not valid.
-        mCards = new ScriptField_Card(mRS, count > 0 ? count : 1);
-        mScript.bind_cards(mCards);
-        mScript.invoke_createCards(count);
+        if (mCards != null) {
+            // resize the array
+            ScriptField_Card tmpcards = new ScriptField_Card(mRS, count > 0 ? count : 1);
+            mScript.bind_tmpCards(tmpcards);
+            mScript.invoke_copyCards();
+            mScript.bind_cards(tmpcards);
+            mScript.bind_tmpCards(null);
+            mCards = tmpcards;
+        } else {
+            // create array from scratch
+            mCards = new ScriptField_Card(mRS, count > 0 ? count : 1);
+            mScript.bind_cards(mCards);
+            mScript.invoke_createCards(count);
+        }
     }
 
     public void setVisibleSlots(int count)
