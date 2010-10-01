@@ -105,8 +105,10 @@ float frictionCoeff; // how much to slow down the carousel over time
 float dragFactor; // a scale factor for how sensitive the carousel is to user dragging
 int fadeInDuration; // amount of time (in ms) for smoothly switching out textures
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
+float detailFadeRate; // rate at which details fade as they move into the distance
 rs_program_store programStore;
-rs_program_fragment fragmentProgram;
+rs_program_fragment singleTextureFragmentProgram;
+rs_program_fragment multiTextureFragmentProgram;
 rs_program_vertex vertexProgram;
 rs_program_raster rasterProgram;
 rs_allocation defaultTexture; // shown when no other texture is assigned
@@ -124,7 +126,8 @@ rs_sampler linearClamp;
 #pragma rs export_var(radius, cards, tmpCards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
 #pragma rs export_var(swaySensitivity, frictionCoeff, dragFactor)
 #pragma rs export_var(visibleDetailCount, drawDetailBelowCard, drawRuler)
-#pragma rs export_var(programStore, fragmentProgram, vertexProgram, rasterProgram)
+#pragma rs export_var(programStore, vertexProgram, rasterProgram)
+#pragma rs export_var(singleTextureFragmentProgram, multiTextureFragmentProgram)
 #pragma rs export_var(detailLineTexture, detailLoadingTexture, backgroundTexture)
 #pragma rs export_var(linearClamp, shaderConstants)
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
@@ -192,6 +195,7 @@ void init() {
     cardCount = 0;
     fadeInDuration = 250;
     rezInCardCount = 0.0f; // alpha will ramp to 1.0f over this many cards (0.0f means disabled)
+    detailFadeRate = 0.5f; // fade details over this many slot positions.
 }
 
 static void updateAllocationVars(Card_t* newcards)
@@ -438,15 +442,15 @@ static bool drawCards(int64_t currentTime)
             rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
 
             // Bind place-holder texture
-            rsgBindSampler(fragmentProgram, 0, linearClamp);
-            rsgBindTexture(fragmentProgram, 0, loadingTexture);
+            rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
+            rsgBindTexture(multiTextureFragmentProgram, 0, loadingTexture);
 
             // Bind artwork texture, if loaded
-            rsgBindSampler(fragmentProgram, 1, linearClamp);
+            rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
             if (cards[i].textureState == STATE_LOADED) {
-                rsgBindTexture(fragmentProgram, 1, cards[i].texture);
+                rsgBindTexture(multiTextureFragmentProgram, 1, cards[i].texture);
             } else {
-                rsgBindTexture(fragmentProgram, 1, loadingTexture);
+                rsgBindTexture(multiTextureFragmentProgram, 1, loadingTexture);
             }
 
             // Draw geometry
@@ -494,13 +498,17 @@ static bool drawDetails(int64_t currentTime)
 
     const float yPadding = 5.0f; // draw line this far (in pixels) away from top and geometry
 
-    int drawn = 0; // number of details drawn
-
     // This can be done once...
-    rsgBindSampler(fragmentProgram, 0, linearClamp);
-    rsgBindTexture(fragmentProgram, 0, detailLoadingTexture);
+    rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
+    rsgBindTexture(multiTextureFragmentProgram, 0, detailLoadingTexture);
 
-    for (int i = 0; i < cardCount && drawn < visibleDetailCount; i++) {
+    const float wedgeAngle = 2.0f * M_PI / slotCount;
+    // Angle where details start fading from 1.0f
+    const float startDetailFadeAngle = startAngle + (visibleDetailCount - 1) * wedgeAngle;
+    // Angle where detail alpha is 0.0f
+    const float endDetailFadeAngle = startDetailFadeAngle + detailFadeRate * wedgeAngle;
+
+    for (int i = cardCount-1; i >= 0; --i) {
         if (cards[i].visible) {
             if (cards[i].detailTextureState == STATE_LOADED && cards[i].detailTexture.p != 0) {
                 const float lineWidth = rsAllocationGetDimX(detailLineTexture);
@@ -526,8 +534,18 @@ static bool drawDetails(int64_t currentTime)
                     stillAnimating = true;
                 }
 
+                // Compute alpha based on position. We fade cards quickly so they cannot overlap
+                float positionAlpha = ((float)endDetailFadeAngle - cardPosition(i))
+                        / (endDetailFadeAngle - startDetailFadeAngle);
+                positionAlpha = max(0.0f, positionAlpha);
+                positionAlpha = min(1.0f, positionAlpha);
+
+                const float blendedAlpha = min(1.0f, animatedAlpha * positionAlpha);
+
+                if (blendedAlpha == 0.0f) continue;
+
                 // Set alpha for blending between the textures
-                shaderConstants->fadeAmount = min(1.0f, animatedAlpha);
+                shaderConstants->fadeAmount = blendedAlpha;
                 rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
 
                 // Convert projection from normalized coordinates to pixel coordinates.
@@ -535,9 +553,10 @@ static bool drawDetails(int64_t currentTime)
                 screenCoord *= 1.0f / screenCoord.w;
                 screenCoord.x += 1.0f;
                 screenCoord.y += 1.0f;
-                screenCoord.z = 0.0f; // make sure it's in front
+                screenCoord.z += 1.0f;
                 screenCoord.x = round(screenCoord.x * 0.5f * width);
                 screenCoord.y = round(screenCoord.y * 0.5f * height);
+                screenCoord.z = - 0.5f * screenCoord.z;
                 if (debugDetails) {
                     RS_DEBUG(screenCoord);
                 }
@@ -547,13 +566,13 @@ static bool drawDetails(int64_t currentTime)
                     const float halfWidth = lineWidth * 0.5f;
                     const float rulerTop = drawDetailBelowCard ? screenCoord.y : height;
                     const float rulerBottom = drawDetailBelowCard ? 0 : screenCoord.y;
-                    rsgBindSampler(fragmentProgram, 1, linearClamp);
-                    rsgBindTexture(fragmentProgram, 1, detailLineTexture);
+                    rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
+                    rsgBindTexture(multiTextureFragmentProgram, 1, detailLineTexture);
                     rsgDrawQuad(
-                            screenCoord.x - halfWidth, rulerBottom + yPadding, 0,
-                            screenCoord.x + halfWidth, rulerBottom + yPadding, 0,
-                            screenCoord.x + halfWidth, rulerTop - yPadding, 0,
-                            screenCoord.x - halfWidth, rulerTop - yPadding, 0);
+                            screenCoord.x - halfWidth, rulerBottom + yPadding, screenCoord.z,
+                            screenCoord.x + halfWidth, rulerBottom + yPadding, screenCoord.z,
+                            screenCoord.x + halfWidth, rulerTop - yPadding, screenCoord.z,
+                            screenCoord.x - halfWidth, rulerTop - yPadding, screenCoord.z);
                 }
 
                 // Draw the detail texture next to it using the offsets provided.
@@ -562,15 +581,14 @@ static bool drawDetails(int64_t currentTime)
                 const float offx = cards[i].detailTextureOffset.x;
                 const float offy = -cards[i].detailTextureOffset.y;
                 const float textureTop = drawDetailBelowCard ? screenCoord.y : height;
-                rsgBindSampler(fragmentProgram, 1, linearClamp);
-                rsgBindTexture(fragmentProgram, 1, cards[i].detailTexture);
+                rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
+                rsgBindTexture(multiTextureFragmentProgram, 1, cards[i].detailTexture);
                 rsgDrawQuad(
-                        screenCoord.x + offx, textureTop + offy - textureHeight, 0,
-                        screenCoord.x + offx + textureWidth, textureTop + offy - textureHeight, 0,
-                        screenCoord.x + offx + textureWidth, textureTop + offy, 0,
-                        screenCoord.x + offx, textureTop + offy, 0);
-
-                drawn++;
+                        screenCoord.x + offx, textureTop + offy - textureHeight, screenCoord.z,
+                        screenCoord.x + offx + textureWidth, textureTop + offy - textureHeight,
+                                screenCoord.z,
+                        screenCoord.x + offx + textureWidth, textureTop + offy, screenCoord.z,
+                        screenCoord.x + offx, textureTop + offy, screenCoord.z);
             }
         }
     }
@@ -580,14 +598,16 @@ static bool drawDetails(int64_t currentTime)
 static void drawBackground()
 {
     if (backgroundTexture.p != 0) {
+        rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z,
+                           backgroundColor.w);
         rsgClearDepth(1.0f);
         rs_matrix4x4 projection, model;
         rsMatrixLoadOrtho(&projection, -1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f);
         rsgProgramVertexLoadProjectionMatrix(&projection);
         rsMatrixLoadIdentity(&model);
         rsgProgramVertexLoadModelMatrix(&model);
-        rsgBindTexture(fragmentProgram, 0, backgroundTexture);
-        rsgBindTexture(fragmentProgram, 1, backgroundTexture); // TODO: background blending
+        rsgBindSampler(singleTextureFragmentProgram, 0, linearClamp);
+        rsgBindTexture(singleTextureFragmentProgram, 0, backgroundTexture);
         float z = -0.9999f;
         rsgDrawQuad(
             cardVertices[0].x, cardVertices[0].y, z,
@@ -973,7 +993,7 @@ static int cullCards()
 // or doesn't have a texture yet.
 static void updateCardResources(int64_t currentTime)
 {
-    for (int i = 0; i < cardCount; i++) {
+    for (int i = cardCount-1; i >= 0; --i) {
         int data[1];
         if (cards[i].visible) {
             // request texture from client if not loaded
@@ -1039,7 +1059,6 @@ static void updateCardResources(int64_t currentTime)
                     if (debugGeometryLoading) rsDebug("Couldn't send CMD_INVALIDATE_GEOMETRY", 0);
                 }
             }
-
         }
     }
 }
@@ -1072,7 +1091,6 @@ int root() {
     int64_t currentTime = rsUptimeMillis();
 
     rsgBindProgramVertex(vertexProgram);
-    rsgBindProgramFragment(fragmentProgram);
     rsgBindProgramStore(programStore);
     rsgBindProgramRaster(rasterProgram);
 
@@ -1088,6 +1106,7 @@ int root() {
         initialized = true;
     }
 
+    rsgBindProgramFragment(singleTextureFragmentProgram);
     drawBackground();
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
@@ -1099,8 +1118,9 @@ int root() {
 
     updateCardResources(currentTime);
 
+    rsgBindProgramFragment(multiTextureFragmentProgram);
     stillAnimating |= drawCards(currentTime);
-    drawDetails(currentTime);
+    stillAnimating |= drawDetails(currentTime);
 
     if (debugPicking) {
         renderWithRays();

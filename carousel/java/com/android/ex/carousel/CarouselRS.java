@@ -72,7 +72,16 @@ public class CarouselRS  {
     private float[] mEyePoint = new float[3];
     private float[] mAtPoint = new float[3];
     private float[] mUp = new float[3];
-    private static final String mShaderString = new String(
+
+    private static final String mSingleTextureShader = new String(
+            "varying vec4 varTex0;" +
+            "void main() {" +
+            "vec2 t0 = varTex0.xy;" +
+            "vec4 col = texture2D(UNI_Tex0, t0);" +
+            "gl_FragColor = col; " +
+            "}");
+
+    private static final String mMultiTextureShader = new String(
             "varying vec4 varTex0;" +
             "void main() {" +
             "vec2 t0 = varTex0.xy;" +
@@ -285,35 +294,39 @@ public class CarouselRS  {
     }
 
     private void initFragmentProgram() {
-        boolean old = false;
-        if (old) {
-            ProgramFragment.Builder fragmentBuilder = new ProgramFragment.Builder(mRS);
-            fragmentBuilder.setTexture(ProgramFragment.Builder.EnvMode.DECAL,
-                               ProgramFragment.Builder.Format.RGBA, 0);
-            mSingleTextureFragmentProgram = fragmentBuilder.create();
-            mSingleTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
-        } else {
-            mScript.set_linearClamp(Sampler.CLAMP_LINEAR(mRS));
-            //mScript.set_linearWrap(Sampler.CLAMP_NEAREST(mRS));
-            //mScript.set_mipLinearWrap(Sampler.WRAP_LINEAR_MIP_LINEAR(mRS));
+        //
+        // Single texture program
+        //
+        ProgramFragment.ShaderBuilder pfbSingle = new ProgramFragment.ShaderBuilder(mRS);
+        // Specify the resource that contains the shader string
+        pfbSingle.setShader(mSingleTextureShader);
+        // Tell the builder how many textures we have
+        pfbSingle.setTextureCount(1);
+        mSingleTextureFragmentProgram = pfbSingle.create();
+        // Bind the source of constant data
+        mSingleTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
 
-            mFSConst = new ScriptField_FragmentShaderConstants_s(mRS, 1);
-            mScript.bind_shaderConstants(mFSConst);
+        //
+        // Multi texture program
+        //
+        mFSConst = new ScriptField_FragmentShaderConstants_s(mRS, 1);
+        mScript.bind_shaderConstants(mFSConst);
+        ProgramFragment.ShaderBuilder pfbMulti = new ProgramFragment.ShaderBuilder(mRS);
+        // Specify the resource that contains the shader string
+        pfbMulti.setShader(mMultiTextureShader);
+        // Tell the builder how many textures we have
+        pfbMulti.setTextureCount(2);
+        // Define the constant input layout
+        pfbMulti.addConstant(mFSConst.getAllocation().getType());
+        mMultiTextureFragmentProgram = pfbMulti.create();
+        // Bind the source of constant data
+        mMultiTextureFragmentProgram.bindConstants(mFSConst.getAllocation(), 0);
+        mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
+        mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 1);
 
-            ProgramFragment.ShaderBuilder pfbCustom = new ProgramFragment.ShaderBuilder(mRS);
-            // Specify the resource that contains the shader string
-            pfbCustom.setShader(mShaderString);
-            // Tell the builder how many textures we have
-            pfbCustom.setTextureCount(2);
-            // Define the constant input layout
-            pfbCustom.addConstant(mFSConst.getAllocation().getType());
-            mMultiTextureFragmentProgram = pfbCustom.create();
-            // Bind the source of constant data
-            mMultiTextureFragmentProgram.bindConstants(mFSConst.getAllocation(), 0);
-            mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
-            mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 1);
-        }
-        mScript.set_fragmentProgram(mMultiTextureFragmentProgram);
+        mScript.set_linearClamp(Sampler.CLAMP_LINEAR(mRS));
+        mScript.set_singleTextureFragmentProgram(mSingleTextureFragmentProgram);
+        mScript.set_multiTextureFragmentProgram(mMultiTextureFragmentProgram);
     }
 
     private void initProgramStore() {
