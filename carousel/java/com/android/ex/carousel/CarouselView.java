@@ -283,15 +283,18 @@ public abstract class CarouselView extends RSSurfaceView {
      * by first setting it to null and then waiting for the next
      * {@link CarouselCallback#onRequestDetailTexture(int)} to swap it with the new one.
      *
-     * @param n the card to set the help text
-     * @param offx an optional offset to apply to the texture, in pixel coordinates
-     * @param offy an optional offset to apply to the texture, in pixel coordinates
+     * @param n the card to set detail texture for
+     * @param offx an optional offset to apply to the texture (in pixels) from top of detail line
+     * @param offy an optional offset to apply to the texture (in pixels) from top of detail line
+     * @param loffx an optional offset to apply to the line (in pixels) from left edge of card
+     * @param loffy an optional offset to apply to the line (in pixels) from top of screen
      * @param bitmap the bitmap to show as the detail
      */
-    public void setDetailTextureForItem(int n, float offx, float offy, Bitmap bitmap) {
+    public void setDetailTextureForItem(int n, float offx, float offy, float loffx, float loffy,
+            Bitmap bitmap) {
         if (mRenderScript != null) {
             if (DBG) Log.v(TAG, "setDetailTextureForItem(" + n + ")");
-            mRenderScript.setDetailTexture(n, offx, offy, bitmap);
+            mRenderScript.setDetailTexture(n, offx, offy, loffx, loffy, bitmap);
             if (DBG) Log.v(TAG, "done");
         }
     }

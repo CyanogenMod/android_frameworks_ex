@@ -175,7 +175,7 @@ public class CarouselRS  {
                     break;
 
                 case CMD_INVALIDATE_DETAIL_TEXTURE:
-                    setDetailTexture(mData[0], 0, 0, null);
+                    setDetailTexture(mData[0], 0.0f, 0.0f, 0.0f, 0.0f, null);
                     mCallback.onInvalidateDetailTexture(mData[0]);
                     break;
 
@@ -357,8 +357,8 @@ public class CarouselRS  {
             // create array from scratch
             mCards = new ScriptField_Card(mRS, count > 0 ? count : 1);
             mScript.bind_cards(mCards);
-            mScript.invoke_createCards(count);
         }
+        mScript.invoke_createCards(count);
     }
 
     public void setVisibleSlots(int count)
@@ -448,7 +448,7 @@ public class CarouselRS  {
         }
     }
 
-    void setDetailTexture(int n, float offx, float offy, Bitmap bitmap)
+    void setDetailTexture(int n, float offx, float offy, float loffx, float loffy, Bitmap bitmap)
     {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
@@ -476,7 +476,7 @@ public class CarouselRS  {
                 }
             }
             mCards.set(item, n, false); // This is primarily used for reference counting.
-            mScript.invoke_setDetailTexture(n, offx, offy, item.detailTexture);
+            mScript.invoke_setDetailTexture(n, offx, offy, loffx, loffy, item.detailTexture);
         }
     }
 
