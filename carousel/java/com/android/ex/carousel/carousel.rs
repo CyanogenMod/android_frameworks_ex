@@ -269,6 +269,12 @@ static float slotPosition(float p)
     return startAngle + 2.0f * M_PI * p / slotCount;
 }
 
+// Returns total angle for given number of cards
+static float wedgeAngle(float cards)
+{
+    return cards * 2.0f * M_PI / slotCount;
+}
+
 // Return the lowest slot number for a given angular position.
 static int cardIndex(float angle)
 {
@@ -970,20 +976,13 @@ static bool updateNextPosition(int64_t currentTime)
     }
     lastTime = currentTime;
 
-    // TODO: Add animation to smoothly move back to slots. Currently snaps to location.
-    if (cardCount <= visibleSlotCount) {
-        // TODO: this aligns the cards to the first slot (theta = startAngle) when there aren't
-        // enough visible cards. It should be generalized to allow alignment to front,
-        // middle or back of the stack.
-        if (cardPosition(0) != slotPosition(0)) {
-            bias = 0.0f;
-        }
-    } else {
-        if (cardPosition(cardCount) < 0.0f) {
-            bias = -slotPosition(cardCount);
-        } else if (cardPosition(0) > slotPosition(0)) {
-            bias = 0.0f;
-        }
+    const float firstBias = wedgeAngle(0.0f);
+    const float lastBias = -max(0.0f, wedgeAngle(cardCount - visibleDetailCount));
+
+    if (bias > firstBias) {
+        bias = firstBias;
+    } else if (bias < lastBias) {
+        bias = lastBias;
     }
 
     return animating;
