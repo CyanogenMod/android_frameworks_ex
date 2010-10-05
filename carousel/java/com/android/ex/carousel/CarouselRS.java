@@ -349,7 +349,7 @@ public class CarouselRS  {
             // resize the array
             ScriptField_Card tmpcards = new ScriptField_Card(mRS, count > 0 ? count : 1);
             mScript.bind_tmpCards(tmpcards);
-            mScript.invoke_copyCards();
+            mScript.invoke_copyCards(count);
             mScript.bind_cards(tmpcards);
             mScript.bind_tmpCards(null);
             mCards = tmpcards;
@@ -357,8 +357,8 @@ public class CarouselRS  {
             // create array from scratch
             mCards = new ScriptField_Card(mRS, count > 0 ? count : 1);
             mScript.bind_cards(mCards);
+            mScript.invoke_createCards(count);
         }
-        mScript.invoke_createCards(count);
     }
 
     public void setVisibleSlots(int count)

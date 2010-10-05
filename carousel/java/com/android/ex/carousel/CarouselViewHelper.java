@@ -34,7 +34,7 @@ public class CarouselViewHelper implements CarouselCallback {
     private HandlerThread mHandlerThread;
     private Context mContext;
     private CarouselView mCarouselView;
-    private boolean DBG = true;
+    private boolean DBG = false;
     private long HOLDOFF_DELAY = 100;
     private Handler mAsyncHandler; // Background thread handler for reading textures, geometry, etc.
     private Handler mSyncHandler; // Synchronous handler for interacting with UI elements.

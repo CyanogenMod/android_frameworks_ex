@@ -185,7 +185,7 @@ static float deltaTimeInSeconds(int64_t current);
 void init() {
     // initializers currently have a problem when the variables are exported, so initialize
     // globals here.
-    // rsDebug("Renderscript: init()", 0);
+    if (debugTextureLoading) rsDebug("Renderscript: init()", 0);
     startAngle = 0.0f;
     slotCount = 10;
     visibleSlotCount = 1;
@@ -213,8 +213,14 @@ static void updateAllocationVars(Card_t* newcards)
 
 void createCards(int n)
 {
-    if (debugTextureLoading) rsDebug("CreateCards: ", n);
+    if (debugTextureLoading) {
+        rsDebug("*** CreateCards with count", n);
+    }
+
+    // Since allocations can't have 0-size, we track validity ourselves based on the call to
+    // this method.
     cardAllocationValid = n > 0;
+
     initialized = false;
     updateAllocationVars(cards);
 }
@@ -233,19 +239,57 @@ void copyCard(Card_t* dest, Card_t * src)
     dest->visible = src->visible;
     dest->textureTimeStamp = src->textureTimeStamp;
     dest->detailTextureTimeStamp = src->detailTextureTimeStamp;
- }
+}
 
-void copyCards()
+void initCard(Card_t* card)
 {
+    static const float2 zero = {0.0f, 0.0f};
+    rsClearObject(&card->texture);
+    rsClearObject(&card->detailTexture);
+    card->detailTextureOffset = zero;
+    card->detailLineOffset = zero;
+    rsClearObject(&card->geometry);
+    rsMatrixLoadIdentity(&card->matrix);
+    card->textureState = STATE_INVALID;
+    card->detailTextureState = STATE_INVALID;
+    card->geometryState = STATE_INVALID;
+    card->visible = false;
+    card->textureTimeStamp = 0;
+    card->detailTextureTimeStamp = 0;
+}
+
+void copyCards(int n)
+{
+    unsigned int oldsize = cardAllocationValid ? rsAllocationGetDimX(rsGetAllocation(cards)) : 0;
     unsigned int newsize = rsAllocationGetDimX(rsGetAllocation(tmpCards));
-    if (cardAllocationValid) {
-        int size = min(rsAllocationGetDimX(rsGetAllocation(cards)), newsize);
-        for (int i = 0; i < size; i++) {
+    unsigned int copysize = min(oldsize, newsize);
+
+    // Copy existing cards
+    for (int i = 0; i < copysize; i++) {
+        if (debugTextureLoading) {
             rsDebug("copying card ", i);
-            copyCard(tmpCards + i, cards + i);
         }
+        copyCard(tmpCards + i, cards + i);
+        // Release these now so we don't have to wait for GC for cards allocation.
+        // Assumes we're done with the cards allocation structure.
+        rsClearObject(&cards[i].texture);
+        rsClearObject(&cards[i].detailTexture);
+        rsClearObject(&cards[i].geometry);
+        cards[i].textureState = STATE_INVALID;
+        cards[i].detailTextureState = STATE_INVALID;
+        cards[i].geometryState = STATE_INVALID;
     }
-    cardAllocationValid = newsize > 0;
+
+    // Initialize remaining cards.
+    int first = cardAllocationValid ? min(oldsize, newsize) : 0;
+    for (int k = first; k < newsize; k++) {
+        initCard(tmpCards + k);
+    }
+
+    // Since allocations can't have 0-size, we use the same trick as createCards() where
+    // we track validity ourselves. Grrr.
+    cardAllocationValid = n > 0;
+
     updateAllocationVars(tmpCards);
 }
 
@@ -1033,6 +1077,8 @@ static void updateCardResources(int64_t currentTime)
     for (int i = cardCount-1; i >= 0; --i) {
         int data[1];
         if (cards[i].visible) {
+            if (debugTextureLoading) rsDebug("*** Texture stamp: ", cards[i].textureTimeStamp);
+
             // request texture from client if not loaded
             if (cards[i].textureState == STATE_INVALID) {
                 data[0] = i;
@@ -1137,11 +1183,12 @@ int root() {
     updateAllocationVars(cards);
 
     if (!initialized) {
+        if (debugTextureLoading){
+            rsDebug("*** initialized was false, updating all cards (cards = ", cards);
+        }
         const float2 zero = {0.0f, 0.0f};
         for (int i = 0; i < cardCount; i++) {
-            cards[i].textureState = STATE_INVALID;
-            cards[i].detailTextureState = STATE_INVALID;
-            cards[i].detailTextureOffset = zero;
+            initCard(cards + i);
         }
         initialized = true;
     }
