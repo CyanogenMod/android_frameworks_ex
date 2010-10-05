@@ -45,12 +45,24 @@ public class CarouselViewHelper implements CarouselCallback {
     };
 
     public static class DetailTextureParameters {
-        public DetailTextureParameters(float offX, float offY) {
-            offsetX = offX;
-            offsetY = offY;
+        public DetailTextureParameters(float textureOffsetX, float textureOffsetY) {
+            this.textureOffsetX = textureOffsetX;
+            this.textureOffsetY = textureOffsetY;
+            this.lineOffsetX = 0.0f;
+            this.lineOffsetY = 0.0f;
         }
-        public float offsetX;
-        public float offsetY;
+        public DetailTextureParameters(
+                float textureOffsetX, float textureOffsetY,
+                float lineOffsetX, float lineOffsetY) {
+            this.textureOffsetX = textureOffsetX;
+            this.textureOffsetY = textureOffsetY;
+            this.lineOffsetX = lineOffsetX;
+            this.lineOffsetY = lineOffsetY;
+        }
+        public float textureOffsetX;
+        public float textureOffsetY;
+        public float lineOffsetX;
+        public float lineOffsetY;
     };
 
     public void setCarouselView(CarouselView carouselView) {
@@ -127,9 +139,11 @@ public class CarouselViewHelper implements CarouselCallback {
 
                 case SET_DETAIL_TEXTURE_N:
                     DetailTextureParameters params = getDetailTextureParameters(id);
-                    float x = params != null ? params.offsetX : 0.0f;
-                    float y = params != null ? params.offsetY : 0.0f;
-                    mCarouselView.setDetailTextureForItem(id, x, y, (Bitmap) msg.obj);
+                    float x = params != null ? params.textureOffsetX : 0.0f;
+                    float y = params != null ? params.textureOffsetY : 0.0f;
+                    float lx = params != null ? params.lineOffsetX : 0.0f;
+                    float ly = params != null ? params.lineOffsetY : 0.0f;
+                    mCarouselView.setDetailTextureForItem(id, x, y, lx, ly, (Bitmap) msg.obj);
                     break;
 
                 case SET_GEOMETRY_N:

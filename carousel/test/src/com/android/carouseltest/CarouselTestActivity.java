@@ -57,7 +57,7 @@ public class CarouselTestActivity extends Activity {
     class LocalCarouselViewHelper extends CarouselViewHelper {
         private static final int PIXEL_BORDER = 3;
         private DetailTextureParameters mDetailTextureParameters
-                = new DetailTextureParameters(5.0f, 5.0f);
+                = new DetailTextureParameters(5.0f, 5.0f, 3.0f, 10.0f);
 
         LocalCarouselViewHelper(Context context) {
             super(context);

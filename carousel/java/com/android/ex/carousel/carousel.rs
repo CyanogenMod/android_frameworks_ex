@@ -25,6 +25,7 @@ typedef struct __attribute__((aligned(4))) Card {
     rs_allocation texture; // basic card texture
     rs_allocation detailTexture; // screen-aligned detail texture
     float2 detailTextureOffset; // offset to add, in screen coordinates
+    float2 detailLineOffset; // offset to add to detail line, in screen coordinates
     rs_mesh geometry;
     rs_matrix4x4 matrix; // custom transform for this card/geometry
     int textureState;  // whether or not the primary card texture is loaded.
@@ -86,6 +87,7 @@ const bool debugPicking = false; // renders picking area on top of geometry
 const bool debugTextureLoading = false; // for debugging texture load/unload
 const bool debugGeometryLoading = false; // for debugging geometry load/unload
 const bool debugDetails = false; // for debugging detail texture geometry
+const bool debugRendering = false; // flashes display when the frame changes
 
 // Exported variables. These will be reflected to Java set_* variables.
 Card_t *cards; // array of cards to draw
@@ -174,7 +176,10 @@ static PerspectiveCamera camera = {
 
 // Forward references
 static int intersectGeometry(Ray* ray, float *bestTime);
-static bool makeRayForPixelAt(Ray* ray, float x, float y);
+static bool __attribute__((overloadable))
+        makeRayForPixelAt(Ray* ray, PerspectiveCamera* cam, float x, float y);
+static bool __attribute__((overloadable))
+        makeRayForPixelAt(Ray* ray, rs_matrix4x4* model, rs_matrix4x4* proj, float x, float y);
 static float deltaTimeInSeconds(int64_t current);
 
 void init() {
@@ -219,6 +224,7 @@ void copyCard(Card_t* dest, Card_t * src)
     rsSetObject(&dest->texture, src->texture);
     rsSetObject(&dest->detailTexture, src->detailTexture);
     dest->detailTextureOffset = src->detailTextureOffset;
+    dest->detailLineOffset = src->detailLineOffset;
     rsSetObject(&dest->geometry, src->geometry);
     dest->matrix = src->matrix;
     dest->textureState = src->textureState;
@@ -336,12 +342,14 @@ void setTexture(int n, rs_allocation texture)
     cards[n].textureTimeStamp = rsUptimeMillis();
 }
 
-void setDetailTexture(int n, float offx, float offy, rs_allocation texture)
+void setDetailTexture(int n, float offx, float offy, float loffx, float loffy, rs_allocation texture)
 {
     if (n < 0 || n >= cardCount) return;
     rsSetObject(&cards[n].detailTexture, texture);
     cards[n].detailTextureOffset.x = offx;
     cards[n].detailTextureOffset.y = offy;
+    cards[n].detailLineOffset.x = loffx;
+    cards[n].detailLineOffset.y = loffy;
     cards[n].detailTextureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
     cards[n].detailTextureTimeStamp = rsUptimeMillis();
 }
@@ -441,16 +449,19 @@ static bool drawCards(int64_t currentTime)
             shaderConstants->fadeAmount = min(1.0f, animatedAlpha * positionAlpha);
             rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
 
-            // Bind place-holder texture
-            rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
-            rsgBindTexture(multiTextureFragmentProgram, 0, loadingTexture);
-
-            // Bind artwork texture, if loaded
-            rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
-            if (cards[i].textureState == STATE_LOADED) {
-                rsgBindTexture(multiTextureFragmentProgram, 1, cards[i].texture);
+            // Bind the appropriate shader network.  If there's no alpha blend, then
+            // switch to single shader for better performance.
+            const bool loaded = cards[i].textureState == STATE_LOADED;
+            if (shaderConstants->fadeAmount == 1.0f || shaderConstants->fadeAmount < 0.01f) {
+                rsgBindProgramFragment(singleTextureFragmentProgram);
+                rsgBindTexture(singleTextureFragmentProgram, 0,
+                        (loaded && shaderConstants->fadeAmount == 1.0f) ?
+                        cards[i].texture : loadingTexture);
             } else {
-                rsgBindTexture(multiTextureFragmentProgram, 1, loadingTexture);
+                rsgBindProgramFragment(multiTextureFragmentProgram);
+                rsgBindTexture(multiTextureFragmentProgram, 0, loadingTexture);
+                rsgBindTexture(multiTextureFragmentProgram, 1, loaded ?
+                        cards[i].texture : loadingTexture);
             }
 
             // Draw geometry
@@ -499,7 +510,6 @@ static bool drawDetails(int64_t currentTime)
     const float yPadding = 5.0f; // draw line this far (in pixels) away from top and geometry
 
     // This can be done once...
-    rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
     rsgBindTexture(multiTextureFragmentProgram, 0, detailLoadingTexture);
 
     const float wedgeAngle = 2.0f * M_PI / slotCount;
@@ -542,7 +552,12 @@ static bool drawDetails(int64_t currentTime)
 
                 const float blendedAlpha = min(1.0f, animatedAlpha * positionAlpha);
 
-                if (blendedAlpha == 0.0f) continue;
+                if (blendedAlpha == 0.0f) continue; // nothing to draw
+                if (blendedAlpha == 1.0f) {
+                    rsgBindProgramFragment(singleTextureFragmentProgram);
+                } else {
+                    rsgBindProgramFragment(multiTextureFragmentProgram);
+                }
 
                 // Set alpha for blending between the textures
                 shaderConstants->fadeAmount = blendedAlpha;
@@ -566,13 +581,18 @@ static bool drawDetails(int64_t currentTime)
                     const float halfWidth = lineWidth * 0.5f;
                     const float rulerTop = drawDetailBelowCard ? screenCoord.y : height;
                     const float rulerBottom = drawDetailBelowCard ? 0 : screenCoord.y;
-                    rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
-                    rsgBindTexture(multiTextureFragmentProgram, 1, detailLineTexture);
-                    rsgDrawQuad(
-                            screenCoord.x - halfWidth, rulerBottom + yPadding, screenCoord.z,
-                            screenCoord.x + halfWidth, rulerBottom + yPadding, screenCoord.z,
-                            screenCoord.x + halfWidth, rulerTop - yPadding, screenCoord.z,
-                            screenCoord.x - halfWidth, rulerTop - yPadding, screenCoord.z);
+                    const float x0 = cards[i].detailLineOffset.x + screenCoord.x - halfWidth;
+                    const float x1 = cards[i].detailLineOffset.x + screenCoord.x + halfWidth;
+                    const float y0 = rulerBottom + yPadding;
+                    const float y1 = rulerTop - yPadding - cards[i].detailLineOffset.y;
+
+                    if (blendedAlpha == 1.0f) {
+                        rsgBindTexture(singleTextureFragmentProgram, 0, detailLineTexture);
+                    } else {
+                        rsgBindTexture(multiTextureFragmentProgram, 1, detailLineTexture);
+                    }
+                    rsgDrawQuad(x0, y0, screenCoord.z,  x1, y0, screenCoord.z,
+                            x1, y1, screenCoord.z,  x0, y1, screenCoord.z);
                 }
 
                 // Draw the detail texture next to it using the offsets provided.
@@ -581,14 +601,18 @@ static bool drawDetails(int64_t currentTime)
                 const float offx = cards[i].detailTextureOffset.x;
                 const float offy = -cards[i].detailTextureOffset.y;
                 const float textureTop = drawDetailBelowCard ? screenCoord.y : height;
-                rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
-                rsgBindTexture(multiTextureFragmentProgram, 1, cards[i].detailTexture);
-                rsgDrawQuad(
-                        screenCoord.x + offx, textureTop + offy - textureHeight, screenCoord.z,
-                        screenCoord.x + offx + textureWidth, textureTop + offy - textureHeight,
-                                screenCoord.z,
-                        screenCoord.x + offx + textureWidth, textureTop + offy, screenCoord.z,
-                        screenCoord.x + offx, textureTop + offy, screenCoord.z);
+                const float x0 = cards[i].detailLineOffset.x + screenCoord.x + offx;
+                const float x1 = cards[i].detailLineOffset.x + screenCoord.x + offx + textureWidth;
+                const float y0 = textureTop + offy - textureHeight - cards[i].detailLineOffset.y;
+                const float y1 = textureTop + offy - cards[i].detailLineOffset.y;
+
+                if (blendedAlpha == 1.0f) {
+                    rsgBindTexture(singleTextureFragmentProgram, 0, cards[i].detailTexture);
+                } else {
+                    rsgBindTexture(multiTextureFragmentProgram, 1, cards[i].detailTexture);
+                }
+                rsgDrawQuad(x0, y0, screenCoord.z,  x1, y0, screenCoord.z,
+                        x1, y1, screenCoord.z,  x0, y1, screenCoord.z);
             }
         }
     }
@@ -597,16 +621,19 @@ static bool drawDetails(int64_t currentTime)
 
 static void drawBackground()
 {
+    static bool toggle;
     if (backgroundTexture.p != 0) {
-        rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z,
-                           backgroundColor.w);
+        // Unfortunately, we also need to clear the background because some textures may be
+        // drawn with alpha. This takes about 1ms-2ms in my tests. May be worth optimizing at
+        // some point.
+        rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w);
+
         rsgClearDepth(1.0f);
         rs_matrix4x4 projection, model;
         rsMatrixLoadOrtho(&projection, -1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f);
         rsgProgramVertexLoadProjectionMatrix(&projection);
         rsMatrixLoadIdentity(&model);
         rsgProgramVertexLoadModelMatrix(&model);
-        rsgBindSampler(singleTextureFragmentProgram, 0, linearClamp);
         rsgBindTexture(singleTextureFragmentProgram, 0, backgroundTexture);
         float z = -0.9999f;
         rsgDrawQuad(
@@ -617,15 +644,13 @@ static void drawBackground()
         updateCamera = true; // we mucked with the matrix.
     } else {
         rsgClearDepth(1.0f);
-        if (false) { // for debugging - flash the screen so we know we're still rendering
-            static bool toggle;
-            if (toggle)
-               rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z,
-                       backgroundColor.w);
-            else
-               rsgClearColor(1.0f, 0.0f, 0.0f, 1.f);
+        if (debugRendering) { // for debugging - flash the screen so we know we're still rendering
+            rsgClearColor(toggle ? backgroundColor.x : 1.0f,
+                        toggle ? backgroundColor.y : 0.0f,
+                        toggle ? backgroundColor.z : 0.0f,
+                        backgroundColor.w);
             toggle = !toggle;
-       } else {
+        } else {
            rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z,
                    backgroundColor.w);
        }
@@ -674,7 +699,7 @@ static float deltaTimeInSeconds(int64_t current)
 int doSelection(float x, float y)
 {
     Ray ray;
-    if (makeRayForPixelAt(&ray, x, y)) {
+    if (makeRayForPixelAt(&ray, &camera, x, y)) {
         float bestTime = FLT_MAX;
         return intersectGeometry(&ray, &bestTime);
     }
@@ -785,75 +810,88 @@ rayTriangleIntersect(Ray* ray, float3 p0, float3 p1, float3 p2, float *tout)
     return true;
 }
 
-// Creates a ray for an Android pixel coordinate.
+static bool
+rayPlaneIntersect(Ray* ray, float3 point, float3 normal)
+{
+    return false; // TODO
+}
+
+static bool
+rayCylinderIntersect(Ray* ray, float3 center, float radius)
+{
+    return false; // TODO
+}
+
+// Creates a ray for an Android pixel coordinate given a camera, ray and coordinates.
 // Note that the Y coordinate is opposite of GL rendering coordinates.
-static bool makeRayForPixelAt(Ray* ray, float x, float y)
+static bool __attribute__((overloadable))
+makeRayForPixelAt(Ray* ray, PerspectiveCamera* cam, float x, float y)
 {
     if (debugCamera) {
         rsDebug("------ makeRay() -------", 0);
-        rsDebug("Camera.from:", camera.from);
-        rsDebug("Camera.at:", camera.at);
-        rsDebug("Camera.dir:", normalize(camera.at - camera.from));
+        rsDebug("Camera.from:", cam->from);
+        rsDebug("Camera.at:", cam->at);
+        rsDebug("Camera.dir:", normalize(cam->at - cam->from));
     }
 
     // Vector math.  This has the potential to be much faster.
     // TODO: pre-compute lowerLeftRay, du, dv to eliminate most of this math.
-    if (true) {
-        const float u = x / rsgGetWidth();
-        const float v = 1.0f - (y / rsgGetHeight());
-        const float aspect = (float) rsgGetWidth() / rsgGetHeight();
-        const float tanfov2 = 2.0f * tan(radians(camera.fov / 2.0f));
-        float3 dir = normalize(camera.at - camera.from);
-        float3 du = tanfov2 * normalize(cross(dir, camera.up));
-        float3 dv = tanfov2 * normalize(cross(du, dir));
-        du *= aspect;
-        float3 lowerLeftRay = dir - (0.5f * du) - (0.5f * dv);
-        const float3 rayPoint = camera.from;
-        const float3 rayDir = normalize(lowerLeftRay + u*du + v*dv);
-        if (debugCamera) {
-            rsDebug("Ray direction (vector math) = ", rayDir);
-        }
-
-        ray->position =  rayPoint;
-        ray->direction = rayDir;
+    const float u = x / rsgGetWidth();
+    const float v = 1.0f - (y / rsgGetHeight());
+    const float aspect = (float) rsgGetWidth() / rsgGetHeight();
+    const float tanfov2 = 2.0f * tan(radians(cam->fov / 2.0f));
+    float3 dir = normalize(cam->at - cam->from);
+    float3 du = tanfov2 * normalize(cross(dir, cam->up));
+    float3 dv = tanfov2 * normalize(cross(du, dir));
+    du *= aspect;
+    float3 lowerLeftRay = dir - (0.5f * du) - (0.5f * dv);
+    const float3 rayPoint = cam->from;
+    const float3 rayDir = normalize(lowerLeftRay + u*du + v*dv);
+    if (debugCamera) {
+        rsDebug("Ray direction (vector math) = ", rayDir);
     }
 
-    // Matrix math.  This is more generic if we allow setting model view and projection matrices
-    // directly
-    else {
-        rs_matrix4x4 pm = modelviewMatrix;
-        rsMatrixLoadMultiply(&pm, &projectionMatrix, &modelviewMatrix);
-        if (!rsMatrixInverse(&pm)) {
-            rsDebug("ERROR: SINGULAR PM MATRIX", 0);
-            return false;
-        }
-        const float width = rsgGetWidth();
-        const float height = rsgGetHeight();
-        const float winx = 2.0f * x / width - 1.0f;
-        const float winy = 2.0f * y / height - 1.0f;
+    ray->position =  rayPoint;
+    ray->direction = rayDir;
+    return true;
+}
 
-        float4 eye = { 0.0f, 0.0f, 0.0f, 1.0f };
-        float4 at = { winx, winy, 1.0f, 1.0f };
-
-        eye = rsMatrixMultiply(&pm, eye);
-        eye *= 1.0f / eye.w;
-
-        at = rsMatrixMultiply(&pm, at);
-        at *= 1.0f / at.w;
-
-        const float3 rayPoint = { eye.x, eye.y, eye.z };
-        const float3 atPoint = { at.x, at.y, at.z };
-        const float3 rayDir = normalize(atPoint - rayPoint);
-        if (debugCamera) {
-            rsDebug("winx: ", winx);
-            rsDebug("winy: ", winy);
-            rsDebug("Ray position (transformed) = ", eye);
-            rsDebug("Ray direction (transformed) = ", rayDir);
-        }
-        ray->position =  rayPoint;
-        ray->direction = rayDir;
+// Creates a ray for an Android pixel coordinate given a model view and projection matrix.
+// Note that the Y coordinate is opposite of GL rendering coordinates.
+static bool __attribute__((overloadable))
+makeRayForPixelAt(Ray* ray, rs_matrix4x4* model, rs_matrix4x4* proj, float x, float y)
+{
+    rs_matrix4x4 pm = *model;
+    rsMatrixLoadMultiply(&pm, proj, model);
+    if (!rsMatrixInverse(&pm)) {
+        rsDebug("ERROR: SINGULAR PM MATRIX", 0);
+        return false;
     }
+    const float width = rsgGetWidth();
+    const float height = rsgGetHeight();
+    const float winx = 2.0f * x / width - 1.0f;
+    const float winy = 2.0f * y / height - 1.0f;
 
+    float4 eye = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float4 at = { winx, winy, 1.0f, 1.0f };
+
+    eye = rsMatrixMultiply(&pm, eye);
+    eye *= 1.0f / eye.w;
+
+    at = rsMatrixMultiply(&pm, at);
+    at *= 1.0f / at.w;
+
+    const float3 rayPoint = { eye.x, eye.y, eye.z };
+    const float3 atPoint = { at.x, at.y, at.z };
+    const float3 rayDir = normalize(atPoint - rayPoint);
+    if (debugCamera) {
+        rsDebug("winx: ", winx);
+        rsDebug("winy: ", winy);
+        rsDebug("Ray position (transformed) = ", eye);
+        rsDebug("Ray direction (transformed) = ", rayDir);
+    }
+    ray->position =  rayPoint;
+    ray->direction = rayDir;
     return true;
 }
 
@@ -1077,7 +1115,7 @@ static void renderWithRays()
         for (int i = 0; i < (int) w; i+=skip) {
             float posX = (float) i;
             Ray ray;
-            if (makeRayForPixelAt(&ray, posX, posY)) {
+            if (makeRayForPixelAt(&ray, &camera, posX, posY)) {
                 float bestTime = FLT_MAX;
                 if (intersectGeometry(&ray, &bestTime) != -1) {
                     rsgDrawSpriteScreenspace(posX, h - posY - 1, 0.0f, 2.0f, 2.0f);
@@ -1093,6 +1131,9 @@ int root() {
     rsgBindProgramVertex(vertexProgram);
     rsgBindProgramStore(programStore);
     rsgBindProgramRaster(rasterProgram);
+    rsgBindSampler(singleTextureFragmentProgram, 0, linearClamp);
+    rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
+    rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
 
     updateAllocationVars(cards);
 
@@ -1118,7 +1159,6 @@ int root() {
 
     updateCardResources(currentTime);
 
-    rsgBindProgramFragment(multiTextureFragmentProgram);
     stillAnimating |= drawCards(currentTime);
     stillAnimating |= drawDetails(currentTime);
 
