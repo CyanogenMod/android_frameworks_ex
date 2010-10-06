@@ -38,7 +38,7 @@ import static android.renderscript.Sampler.Value.CLAMP;
  */
 public class CarouselRS  {
     private static final int DEFAULT_VISIBLE_SLOTS = 1;
-    private static final int DEFAULT_CARD_COUNT = 1;
+    private static final int DEFAULT_CARD_COUNT = 0;
 
     // Client messages *** THIS LIST MUST MATCH THOSE IN carousel.rs ***
     public static final int CMD_CARD_SELECTED = 100;
