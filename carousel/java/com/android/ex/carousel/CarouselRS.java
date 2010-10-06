@@ -74,7 +74,7 @@ public class CarouselRS  {
     private float[] mUp = new float[3];
 
     private static final String mSingleTextureShader = new String(
-            "varying vec4 varTex0;" +
+            "varying vec2 varTex0;" +
             "void main() {" +
             "vec2 t0 = varTex0.xy;" +
             "vec4 col = texture2D(UNI_Tex0, t0);" +
@@ -82,7 +82,7 @@ public class CarouselRS  {
             "}");
 
     private static final String mMultiTextureShader = new String(
-            "varying vec4 varTex0;" +
+            "varying vec2 varTex0;" +
             "void main() {" +
             "vec2 t0 = varTex0.xy;" +
             "vec4 col = texture2D(UNI_Tex0, t0);" +
