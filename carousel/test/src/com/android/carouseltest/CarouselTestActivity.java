@@ -17,15 +17,11 @@
 package com.android.carouseltest;
 
 import com.android.carouseltest.MyCarouselView;
-import com.android.carouseltest.TaskSwitcherActivity.ActivityDescription;
 import com.android.ex.carousel.CarouselView;
 import com.android.ex.carousel.CarouselViewHelper;
-import com.android.ex.carousel.CarouselViewHelper.DetailTextureParameters;
 
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -35,7 +31,6 @@ import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.WindowManager;
 
 public class CarouselTestActivity extends Activity {
     private static final String TAG = "CarouselTestActivity";
@@ -48,6 +43,8 @@ public class CarouselTestActivity extends Activity {
     protected static final boolean DBG = false;
     private static final int DETAIL_TEXTURE_WIDTH = 200;
     private static final int DETAIL_TEXTURE_HEIGHT = 80;
+    private static final int VISIBLE_DETAIL_COUNT = 3;
+    private static final boolean INCREMENTAL_ADD = false; // To debug incrementally adding cards
     private CarouselView mView;
     private Paint mPaint = new Paint();
     private CarouselViewHelper mHelper;
@@ -109,6 +106,15 @@ public class CarouselTestActivity extends Activity {
         return getText(R.string.carousel_test_activity_description);
     }
 
+    private Runnable mAddCardRunnable = new Runnable() {
+        public void run() {
+            if (mView.getCardCount() < TOTAL_CARDS) {
+                mView.createCards(mView.getCardCount() + 1);
+                mView.postDelayed(mAddCardRunnable, 2000);
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -121,7 +127,7 @@ public class CarouselTestActivity extends Activity {
         mHelper = new LocalCarouselViewHelper(this);
         mHelper.setCarouselView(mView);
         mView.setSlotCount(CARD_SLOTS);
-        mView.createCards(TOTAL_CARDS);
+        mView.createCards(INCREMENTAL_ADD ? 1: TOTAL_CARDS);
         mView.setVisibleSlots(SLOTS_VISIBLE);
         mView.setStartAngle((float) -(2.0f*Math.PI * 5 / CARD_SLOTS));
         mBorder = BitmapFactory.decodeResource(res, R.drawable.border);
@@ -130,6 +136,10 @@ public class CarouselTestActivity extends Activity {
         mView.setBackgroundColor(0.25f, 0.25f, 0.5f, 0.5f);
         mView.setRezInCardCount(3.0f);
         mView.setFadeInDuration(250);
+        mView.setVisibleDetails(VISIBLE_DETAIL_COUNT);
+        if (INCREMENTAL_ADD) {
+            mView.postDelayed(mAddCardRunnable, 2000);
+        }
 
         mGlossyOverlay = BitmapFactory.decodeResource(res, R.drawable.glossy_overlay);
 

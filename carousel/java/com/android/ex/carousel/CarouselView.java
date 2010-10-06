@@ -62,7 +62,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private Bitmap mLoadingBitmap;
     private Bitmap mBackgroundBitmap;
     private Bitmap mDefaultLineBitmap = Bitmap.createBitmap(
-            new int[] {0x80ffffff, 0xffffffff, 0x80ffffff}, 0, 3, 3, 1, Bitmap.Config.ARGB_4444);
+            new int[] {0x00000000, 0xffffffff, 0x00000000}, 0, 3, 3, 1, Bitmap.Config.ARGB_4444);
     private Mesh mDefaultGeometry;
     private Mesh mLoadingGeometry;
     private int mCardCount = 0;
