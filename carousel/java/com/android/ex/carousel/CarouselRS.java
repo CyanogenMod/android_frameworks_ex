@@ -38,7 +38,7 @@ import static android.renderscript.Sampler.Value.CLAMP;
  */
 public class CarouselRS  {
     private static final int DEFAULT_VISIBLE_SLOTS = 1;
-    private static final int DEFAULT_CARD_COUNT = 1;
+    private static final int DEFAULT_CARD_COUNT = 0;
 
     // Client messages *** THIS LIST MUST MATCH THOSE IN carousel.rs ***
     public static final int CMD_CARD_SELECTED = 100;
@@ -74,7 +74,7 @@ public class CarouselRS  {
     private float[] mUp = new float[3];
 
     private static final String mSingleTextureShader = new String(
-            "varying vec4 varTex0;" +
+            "varying vec2 varTex0;" +
             "void main() {" +
             "vec2 t0 = varTex0.xy;" +
             "vec4 col = texture2D(UNI_Tex0, t0);" +
@@ -82,7 +82,7 @@ public class CarouselRS  {
             "}");
 
     private static final String mMultiTextureShader = new String(
-            "varying vec4 varTex0;" +
+            "varying vec2 varTex0;" +
             "void main() {" +
             "vec2 t0 = varTex0.xy;" +
             "vec4 col = texture2D(UNI_Tex0, t0);" +
