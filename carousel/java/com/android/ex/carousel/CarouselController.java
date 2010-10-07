@@ -65,6 +65,7 @@ public class CarouselController {
     private float mStartAngle;
     private float mRadius = DEFAULT_RADIUS;
     private float mCardRotation = 0.0f;
+    private boolean mCardsFaceTangent = false;
     private float mSwaySensitivity = DEFAULT_SWAY_SENSITIVITY;
     private float mFrictionCoefficient = DEFAULT_FRICTION_COEFFICIENT;
     private float mDragFactor = DEFAULT_DRAG_FACTOR;
@@ -107,6 +108,7 @@ public class CarouselController {
         setStartAngle(mStartAngle);
         setRadius(mRadius);
         setCardRotation(mCardRotation);
+        setCardsFaceTangent(mCardsFaceTangent);
         setSwaySensitivity(mSwaySensitivity);
         setFrictionCoefficient(mFrictionCoefficient);
         setDragFactor(mDragFactor);
@@ -416,6 +418,13 @@ public class CarouselController {
         mCardRotation = cardRotation;
         if (mRenderScript != null) {
             mRenderScript.setCardRotation(cardRotation);
+        }
+    }
+
+    public void setCardsFaceTangent(boolean faceTangent) {
+        mCardsFaceTangent = faceTangent;
+        if (mRenderScript != null) {
+            mRenderScript.setCardsFaceTangent(faceTangent);
         }
     }
 

@@ -248,6 +248,10 @@ public class CarouselRS  {
         mScript.set_cardRotation(cardRotation);
     }
 
+    public void setCardsFaceTangent(boolean faceTangent) {
+        mScript.set_cardsFaceTangent(faceTangent);
+    }
+
     public void setSwaySensitivity(float swaySensitivity) {
         mScript.set_swaySensitivity(swaySensitivity);
     }

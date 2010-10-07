@@ -342,6 +342,10 @@ public abstract class MVCCarouselView extends RSSurfaceView {
         mController.setCardRotation(cardRotation);
     }
 
+    public void setCardsFaceTangent(boolean faceTangent) {
+        mController.setCardsFaceTangent(faceTangent);
+    }
+
     public void setSwaySensitivity(float swaySensitivity) {
         mController.setSwaySensitivity(swaySensitivity);
     }
