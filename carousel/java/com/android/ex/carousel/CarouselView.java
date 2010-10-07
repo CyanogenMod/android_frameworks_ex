@@ -113,15 +113,17 @@ public abstract class CarouselView extends RSSurfaceView {
         if (mRS == null) {
             mRS = createRenderScript(USE_DEPTH_BUFFER);
         }
-        mRenderScript = new CarouselRS();
-        mRenderScript.init(mRS, getResources(), getRenderScriptInfo().resId);
+        if (mRenderScript == null) {
+            mRenderScript = new CarouselRS(mRS, getResources(), getRenderScriptInfo().resId);
+            mRenderScript.resumeRendering();
+        }
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
         super.surfaceChanged(holder, format, w, h);
         //mRS.contextSetSurface(w, h, holder.getSurface());
-        mRenderScript.init(mRS, getResources(), getRenderScriptInfo().resId);
+        mRenderScript.resumeRendering();
         setSlotCount(mSlotCount);
         createCards(mCardCount);
         setVisibleSlots(mVisibleSlots);

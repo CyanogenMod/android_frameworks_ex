@@ -69,9 +69,9 @@ public class CarouselRS  {
     private ProgramVertex mVertexProgram;
     private ProgramRaster mRasterProgram;
     private CarouselCallback mCallback;
-    private float[] mEyePoint = new float[3];
-    private float[] mAtPoint = new float[3];
-    private float[] mUp = new float[3];
+    private float[] mEyePoint = new float[] { 2.0f, 0.0f, 0.0f };
+    private float[] mAtPoint = new float[] { 0.0f, 0.0f, 0.0f };
+    private float[] mUp = new float[] { 0.0f, 1.0f, 0.0f };
 
     private static final String mSingleTextureShader = new String(
             "varying vec2 varTex0;" +
@@ -210,42 +210,25 @@ public class CarouselRS  {
         }
     };
 
-    public void init(RenderScriptGL rs, Resources res, int resId) {
+    public CarouselRS(RenderScriptGL rs, Resources res, int resId) {
         mRS = rs;
         mRes = res;
 
         // create the script object
         mScript = new ScriptC_carousel(mRS, mRes, resId, true);
         mRS.mMessageCallback = mRsMessage;
-
         initProgramStore();
         initFragmentProgram();
         initRasterProgram();
         initVertexProgram();
-
         setSlotCount(DEFAULT_SLOT_COUNT);
         setVisibleSlots(DEFAULT_VISIBLE_SLOTS);
         createCards(DEFAULT_CARD_COUNT);
-
         setStartAngle(0.0f);
         setRadius(1.0f);
-
-        // update the camera
-        boolean pcam = true;
-        if (pcam) {
-            float eye[] = { 20.6829f, 2.77081f, 16.7314f };
-            float at[] = { 14.7255f, -3.40001f, -1.30184f };
-            float up[] = { 0.0f, 1.0f, 0.0f };
-            setLookAt(eye, at, up);
-            setRadius(20.0f);
-            // Fov: 25
-        } else {
-            mScript.invoke_lookAt(2.5f, 2.0f, 2.5f, 0.0f, -0.75f, 0.0f,  0.0f, 1.0f, 0.0f);
-            mScript.set_cardRotation(0.0f);
-            setRadius(1.5f);
-        }
-
-        resumeRendering();
+        setLookAt(mEyePoint, mAtPoint, mUp);
+        setRadius(20.0f);
+        // Fov: 25
     }
 
     public void setLookAt(float[] eye, float[] at, float[] up) {
