@@ -449,8 +449,8 @@ static float getSwayAngleForVelocity(float v, bool enableSway)
     float sway = 0.0f;
 
     if (enableSway) {
-        const float range = M_PI; // How far we can deviate from center, peak-to-peak
-        sway = M_PI * (logistic(-v * swaySensitivity) - 0.5f);
+        const float range = M_PI * 2./3.; // How far we can deviate from center, peak-to-peak
+        sway = range * (logistic(-v * swaySensitivity) - 0.5f);
     }
 
     return sway;
