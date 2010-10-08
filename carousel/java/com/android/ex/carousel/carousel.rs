@@ -127,15 +127,6 @@ rs_matrix4x4 modelviewMatrix;
 FragmentShaderConstants* shaderConstants;
 rs_sampler linearClamp;
 
-#pragma rs export_var(radius, cards, tmpCards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
-#pragma rs export_var(cardsFaceTangent, swaySensitivity, frictionCoeff, dragFactor)
-#pragma rs export_var(visibleDetailCount, drawDetailBelowCard, drawRuler)
-#pragma rs export_var(programStore, vertexProgram, rasterProgram)
-#pragma rs export_var(singleTextureFragmentProgram, multiTextureFragmentProgram)
-#pragma rs export_var(detailLineTexture, detailLoadingTexture, backgroundTexture)
-#pragma rs export_var(linearClamp, shaderConstants)
-#pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
-#pragma rs export_var(fadeInDuration, rezInCardCount)
 #pragma rs export_func(createCards, copyCards, lookAt)
 #pragma rs export_func(doStart, doStop, doMotion, doLongPress, doSelection)
 #pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera, debugPicking)
@@ -145,7 +136,7 @@ rs_sampler linearClamp;
 static float bias; // rotation bias, in radians. Used for animation and dragging.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
 static bool initialized;
-static float4 backgroundColor;
+float4 backgroundColor;
 static const float FLT_MAX = 1.0e37;
 static int currentSelection = -1;
 static int currentFirstCard = -1;
