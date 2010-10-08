@@ -102,6 +102,7 @@ bool drawDetailBelowCard; // whether detail goes above (false) or below (true) t
 bool drawRuler; // whether to draw a ruler from the card to the detail texture
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
+bool cardsFaceTangent; // whether cards are rotated to face along a tangent to the circle
 float swaySensitivity; // how much to rotate cards in relation to the rotation velocity
 float frictionCoeff; // how much to slow down the carousel over time
 float dragFactor; // a scale factor for how sensitive the carousel is to user dragging
@@ -126,7 +127,7 @@ FragmentShaderConstants* shaderConstants;
 rs_sampler linearClamp;
 
 #pragma rs export_var(radius, cards, tmpCards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
-#pragma rs export_var(swaySensitivity, frictionCoeff, dragFactor)
+#pragma rs export_var(cardsFaceTangent, swaySensitivity, frictionCoeff, dragFactor)
 #pragma rs export_var(visibleDetailCount, drawDetailBelowCard, drawRuler)
 #pragma rs export_var(programStore, vertexProgram, rasterProgram)
 #pragma rs export_var(singleTextureFragmentProgram, multiTextureFragmentProgram)
@@ -193,6 +194,7 @@ void init() {
     bias = 0.0f;
     radius = 1.0f;
     cardRotation = 0.0f;
+    cardsFaceTangent = false;
     updateCamera = true;
     initialized = false;
     backgroundColor = (float4) { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -461,7 +463,11 @@ static void getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
     float swayAngle = getSwayAngleForVelocity(velocity, enableSway);
     rsMatrixRotate(matrix, degrees(theta), 0, 1, 0);
     rsMatrixTranslate(matrix, radius, 0, 0);
-    rsMatrixRotate(matrix, degrees(-theta + cardRotation + swayAngle), 0, 1, 0);
+    float rotation = cardRotation + swayAngle;
+    if (!cardsFaceTangent) {
+      rotation -= theta;
+    }
+    rsMatrixRotate(matrix, degrees(rotation), 0, 1, 0);
     if (i == currentSelection) {
         float3 scale = getAnimatedScaleForSelected();
         rsMatrixScale(matrix, scale.x, scale.y, scale.z);

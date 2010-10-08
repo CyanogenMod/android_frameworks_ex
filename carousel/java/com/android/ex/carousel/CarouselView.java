@@ -73,6 +73,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private float mStartAngle;
     private float mRadius = DEFAULT_RADIUS;
     private float mCardRotation = 0.0f;
+    private boolean mCardsFaceTangent = false;
     private float mSwaySensitivity = DEFAULT_SWAY_SENSITIVITY;
     private float mFrictionCoefficient = DEFAULT_FRICTION_COEFFICIENT;
     private float mDragFactor = DEFAULT_DRAG_FACTOR;
@@ -113,15 +114,17 @@ public abstract class CarouselView extends RSSurfaceView {
         if (mRS == null) {
             mRS = createRenderScript(USE_DEPTH_BUFFER);
         }
-        mRenderScript = new CarouselRS();
-        mRenderScript.init(mRS, getResources(), getRenderScriptInfo().resId);
+        if (mRenderScript == null) {
+            mRenderScript = new CarouselRS(mRS, getResources(), getRenderScriptInfo().resId);
+            mRenderScript.resumeRendering();
+        }
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
         super.surfaceChanged(holder, format, w, h);
         //mRS.contextSetSurface(w, h, holder.getSurface());
-        mRenderScript.init(mRS, getResources(), getRenderScriptInfo().resId);
+        mRenderScript.resumeRendering();
         setSlotCount(mSlotCount);
         createCards(mCardCount);
         setVisibleSlots(mVisibleSlots);
@@ -140,6 +143,7 @@ public abstract class CarouselView extends RSSurfaceView {
         setStartAngle(mStartAngle);
         setRadius(mRadius);
         setCardRotation(mCardRotation);
+        setCardsFaceTangent(mCardsFaceTangent);
         setSwaySensitivity(mSwaySensitivity);
         setFrictionCoefficient(mFrictionCoefficient);
         setDragFactor(mDragFactor);
@@ -450,6 +454,13 @@ public abstract class CarouselView extends RSSurfaceView {
         mCardRotation = cardRotation;
         if (mRenderScript != null) {
             mRenderScript.setCardRotation(cardRotation);
+        }
+    }
+
+    public void setCardsFaceTangent(boolean faceTangent) {
+        mCardsFaceTangent = faceTangent;
+        if (mRenderScript != null) {
+          mRenderScript.setCardsFaceTangent(faceTangent);
         }
     }
 

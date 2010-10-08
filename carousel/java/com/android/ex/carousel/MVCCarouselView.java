@@ -87,9 +87,12 @@ public abstract class MVCCarouselView extends RSSurfaceView {
         if (mRS == null) {
             mRS = createRenderScript(USE_DEPTH_BUFFER);
         }
-        mRenderScript = new CarouselRS();
-        mRenderScript.init(mRS, getResources(), getRenderScriptInfo().resId);
-        mController.setRS(mRS, mRenderScript);
+        if (mRenderScript == null) {
+            mRenderScript = new CarouselRS(mRS, mContext.getResources(),
+                    getRenderScriptInfo().resId);
+            mRenderScript.resumeRendering();
+            mController.setRS(mRS, mRenderScript);
+        }
     }
 
     @Override
@@ -337,6 +340,10 @@ public abstract class MVCCarouselView extends RSSurfaceView {
 
     public void setCardRotation(float cardRotation) {
         mController.setCardRotation(cardRotation);
+    }
+
+    public void setCardsFaceTangent(boolean faceTangent) {
+        mController.setCardsFaceTangent(faceTangent);
     }
 
     public void setSwaySensitivity(float swaySensitivity) {
