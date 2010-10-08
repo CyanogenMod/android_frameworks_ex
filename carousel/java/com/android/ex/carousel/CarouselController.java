@@ -393,6 +393,13 @@ public class CarouselController {
     }
 
     /**
+     * Gets the callback for receiving events from Renderscript.
+     */
+    public CarouselCallback getCallback() {
+        return mCarouselCallback;
+    }
+
+    /**
      * Sets the startAngle for the Carousel. The start angle is the first position of the first
      * slot draw.  Cards will be drawn from this angle in a counter-clockwise manner around the
      * Carousel.
@@ -511,6 +518,13 @@ public class CarouselController {
      */
     public void onTouchMoved(float x, float y) {
         mRenderScript.doMotion(x, y);
+    }
+
+    /**
+     * Tells the carousel that the user has long-pressed.
+     */
+    public void onLongPress() {
+        mRenderScript.doLongPress();
     }
 
     /**

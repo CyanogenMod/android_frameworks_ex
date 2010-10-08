@@ -66,6 +66,7 @@ enum {
 
 // Client messages *** THIS LIST MUST MATCH THOSE IN CarouselRS.java. ***
 static const int CMD_CARD_SELECTED = 100;
+static const int CMD_CARD_LONGPRESS = 110;
 static const int CMD_REQUEST_TEXTURE = 200;
 static const int CMD_INVALIDATE_TEXTURE = 210;
 static const int CMD_REQUEST_GEOMETRY = 300;
@@ -135,7 +136,8 @@ rs_sampler linearClamp;
 #pragma rs export_var(linearClamp, shaderConstants)
 #pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
 #pragma rs export_var(fadeInDuration, rezInCardCount)
-#pragma rs export_func(createCards, copyCards, lookAt, doStart, doStop, doMotion, doSelection)
+#pragma rs export_func(createCards, copyCards, lookAt)
+#pragma rs export_func(doStart, doStop, doMotion, doLongPress, doSelection)
 #pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera, debugPicking)
 #pragma rs export_func(requestFirstCardPosition)
 
@@ -797,6 +799,20 @@ void doStop(float x, float y)
             animating = true;
             rsSendToClient(CMD_ANIMATION_STARTED);
         }
+    }
+    currentSelection = -1;
+    lastTime = rsUptimeMillis();
+}
+
+void doLongPress()
+{
+    int64_t currentTime = rsUptimeMillis();
+    updateAllocationVars(cards);
+    if (currentSelection != -1) {
+        // rsDebug("HIT!", currentSelection);
+        int data[1];
+        data[0] = currentSelection;
+        rsSendToClientBlocking(CMD_CARD_LONGPRESS, data, sizeof(data));
     }
     currentSelection = -1;
     lastTime = rsUptimeMillis();
