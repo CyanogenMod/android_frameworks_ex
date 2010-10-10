@@ -42,6 +42,7 @@ public class CarouselRS  {
 
     // Client messages *** THIS LIST MUST MATCH THOSE IN carousel.rs ***
     public static final int CMD_CARD_SELECTED = 100;
+    public static final int CMD_CARD_LONGPRESS = 110;
     public static final int CMD_REQUEST_TEXTURE = 200;
     public static final int CMD_INVALIDATE_TEXTURE = 210;
     public static final int CMD_REQUEST_GEOMETRY = 300;
@@ -95,6 +96,12 @@ public class CarouselRS  {
          * @param n the id of the card
          */
         void onCardSelected(int n);
+
+        /**
+         * Called when a card is long-pressed
+         * @param n the id of the card
+         */
+        void onCardLongPress(int n);
 
         /**
          * Called when texture is needed for card n.  This happens when the given card becomes
@@ -159,6 +166,10 @@ public class CarouselRS  {
             switch (mID) {
                 case CMD_CARD_SELECTED:
                     mCallback.onCardSelected(mData[0]);
+                    break;
+
+                case CMD_CARD_LONGPRESS:
+                    mCallback.onCardLongPress(mData[0]);
                     break;
 
                 case CMD_REQUEST_TEXTURE:
@@ -533,6 +544,10 @@ public class CarouselRS  {
 
     public void resumeRendering() {
         mRS.contextBindRootScript(mScript);
+    }
+
+    public void doLongPress() {
+        mScript.invoke_doLongPress();
     }
 
     public void doMotion(float x, float y) {

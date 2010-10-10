@@ -66,6 +66,7 @@ enum {
 
 // Client messages *** THIS LIST MUST MATCH THOSE IN CarouselRS.java. ***
 static const int CMD_CARD_SELECTED = 100;
+static const int CMD_CARD_LONGPRESS = 110;
 static const int CMD_REQUEST_TEXTURE = 200;
 static const int CMD_INVALIDATE_TEXTURE = 210;
 static const int CMD_REQUEST_GEOMETRY = 300;
@@ -126,16 +127,8 @@ rs_matrix4x4 modelviewMatrix;
 FragmentShaderConstants* shaderConstants;
 rs_sampler linearClamp;
 
-#pragma rs export_var(radius, cards, tmpCards, slotCount, visibleSlotCount, cardRotation, backgroundColor)
-#pragma rs export_var(cardsFaceTangent, swaySensitivity, frictionCoeff, dragFactor)
-#pragma rs export_var(visibleDetailCount, drawDetailBelowCard, drawRuler)
-#pragma rs export_var(programStore, vertexProgram, rasterProgram)
-#pragma rs export_var(singleTextureFragmentProgram, multiTextureFragmentProgram)
-#pragma rs export_var(detailLineTexture, detailLoadingTexture, backgroundTexture)
-#pragma rs export_var(linearClamp, shaderConstants)
-#pragma rs export_var(startAngle, defaultTexture, loadingTexture, defaultGeometry, loadingGeometry)
-#pragma rs export_var(fadeInDuration, rezInCardCount)
-#pragma rs export_func(createCards, copyCards, lookAt, doStart, doStop, doMotion, doSelection)
+#pragma rs export_func(createCards, copyCards, lookAt)
+#pragma rs export_func(doStart, doStop, doMotion, doLongPress, doSelection)
 #pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera, debugPicking)
 #pragma rs export_func(requestFirstCardPosition)
 
@@ -143,7 +136,7 @@ rs_sampler linearClamp;
 static float bias; // rotation bias, in radians. Used for animation and dragging.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
 static bool initialized;
-static float4 backgroundColor;
+float4 backgroundColor;
 static const float FLT_MAX = 1.0e37;
 static int currentSelection = -1;
 static int currentFirstCard = -1;
@@ -447,8 +440,8 @@ static float getSwayAngleForVelocity(float v, bool enableSway)
     float sway = 0.0f;
 
     if (enableSway) {
-        const float range = M_PI; // How far we can deviate from center, peak-to-peak
-        sway = M_PI * (logistic(-v * swaySensitivity) - 0.5f);
+        const float range = M_PI * 2./3.; // How far we can deviate from center, peak-to-peak
+        sway = range * (logistic(-v * swaySensitivity) - 0.5f);
     }
 
     return sway;
@@ -797,6 +790,20 @@ void doStop(float x, float y)
             animating = true;
             rsSendToClient(CMD_ANIMATION_STARTED);
         }
+    }
+    currentSelection = -1;
+    lastTime = rsUptimeMillis();
+}
+
+void doLongPress()
+{
+    int64_t currentTime = rsUptimeMillis();
+    updateAllocationVars(cards);
+    if (currentSelection != -1) {
+        // rsDebug("HIT!", currentSelection);
+        int data[1];
+        data[0] = currentSelection;
+        rsSendToClientBlocking(CMD_CARD_LONGPRESS, data, sizeof(data));
     }
     currentSelection = -1;
     lastTime = rsUptimeMillis();

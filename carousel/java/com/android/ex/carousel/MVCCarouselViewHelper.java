@@ -252,6 +252,10 @@ public class MVCCarouselViewHelper implements CarouselCallback {
         if (DBG) Log.v(TAG, "onCardSelected(" + n + ")");
     }
 
+    public void onCardLongPress(int n) {
+        if (DBG) Log.v(TAG, "onCardLongPress(" + n + ")");
+    }
+
     public void onAnimationStarted() {
 
     }

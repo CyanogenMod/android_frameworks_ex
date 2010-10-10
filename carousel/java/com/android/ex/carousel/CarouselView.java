@@ -16,6 +16,7 @@
 
 package com.android.ex.carousel;
 
+import android.view.View;
 import com.android.ex.carousel.CarouselRS.CarouselCallback;
 
 import android.content.Context;
@@ -108,6 +109,17 @@ public abstract class CarouselView extends RSSurfaceView {
         boolean useDepthBuffer = true;
         ensureRenderScript();
         // TODO: add parameters to layout
+
+        setOnLongClickListener(new OnLongClickListener() {
+            public boolean onLongClick(View v) {
+                if (interpretLongPressEvents()) {
+                    mRenderScript.doLongPress();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
     }
 
     private void ensureRenderScript() {
@@ -151,6 +163,17 @@ public abstract class CarouselView extends RSSurfaceView {
         setRezInCardCount(mRezInCardCount);
         setFadeInDuration(mFadeInDuration);
         setDetailLoadingBitmap(mDetailLoadingBitmap);
+    }
+
+    /**
+     * Do I want to interpret the long-press gesture? If so, long-presses will cancel the
+     * current selection and call the appropriate callbacks. Otherwise, a long press will
+     * not be handled any way other than as a continued drag.
+     *
+     * @return True if we interpret long-presses
+     */
+    public boolean interpretLongPressEvents() {
+        return false;
     }
 
     /**
@@ -549,6 +572,7 @@ public abstract class CarouselView extends RSSurfaceView {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        super.onTouchEvent(event);
         final int action = event.getAction();
         final float x = event.getX();
         final float y = event.getY();
