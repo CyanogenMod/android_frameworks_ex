@@ -368,8 +368,17 @@ public class CarouselRS  {
         mScript.set_visibleDetailCount(count);
     }
 
+    public void setPrefetchCardCount(int count) {
+        mScript.set_prefetchCardCount(count);
+    }
+
+
     public void setDrawDetailBelowCard(boolean below) {
         mScript.set_drawDetailBelowCard(below);
+    }
+
+    public void setDetailTexturesCentered(boolean centered) {
+        mScript.set_detailTexturesCentered(centered);
     }
 
     public void setDrawRuler(boolean drawRuler) {
