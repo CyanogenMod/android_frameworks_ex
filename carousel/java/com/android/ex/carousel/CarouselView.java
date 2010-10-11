@@ -124,7 +124,9 @@ public abstract class CarouselView extends RSSurfaceView {
 
     private void ensureRenderScript() {
         if (mRS == null) {
-            mRS = createRenderScript(USE_DEPTH_BUFFER);
+            RenderScriptGL.SurfaceConfig sc = new RenderScriptGL.SurfaceConfig();
+            sc.setDepth(16, 24);
+            mRS = createRenderScript(sc);
         }
         if (mRenderScript == null) {
             mRenderScript = new CarouselRS(mRS, getResources(), getRenderScriptInfo().resId);
