@@ -709,11 +709,6 @@ static void drawBackground()
 {
     static bool toggle;
     if (backgroundTexture.p != 0) {
-        // Unfortunately, we also need to clear the background because some textures may be
-        // drawn with alpha. This takes about 1ms-2ms in my tests. May be worth optimizing at
-        // some point.
-        rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w);
-
         rsgClearDepth(1.0f);
         rs_matrix4x4 projection, model;
         rsMatrixLoadOrtho(&projection, -1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f);
