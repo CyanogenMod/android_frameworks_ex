@@ -20,16 +20,9 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.renderscript.*;
 import android.renderscript.RenderScript.RSMessage;
-import android.renderscript.Sampler.Value;
-import android.renderscript.ProgramRaster.CullMode;
 import android.util.Log;
 
-import com.android.internal.R;
-
 import static android.renderscript.Element.*;
-import static android.renderscript.Sampler.Value.LINEAR;
-import static android.renderscript.Sampler.Value.WRAP;
-import static android.renderscript.Sampler.Value.CLAMP;
 
 /**
  * This is a support class for Carousel renderscript.  It handles most of the low-level interactions
@@ -65,6 +58,7 @@ public class CarouselRS  {
     private ScriptField_Card mCards;
     private ScriptField_FragmentShaderConstants_s mFSConst;
     private ProgramStore mProgramStore;
+    private ProgramStore mProgramStoreOpaque;
     private ProgramFragment mSingleTextureFragmentProgram;
     private ProgramFragment mMultiTextureFragmentProgram;
     private ProgramVertex mVertexProgram;
@@ -336,6 +330,11 @@ public class CarouselRS  {
         programStoreBuilder.setDepthMask(true);
         mProgramStore = programStoreBuilder.create();
         mScript.set_programStore(mProgramStore);
+
+        programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
+                ProgramStore.BlendDstFunc.ZERO);
+        mProgramStoreOpaque = programStoreBuilder.create();
+        mScript.set_programStoreOpaque(mProgramStoreOpaque);
     }
 
     public void createCards(int count)
@@ -379,6 +378,10 @@ public class CarouselRS  {
 
     public void setDetailTexturesCentered(boolean centered) {
         mScript.set_detailTexturesCentered(centered);
+    }
+
+    public void setDrawCardsWithBlending(boolean enabled) {
+        mScript.set_drawCardsWithBlending(enabled);
     }
 
     public void setDrawRuler(boolean drawRuler) {

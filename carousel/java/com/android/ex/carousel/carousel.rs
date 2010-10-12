@@ -103,6 +103,7 @@ int prefetchCardCount; // how many cards to keep in memory
 bool drawDetailBelowCard; // whether detail goes above (false) or below (true) the card
 // TODO(jshuma): Replace detailTexturesCentered with a detailTextureAlignment mode enum
 bool detailTexturesCentered; // line up detail center and card center (instead of left edges)
+bool drawCardsWithBlending; // Enable blending while drawing cards (for translucent card textures)
 bool drawRuler; // whether to draw a ruler from the card to the detail texture
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
@@ -114,6 +115,7 @@ int fadeInDuration; // amount of time (in ms) for smoothly switching out texture
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
 float detailFadeRate; // rate at which details fade as they move into the distance
 rs_program_store programStore;
+rs_program_store programStoreOpaque;
 rs_program_fragment singleTextureFragmentProgram;
 rs_program_fragment multiTextureFragmentProgram;
 rs_program_vertex vertexProgram;
@@ -1226,7 +1228,6 @@ int root() {
     int64_t currentTime = rsUptimeMillis();
 
     rsgBindProgramVertex(vertexProgram);
-    rsgBindProgramStore(programStore);
     rsgBindProgramRaster(rasterProgram);
     rsgBindSampler(singleTextureFragmentProgram, 0, linearClamp);
     rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
@@ -1246,6 +1247,7 @@ int root() {
     }
 
     rsgBindProgramFragment(singleTextureFragmentProgram);
+    rsgBindProgramStore(programStoreOpaque);
     drawBackground();
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
@@ -1257,8 +1259,17 @@ int root() {
 
     updateCardResources(currentTime);
 
-    stillAnimating |= drawCards(currentTime);
-    stillAnimating |= drawDetails(currentTime);
+    // Draw cards opaque only if requested, and always draw detail textures with blending.
+    if (drawCardsWithBlending) {
+        rsgBindProgramStore(programStore);
+        stillAnimating |= drawCards(currentTime);
+        stillAnimating |= drawDetails(currentTime);
+    } else {
+        // programStoreOpaque is already bound
+        stillAnimating |= drawCards(currentTime);
+        rsgBindProgramStore(programStore);
+        stillAnimating |= drawDetails(currentTime);
+    }
 
     if (debugPicking) {
         renderWithRays();

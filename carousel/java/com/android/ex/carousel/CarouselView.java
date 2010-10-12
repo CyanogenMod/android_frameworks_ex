@@ -73,6 +73,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private int mPrefetchCardCount = DEFAULT_PREFETCH_CARD_COUNT;
     private boolean mDrawDetailBelowCard = false;
     private boolean mDetailTexturesCentered = false;
+    private boolean mDrawCardsWithBlending = true;
     private boolean mDrawRuler = true;
     private float mStartAngle;
     private float mRadius = DEFAULT_RADIUS;
@@ -284,6 +285,13 @@ public abstract class CarouselView extends RSSurfaceView {
         mDetailTexturesCentered = centered;
         if (mRenderScript != null) {
             mRenderScript.setDetailTexturesCentered(centered);
+        }
+    }
+
+    public void setDrawCardsWithBlending(boolean enabled) {
+        mDrawCardsWithBlending = enabled;
+        if (mRenderScript != null) {
+            mRenderScript.setDrawCardsWithBlending(enabled);
         }
     }
 

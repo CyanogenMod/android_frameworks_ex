@@ -217,6 +217,17 @@ public abstract class MVCCarouselView extends RSSurfaceView {
     }
 
     /**
+     * Set whether blending is enabled while drawing the card textures. This should be true when
+     * translucent cards need to be supported, and false when all cards are fully opaque. Setting
+     * to false provides a performance boost.
+     *
+     * @param enabled True to enable blending, and false to disable it.
+     */
+    public void setDrawCardsWithBlending(boolean enabled) {
+        mController.setDrawCardsWithBlending(enabled);
+    }
+
+    /**
      * Set whether to draw a ruler from the card to the detail texture
      *
      * @param drawRuler True to draw a ruler, false to draw nothing where the ruler would go.

@@ -64,6 +64,7 @@ public class CarouselController {
     private int mPrefetchCardCount = DEFAULT_PREFETCH_CARD_COUNT;
     private boolean mDrawDetailBelowCard = false;
     private boolean mDetailTexturesCentered = false;
+    private boolean mDrawCardsWithBlending = true;
     private boolean mDrawRuler = true;
     private float mStartAngle;
     private float mRadius = DEFAULT_RADIUS;
@@ -223,6 +224,20 @@ public class CarouselController {
         mDetailTexturesCentered = centered;
         if (mRenderScript != null) {
             mRenderScript.setDetailTexturesCentered(centered);
+        }
+    }
+
+    /**
+     * Set whether blending is enabled while drawing the card textures. This should be true when
+     * translucent cards need to be supported, and false when all cards are fully opaque. Setting
+     * to false provides a performance boost.
+     *
+     * @param enabled True to enable blending, and false to disable it.
+     */
+    public void setDrawCardsWithBlending(boolean enabled) {
+        mDrawCardsWithBlending = enabled;
+        if (mRenderScript != null) {
+            mRenderScript.setDrawCardsWithBlending(enabled);
         }
     }
 
