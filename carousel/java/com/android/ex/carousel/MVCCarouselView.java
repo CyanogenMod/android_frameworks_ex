@@ -176,6 +176,19 @@ public abstract class MVCCarouselView extends RSSurfaceView {
     }
 
     /**
+     * Set the number of cards to pre-load that are outside of the visible region, as determined by
+     * setVisibleSlots(). This number gets added to the number of visible slots and used to
+     * determine when resources for cards should be loaded. This number should be small (n <= 4)
+     * for systems with limited texture memory or views that show more than half dozen cards in the
+     * view.
+     *
+     * @param n the number of cards; should be even, so the count is the same on each side
+     */
+    public void setPrefetchCardCount(int n) {
+        mController.setPrefetchCardCount(n);
+    }
+
+    /**
      * Set the number of detail textures that can be visible at one time.
      *
      * @param n the number of slots
@@ -191,6 +204,27 @@ public abstract class MVCCarouselView extends RSSurfaceView {
      */
     public void setDrawDetailBelowCard(boolean below) {
         mController.setDrawDetailBelowCard(below);
+    }
+
+    /**
+     * Set whether to align the detail texture center with the card center.
+     * If not, left edges will be aligned instead.
+     *
+     * @param centered True for center-aligned, false for left-aligned.
+     */
+    public void setDetailTexturesCentered(boolean centered) {
+        mController.setDetailTexturesCentered(centered);
+    }
+
+    /**
+     * Set whether blending is enabled while drawing the card textures. This should be true when
+     * translucent cards need to be supported, and false when all cards are fully opaque. Setting
+     * to false provides a performance boost.
+     *
+     * @param enabled True to enable blending, and false to disable it.
+     */
+    public void setDrawCardsWithBlending(boolean enabled) {
+        mController.setDrawCardsWithBlending(enabled);
     }
 
     /**

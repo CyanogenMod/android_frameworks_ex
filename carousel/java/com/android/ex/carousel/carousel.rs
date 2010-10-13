@@ -99,7 +99,11 @@ int slotCount; // number of positions where a card can be
 int cardCount; // number of cards in stack
 int visibleSlotCount; // number of visible slots (for culling)
 int visibleDetailCount; // number of visible detail textures to show
+int prefetchCardCount; // how many cards to keep in memory
 bool drawDetailBelowCard; // whether detail goes above (false) or below (true) the card
+// TODO(jshuma): Replace detailTexturesCentered with a detailTextureAlignment mode enum
+bool detailTexturesCentered; // line up detail center and card center (instead of left edges)
+bool drawCardsWithBlending; // Enable blending while drawing cards (for translucent card textures)
 bool drawRuler; // whether to draw a ruler from the card to the detail texture
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
@@ -111,6 +115,7 @@ int fadeInDuration; // amount of time (in ms) for smoothly switching out texture
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
 float detailFadeRate; // rate at which details fade as they move into the distance
 rs_program_store programStore;
+rs_program_store programStoreOpaque;
 rs_program_fragment singleTextureFragmentProgram;
 rs_program_fragment multiTextureFragmentProgram;
 rs_program_vertex vertexProgram;
@@ -536,6 +541,28 @@ static bool drawCards(int64_t currentTime)
     return stillAnimating;
 }
 
+/**
+ * Convert projection from normalized coordinates to pixel coordinates.
+ *
+ * @return True on success, false on failure.
+ */
+static bool convertNormalizedToPixelCoordinates(float4 *screenCoord, float width, float height) {
+    // This is probably cheaper than pre-multiplying with another matrix.
+    if (screenCoord->w == 0.0f) {
+        rsDebug("Bad transform while converting from normalized to pixel coordinates: ",
+            screenCoord);
+        return false;
+    }
+    *screenCoord *= 1.0f / screenCoord->w;
+    screenCoord->x += 1.0f;
+    screenCoord->y += 1.0f;
+    screenCoord->z += 1.0f;
+    screenCoord->x = round(screenCoord->x * 0.5f * width);
+    screenCoord->y = round(screenCoord->y * 0.5f * height);
+    screenCoord->z = - 0.5f * screenCoord->z;
+    return true;
+}
+
 /*
  * Draws a screen-aligned card with the exact dimensions from the detail texture.
  * This is used to display information about the object being displayed above the geomertry.
@@ -572,18 +599,41 @@ static bool drawDetails(int64_t currentTime)
             if (cards[i].detailTextureState == STATE_LOADED && cards[i].detailTexture.p != 0) {
                 const float lineWidth = rsAllocationGetDimX(detailLineTexture);
 
-                // Compute position in screen space of upper left corner of card
+                // Compute position in screen space of top corner or bottom corner of card
                 rsMatrixLoad(&model, &modelviewMatrix);
                 getMatrixForCard(&model, i, false);
                 rs_matrix4x4 matrix;
                 rsMatrixLoadMultiply(&matrix, &projectionMatrix, &model);
 
-                float4 screenCoord = rsMatrixMultiply(&matrix,
-                    cardVertices[drawDetailBelowCard ? 0 : 3]);
-                if (screenCoord.w == 0.0f) {
+                int indexLeft, indexRight;
+                float4 screenCoord;
+                if (drawDetailBelowCard) {
+                    indexLeft = 0;
+                    indexRight = 1;
+                } else {
+                    indexLeft = 3;
+                    indexRight = 2;
+                }
+                float4 screenCoordLeft = rsMatrixMultiply(&matrix, cardVertices[indexLeft]);
+                float4 screenCoordRight = rsMatrixMultiply(&matrix, cardVertices[indexRight]);
+                if (screenCoordLeft.w == 0.0f || screenCoordRight.w == 0.0f) {
                     // this shouldn't happen
                     rsDebug("Bad transform: ", screenCoord);
                     continue;
+                }
+                (void) convertNormalizedToPixelCoordinates(&screenCoordLeft, width, height);
+                (void) convertNormalizedToPixelCoordinates(&screenCoordRight, width, height);
+                if (debugDetails) {
+                    RS_DEBUG(screenCoordLeft);
+                    RS_DEBUG(screenCoordRight);
+                }
+                screenCoord = screenCoordLeft;
+                if (drawDetailBelowCard) {
+                    screenCoord.y = min(screenCoordLeft.y, screenCoordRight.y);
+                }
+                if (detailTexturesCentered) {
+                    screenCoord.x += (screenCoordRight.x - screenCoordLeft.x) / 2. -
+                        rsAllocationGetDimX(cards[i].detailTexture) / 2.;
                 }
 
                 // Compute alpha for gradually fading in details. Applied to both line and
@@ -611,19 +661,6 @@ static bool drawDetails(int64_t currentTime)
                 // Set alpha for blending between the textures
                 shaderConstants->fadeAmount = blendedAlpha;
                 rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
-
-                // Convert projection from normalized coordinates to pixel coordinates.
-                // This is probably cheaper than pre-multiplying the above with another matrix.
-                screenCoord *= 1.0f / screenCoord.w;
-                screenCoord.x += 1.0f;
-                screenCoord.y += 1.0f;
-                screenCoord.z += 1.0f;
-                screenCoord.x = round(screenCoord.x * 0.5f * width);
-                screenCoord.y = round(screenCoord.y * 0.5f * height);
-                screenCoord.z = - 0.5f * screenCoord.z;
-                if (debugDetails) {
-                    RS_DEBUG(screenCoord);
-                }
 
                 // Draw line from upper left card corner to the top of the screen
                 if (drawRuler) {
@@ -672,11 +709,6 @@ static void drawBackground()
 {
     static bool toggle;
     if (backgroundTexture.p != 0) {
-        // Unfortunately, we also need to clear the background because some textures may be
-        // drawn with alpha. This takes about 1ms-2ms in my tests. May be worth optimizing at
-        // some point.
-        rsgClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, backgroundColor.w);
-
         rsgClearDepth(1.0f);
         rs_matrix4x4 projection, model;
         rsMatrixLoadOrtho(&projection, -1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f);
@@ -1050,12 +1082,16 @@ static bool updateNextPosition(int64_t currentTime)
 // Otherwise, it should cull based on bounds of geometry.
 static int cullCards()
 {
-    const float thetaFirst = slotPosition(-1); // -1 keeps the card in front around a bit longer
+    // TODO(jshuma): Instead of fully fetching prefetchCardCount cards, make a distinction between
+    // STATE_LOADED and a new STATE_PRELOADING, which will keep the textures loaded but will not
+    // attempt to actually draw them.
+    const int prefetchCardCountPerSide = prefetchCardCount / 2;
+    const float thetaFirst = slotPosition(-prefetchCardCountPerSide);
     const float thetaSelected = slotPosition(0);
     const float thetaHalfAngle = (thetaSelected - thetaFirst) * 0.5f;
     const float thetaSelectedLow = thetaSelected - thetaHalfAngle;
     const float thetaSelectedHigh = thetaSelected + thetaHalfAngle;
-    const float thetaLast = slotPosition(visibleSlotCount);
+    const float thetaLast = slotPosition(visibleSlotCount - 1 + prefetchCardCountPerSide);
 
     int count = 0;
     int firstVisible = -1;
@@ -1187,7 +1223,6 @@ int root() {
     int64_t currentTime = rsUptimeMillis();
 
     rsgBindProgramVertex(vertexProgram);
-    rsgBindProgramStore(programStore);
     rsgBindProgramRaster(rasterProgram);
     rsgBindSampler(singleTextureFragmentProgram, 0, linearClamp);
     rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
@@ -1207,6 +1242,7 @@ int root() {
     }
 
     rsgBindProgramFragment(singleTextureFragmentProgram);
+    rsgBindProgramStore(programStoreOpaque);
     drawBackground();
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
@@ -1218,8 +1254,17 @@ int root() {
 
     updateCardResources(currentTime);
 
-    stillAnimating |= drawCards(currentTime);
-    stillAnimating |= drawDetails(currentTime);
+    // Draw cards opaque only if requested, and always draw detail textures with blending.
+    if (drawCardsWithBlending) {
+        rsgBindProgramStore(programStore);
+        stillAnimating |= drawCards(currentTime);
+        stillAnimating |= drawDetails(currentTime);
+    } else {
+        // programStoreOpaque is already bound
+        stillAnimating |= drawCards(currentTime);
+        rsgBindProgramStore(programStore);
+        stillAnimating |= drawDetails(currentTime);
+    }
 
     if (debugPicking) {
         renderWithRays();

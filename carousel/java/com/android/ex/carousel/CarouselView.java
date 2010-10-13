@@ -47,6 +47,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private final int DEFAULT_SLOT_COUNT = 10;
     private final float DEFAULT_RADIUS = 20.0f;
     private final int DEFAULT_VISIBLE_DETAIL_COUNT = 3;
+    private final int DEFAULT_PREFETCH_CARD_COUNT = 2;
     private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
     private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
     private final float DEFAULT_DRAG_FACTOR = 0.25f;
@@ -69,7 +70,10 @@ public abstract class CarouselView extends RSSurfaceView {
     private int mCardCount = 0;
     private int mVisibleSlots = 0;
     private int mVisibleDetails = DEFAULT_VISIBLE_DETAIL_COUNT;
+    private int mPrefetchCardCount = DEFAULT_PREFETCH_CARD_COUNT;
     private boolean mDrawDetailBelowCard = false;
+    private boolean mDetailTexturesCentered = false;
+    private boolean mDrawCardsWithBlending = true;
     private boolean mDrawRuler = true;
     private float mStartAngle;
     private float mRadius = DEFAULT_RADIUS;
@@ -143,6 +147,7 @@ public abstract class CarouselView extends RSSurfaceView {
         createCards(mCardCount);
         setVisibleSlots(mVisibleSlots);
         setVisibleDetails(mVisibleDetails);
+        setPrefetchCardCount(mPrefetchCardCount);
         setDrawDetailBelowCard(mDrawDetailBelowCard);
         setDrawRuler(mDrawRuler);
         setCallback(mCarouselCallback);
@@ -243,6 +248,22 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
+     * Set the number of cards to pre-load that are outside of the visible region, as determined by
+     * setVisibleSlots(). This number gets added to the number of visible slots and used to
+     * determine when resources for cards should be loaded. This number should be small (n <= 4)
+     * for systems with limited texture memory or views that show more than half dozen cards in the
+     * view.
+     *
+     * @param n the number of cards; should be even, so the count is the same on each side
+     */
+    public void setPrefetchCardCount(int n) {
+        mPrefetchCardCount = n;
+        if (mRenderScript != null) {
+            mRenderScript.setPrefetchCardCount(n);
+        }
+    }
+
+    /**
      * Set whether to draw the detail texture above or below the card.
      *
      * @param below False for above, true for below.
@@ -251,6 +272,26 @@ public abstract class CarouselView extends RSSurfaceView {
         mDrawDetailBelowCard = below;
         if (mRenderScript != null) {
             mRenderScript.setDrawDetailBelowCard(below);
+        }
+    }
+
+    /**
+     * Set whether to align the detail texture center with the card center.
+     * If not, left edges will be aligned instead.
+     *
+     * @param centered True for center-aligned, false for left-aligned.
+     */
+    public void setDetailTexturesCentered(boolean centered) {
+        mDetailTexturesCentered = centered;
+        if (mRenderScript != null) {
+            mRenderScript.setDetailTexturesCentered(centered);
+        }
+    }
+
+    public void setDrawCardsWithBlending(boolean enabled) {
+        mDrawCardsWithBlending = enabled;
+        if (mRenderScript != null) {
+            mRenderScript.setDrawCardsWithBlending(enabled);
         }
     }
 
