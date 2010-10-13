@@ -116,6 +116,7 @@ float rezInCardCount; // this controls how rapidly distant card textures will be
 float detailFadeRate; // rate at which details fade as they move into the distance
 rs_program_store programStore;
 rs_program_store programStoreOpaque;
+rs_program_store programStoreDetail;
 rs_program_fragment singleTextureFragmentProgram;
 rs_program_fragment multiTextureFragmentProgram;
 rs_program_vertex vertexProgram;
@@ -1257,14 +1258,12 @@ int root() {
     // Draw cards opaque only if requested, and always draw detail textures with blending.
     if (drawCardsWithBlending) {
         rsgBindProgramStore(programStore);
-        stillAnimating |= drawCards(currentTime);
-        stillAnimating |= drawDetails(currentTime);
     } else {
         // programStoreOpaque is already bound
-        stillAnimating |= drawCards(currentTime);
-        rsgBindProgramStore(programStore);
-        stillAnimating |= drawDetails(currentTime);
     }
+    stillAnimating |= drawCards(currentTime);
+    rsgBindProgramStore(programStoreDetail);
+    stillAnimating |= drawDetails(currentTime);
 
     if (debugPicking) {
         renderWithRays();
