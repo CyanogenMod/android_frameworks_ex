@@ -170,6 +170,7 @@ public abstract class CarouselView extends RSSurfaceView {
         setRezInCardCount(mRezInCardCount);
         setFadeInDuration(mFadeInDuration);
         setDetailLoadingBitmap(mDetailLoadingBitmap);
+        setDrawCardsWithBlending(mDrawCardsWithBlending);
     }
 
     /**
