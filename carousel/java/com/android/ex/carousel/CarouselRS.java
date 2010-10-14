@@ -59,6 +59,7 @@ public class CarouselRS  {
     private ScriptField_FragmentShaderConstants_s mFSConst;
     private ProgramStore mProgramStore;
     private ProgramStore mProgramStoreOpaque;
+    private ProgramStore mProgramStoreDetail;
     private ProgramFragment mSingleTextureFragmentProgram;
     private ProgramFragment mMultiTextureFragmentProgram;
     private ProgramVertex mVertexProgram;
@@ -335,6 +336,9 @@ public class CarouselRS  {
                 ProgramStore.BlendDstFunc.ZERO);
         mProgramStoreOpaque = programStoreBuilder.create();
         mScript.set_programStoreOpaque(mProgramStoreOpaque);
+
+        mProgramStoreDetail = ProgramStore.BLEND_ALPHA_DEPTH_NO_DEPTH(mRS);
+        mScript.set_programStoreDetail(mProgramStoreDetail);
     }
 
     public void createCards(int count)
