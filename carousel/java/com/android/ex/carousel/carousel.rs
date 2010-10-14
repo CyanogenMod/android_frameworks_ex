@@ -74,6 +74,41 @@ enum {
     STATE_LOADED // item was delivered
 };
 
+// Detail texture alignments ** THIS LIST MUST MATCH THOSE IN CarouselView.java ***
+enum {
+    /** Detail is centered vertically with respect to the card **/
+    CENTER_VERTICAL = 1,
+    /** Detail is aligned with the top edge of the carousel view **/
+    VIEW_TOP = 1 << 1,
+    /** Detail is aligned with the bottom edge of the carousel view (not yet implemented) **/
+    VIEW_BOTTOM = 1 << 2,
+    /** Detail is positioned above the card (not yet implemented) **/
+    ABOVE = 1 << 3,
+    /** Detail is positioned below the card **/
+    BELOW = 1 << 4,
+    /** Mask that selects those bits that control vertical alignment **/
+    VERTICAL_ALIGNMENT_MASK = 0xff,
+
+    /**
+     * Detail is centered horizontally with respect to either the top or bottom
+     * extent of the card, depending on whether the detail is above or below the card.
+     */
+    CENTER_HORIZONTAL = 1 << 8,
+    /**
+     * Detail is aligned with the left edge of either the top or the bottom of
+     * the card, depending on whether the detail is above or below the card.
+     */
+    LEFT = 1 << 9,
+    /**
+     * Detail is aligned with the right edge of either the top or the bottom of
+     * the card, depending on whether the detail is above or below the card.
+     * (not yet implemented)
+     */
+    RIGHT = 1 << 10,
+    /** Mask that selects those bits that control horizontal alignment **/
+    HORIZONTAL_ALIGNMENT_MASK = 0xff00,
+};
+
 // Client messages *** THIS LIST MUST MATCH THOSE IN CarouselRS.java. ***
 static const int CMD_CARD_SELECTED = 100;
 static const int CMD_CARD_LONGPRESS = 110;
@@ -111,9 +146,7 @@ int cardCount; // number of cards in stack
 int visibleSlotCount; // number of visible slots (for culling)
 int visibleDetailCount; // number of visible detail textures to show
 int prefetchCardCount; // how many cards to keep in memory
-bool drawDetailBelowCard; // whether detail goes above (false) or below (true) the card
-// TODO(jshuma): Replace detailTexturesCentered with a detailTextureAlignment mode enum
-bool detailTexturesCentered; // line up detail center and card center (instead of left edges)
+int detailTextureAlignment; // How to align detail texture with respect to card
 bool drawCardsWithBlending; // Enable blending while drawing cards (for translucent card textures)
 bool drawRuler; // whether to draw a ruler from the card to the detail texture
 float radius; // carousel radius. Cards will be centered on a circle with this radius
@@ -596,7 +629,7 @@ static bool convertNormalizedToPixelCoordinates(float4 *screenCoord, float width
 
 /*
  * Draws a screen-aligned card with the exact dimensions from the detail texture.
- * This is used to display information about the object being displayed above the geomertry.
+ * This is used to display information about the object being displayed.
  * Returns true if we're still animating any property of the cards (e.g. fades).
  */
 static bool drawDetails(int64_t currentTime)
@@ -638,7 +671,7 @@ static bool drawDetails(int64_t currentTime)
 
                 int indexLeft, indexRight;
                 float4 screenCoord;
-                if (drawDetailBelowCard) {
+                if (detailTextureAlignment & BELOW) {
                     indexLeft = 0;
                     indexRight = 1;
                 } else {
@@ -652,6 +685,20 @@ static bool drawDetails(int64_t currentTime)
                     rsDebug("Bad transform: ", screenCoord);
                     continue;
                 }
+                if (detailTextureAlignment & CENTER_VERTICAL) {
+                    // If we're centering vertically, we'll need the other vertices too
+                    if (detailTextureAlignment & BELOW) {
+                        indexLeft = 3;
+                        indexRight = 2;
+                    } else {
+                        indexLeft = 0;
+                        indexRight = 1;
+                    }
+                    float4 otherScreenLeft = rsMatrixMultiply(&matrix, cardVertices[indexLeft]);
+                    float4 otherScreenRight = rsMatrixMultiply(&matrix, cardVertices[indexRight]);
+                    screenCoordRight.y = screenCoordLeft.y = (screenCoordLeft.y + screenCoordRight.y
+                        + otherScreenLeft.y + otherScreenRight.y) / 4.;
+                }
                 (void) convertNormalizedToPixelCoordinates(&screenCoordLeft, width, height);
                 (void) convertNormalizedToPixelCoordinates(&screenCoordRight, width, height);
                 if (debugDetails) {
@@ -659,10 +706,12 @@ static bool drawDetails(int64_t currentTime)
                     RS_DEBUG(screenCoordRight);
                 }
                 screenCoord = screenCoordLeft;
-                if (drawDetailBelowCard) {
+                if (detailTextureAlignment & BELOW) {
                     screenCoord.y = min(screenCoordLeft.y, screenCoordRight.y);
+                } else if (detailTextureAlignment & CENTER_VERTICAL) {
+                    screenCoord.y -= rsAllocationGetDimY(cards[i].detailTexture) / 2.;
                 }
-                if (detailTexturesCentered) {
+                if (detailTextureAlignment & CENTER_HORIZONTAL) {
                     screenCoord.x += (screenCoordRight.x - screenCoordLeft.x) / 2. -
                         rsAllocationGetDimX(cards[i].detailTexture) / 2.;
                 }
@@ -693,11 +742,21 @@ static bool drawDetails(int64_t currentTime)
                 shaderConstants->fadeAmount = blendedAlpha;
                 rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
 
-                // Draw line from upper left card corner to the top of the screen
+                // Draw line from the card to the detail texture.
+                // The line is drawn from the top or bottom left of the card
+                // to either the top of the screen or the top of the detail
+                // texture, depending on detailTextureAlignment.
                 if (drawRuler) {
+                    float rulerTop;
+                    float rulerBottom;
+                    if (detailTextureAlignment & BELOW) {
+                        rulerTop = screenCoord.y;
+                        rulerBottom = 0;
+                    } else {
+                        rulerTop = height;
+                        rulerBottom = screenCoord.y;
+                    }
                     const float halfWidth = lineWidth * 0.5f;
-                    const float rulerTop = drawDetailBelowCard ? screenCoord.y : height;
-                    const float rulerBottom = drawDetailBelowCard ? 0 : screenCoord.y;
                     const float x0 = cards[i].detailLineOffset.x + screenCoord.x - halfWidth;
                     const float x1 = cards[i].detailLineOffset.x + screenCoord.x + halfWidth;
                     const float y0 = rulerBottom + yPadding;
@@ -717,7 +776,8 @@ static bool drawDetails(int64_t currentTime)
                 const float textureHeight = rsAllocationGetDimY(cards[i].detailTexture);
                 const float offx = cards[i].detailTextureOffset.x;
                 const float offy = -cards[i].detailTextureOffset.y;
-                const float textureTop = drawDetailBelowCard ? screenCoord.y : height;
+                const float textureTop = (detailTextureAlignment & VIEW_TOP)
+                        ? height : screenCoord.y;
                 const float x0 = cards[i].detailLineOffset.x + screenCoord.x + offx;
                 const float x1 = cards[i].detailLineOffset.x + screenCoord.x + offx + textureWidth;
                 const float y0 = textureTop + offy - textureHeight - cards[i].detailLineOffset.y;
