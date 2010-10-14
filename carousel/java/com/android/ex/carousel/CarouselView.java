@@ -363,7 +363,7 @@ public abstract class CarouselView extends RSSurfaceView {
      */
     public void setDetailTextureForItem(int n, float offx, float offy, float loffx, float loffy,
             Bitmap bitmap) {
-        if (mRenderScript != null) {
+        if (mRenderScript != null && mRS != null) {
             if (DBG) Log.v(TAG, "setDetailTextureForItem(" + n + ")");
             mRenderScript.setDetailTexture(n, offx, offy, loffx, loffy, bitmap);
             if (DBG) Log.v(TAG, "done");

@@ -107,8 +107,8 @@ public abstract class MVCCarouselView extends RSSurfaceView {
             mRenderScript = new CarouselRS(mRS, mContext.getResources(),
                     getRenderScriptInfo().resId);
             mRenderScript.resumeRendering();
-            mController.setRS(mRS, mRenderScript);
         }
+        mController.setRS(mRS, mRenderScript);
     }
 
     @Override
@@ -460,6 +460,7 @@ public abstract class MVCCarouselView extends RSSurfaceView {
             mRS = null;
             destroyRenderScript();
         }
+        mController.setRS(mRS, mRenderScript);
     }
 
     @Override
