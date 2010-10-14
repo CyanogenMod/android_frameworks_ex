@@ -35,7 +35,7 @@ import android.util.Log;
 public class CarouselTestActivity extends Activity {
     private static final String TAG = "CarouselTestActivity";
     private static final int CARD_SLOTS = 56;
-    private static final int TOTAL_CARDS = 1000;
+    private static final int TOTAL_CARDS = 100;
     private static final int TEXTURE_HEIGHT = 256;
     private static final int TEXTURE_WIDTH = 256;
     private static final int SLOTS_VISIBLE = 7;

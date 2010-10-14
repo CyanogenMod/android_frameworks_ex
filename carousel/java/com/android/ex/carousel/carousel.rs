@@ -32,15 +32,25 @@ typedef struct __attribute__((aligned(4))) Card {
     int detailTextureState; // whether or not the detail for the card is loaded.
     int geometryState; // whether or not geometry is loaded
     int visible; // not bool because of packing bug?
-    // TODO: Change when int64_t is supported.  This will break after ~40 days of uptime.
-    unsigned int textureTimeStamp; // time when this texture was last updated, in seconds
-    unsigned int detailTextureTimeStamp; // time when this texture was last updated, in seconds
+    int64_t textureTimeStamp; // time when this texture was last updated, in seconds
+    int64_t detailTextureTimeStamp; // time when this texture was last updated, in seconds
 } Card_t;
 
 typedef struct Ray_s {
     float3 position;
     float3 direction;
 } Ray;
+
+typedef struct Plane_s {
+    float3 point;
+    float3 normal;
+    float constant;
+} Plane;
+
+typedef struct Cylinder_s {
+    float3 center; // center of a y-axis-aligned infinite cylinder
+    float radius;
+} Cylinder;
 
 typedef struct PerspectiveCamera_s {
     float3 from;
@@ -80,14 +90,16 @@ static const int CMD_PING = 1000;
 // Constants
 static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
 static const float3 SELECTED_SCALE_FACTOR = { 0.2f, 0.2f, 0.2f }; // increase by this %
+static const float OVERSCROLL_SLOTS = 1.0f; // amount of allowed overscroll (in slots)
 
 // Debug flags
 const bool debugCamera = false; // dumps ray/camera coordinate stuff
-const bool debugPicking = false; // renders picking area on top of geometry
+const bool debugSelection = false; // logs selection events
 const bool debugTextureLoading = false; // for debugging texture load/unload
 const bool debugGeometryLoading = false; // for debugging geometry load/unload
 const bool debugDetails = false; // for debugging detail texture geometry
 const bool debugRendering = false; // flashes display when the frame changes
+const bool debugRays = false; // shows visual depiction of hit tests, See renderWithRays().
 
 // Exported variables. These will be reflected to Java set_* variables.
 Card_t *cards; // array of cards to draw
@@ -113,6 +125,7 @@ float dragFactor; // a scale factor for how sensitive the carousel is to user dr
 int fadeInDuration; // amount of time (in ms) for smoothly switching out textures
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
 float detailFadeRate; // rate at which details fade as they move into the distance
+float4 backgroundColor;
 rs_program_store programStore;
 rs_program_store programStoreOpaque;
 rs_program_store programStoreDetail;
@@ -134,19 +147,31 @@ rs_sampler linearClamp;
 
 #pragma rs export_func(createCards, copyCards, lookAt)
 #pragma rs export_func(doStart, doStop, doMotion, doLongPress, doSelection)
-#pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera, debugPicking)
+#pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera)
 #pragma rs export_func(setCarouselRotationAngle)
 
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
 static bool initialized;
-float4 backgroundColor;
 static const float FLT_MAX = 1.0e37;
-static int currentSelection = -1;
+static int animatedSelection = -1;
+static int currentFirstCard = -1;
 static int64_t touchTime = -1;  // time of first touch (see doStart())
 static float touchBias = 0.0f; // bias on first touch
+static float2 touchPosition; // position of first touch, as defined by last call to doStart(x,y)
 static float velocity = 0.0f;  // angular velocity in radians/s
+static bool overscroll = false; // whether we're in the overscroll animation
+static bool isDragging = false; // true while the user is dragging the carousel
+static float selectionRadius = 50.0f; // movement greater than this will result in no selection
+static bool enableSelection = false; // enabled until the user drags outside of selectionRadius
+
+// Default plane of the carousel. Used for angular motion estimation in view.
+static Plane carouselPlane = {
+       { 0.0f, 0.0f, 0.0f }, // point
+       { 0.0f, 1.0f, 0.0f }, // normal
+       0.0f // plane constant (= -dot(P, N))
+};
 
 // Because allocations can't have 0 dimensions, we have to track whether or not
 // cards are valid separately.
@@ -472,7 +497,7 @@ static void getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
       rotation -= theta;
     }
     rsMatrixRotate(matrix, degrees(rotation), 0, 1, 0);
-    if (i == currentSelection) {
+    if (i == animatedSelection && enableSelection) {
         float3 scale = getAnimatedScaleForSelected();
         rsMatrixScale(matrix, scale.x, scale.y, scale.z);
     }
@@ -761,7 +786,6 @@ static void updateCameraMatrix(float width, float height)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Behavior/Physics
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-static bool isDragging;
 static int64_t lastTime = 0L; // keep track of how much time has passed between frames
 static float2 lastPosition;
 static bool animating = false;
@@ -793,6 +817,10 @@ int doSelection(float x, float y)
     return -1;
 }
 
+void sendAnimationStarted() {
+    rsSendToClient(CMD_ANIMATION_STARTED);
+}
+
 void sendAnimationFinished() {
     float data[1];
     data[0] = radiansToCarouselRotationAngle(bias);
@@ -801,98 +829,95 @@ void sendAnimationFinished() {
 
 void doStart(float x, float y)
 {
-    lastPosition.x = x;
-    lastPosition.y = y;
+    touchPosition = lastPosition = (float2) { x, y };
     velocity = 0.0f;
-    if (animating) {
-        sendAnimationFinished();
-        animating = false;
-        currentSelection = -1;
-    } else {
-        currentSelection = doSelection(x, y);
-    }
     velocityTracker = 0.0f;
     velocityTrackerCount = 0;
     touchTime = rsUptimeMillis();
     touchBias = bias;
+    isDragging = true;
+    enableSelection = true;
+    animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
 }
-
 
 void doStop(float x, float y)
 {
     int64_t currentTime = rsUptimeMillis();
     updateAllocationVars(cards);
-    if (currentSelection != -1 && (currentTime - touchTime) < ANIMATION_SCALE_TIME) {
-        // rsDebug("HIT!", currentSelection);
+
+    if (enableSelection) {
         int data[1];
-        data[0] = currentSelection;
-        rsSendToClientBlocking(CMD_CARD_SELECTED, data, sizeof(data));
+        int selection = doSelection(x, y);
+        if (selection != -1) {
+            if (debugSelection) rsDebug("Selected item on doStop():", selection);
+            data[0] = selection;
+            rsSendToClientBlocking(CMD_CARD_SELECTED, data, sizeof(data));
+        }
+        animating = false;
     } else {
+        // TODO: move velocity tracking to Java
         velocity = velocityTrackerCount > 0 ?
                     (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
         if (fabs(velocity) > velocityThreshold) {
             animating = true;
-            rsSendToClient(CMD_ANIMATION_STARTED);
         }
     }
-    currentSelection = -1;
+    enableSelection = false;
     lastTime = rsUptimeMillis();
+    isDragging = false;
 }
 
 void doLongPress()
 {
     int64_t currentTime = rsUptimeMillis();
     updateAllocationVars(cards);
-    if (currentSelection != -1) {
-        // rsDebug("HIT!", currentSelection);
+    // Selection happens for most recent position detected in doMotion()
+    int selection = doSelection(lastPosition.x, lastPosition.y);
+    if (selection != -1) {
+        if (debugSelection) rsDebug("doLongPress(), selection = ", selection);
         int data[1];
-        data[0] = currentSelection;
+        data[0] = selection;
         rsSendToClientBlocking(CMD_CARD_LONGPRESS, data, sizeof(data));
     }
-    currentSelection = -1;
     lastTime = rsUptimeMillis();
 }
 
 void doMotion(float x, float y)
 {
+    const float firstBias = wedgeAngle(0.0f);
+    const float lastBias = -max(0.0f, wedgeAngle(cardCount - visibleDetailCount));
     int64_t currentTime = rsUptimeMillis();
     float deltaOmega = dragFunction(x, y);
-    bias += deltaOmega;
-    lastPosition.x = x;
-    lastPosition.y = y;
+    if (!enableSelection) {
+        bias += deltaOmega;
+        bias = clamp(bias, lastBias - wedgeAngle(OVERSCROLL_SLOTS),
+                firstBias + wedgeAngle(OVERSCROLL_SLOTS));
+    }
+    const float2 delta = (float2) { x, y } - touchPosition;
+    float distance = sqrt(dot(delta, delta));
+    bool inside = (distance < selectionRadius);
+    enableSelection &= inside;
+    lastPosition = (float2) { x, y };
     float dt = deltaTimeInSeconds(currentTime);
     if (dt > 0.0f) {
         float v = deltaOmega / dt;
-        //if ((velocityTracker > 0.0f) == (v > 0.0f)) {
-            velocityTracker += v;
-            velocityTrackerCount++;
-        //} else {
-        //    velocityTracker = v;
-        //    velocityTrackerCount = 1;
-        //}
+        velocityTracker += v;
+        velocityTrackerCount++;
     }
     velocity = velocityTrackerCount > 0 ?
                 (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
-
-    // Drop current selection if user drags position +- a partial slot
-    if (currentSelection != -1) {
-        const float slotMargin = 0.5f * (2.0f * M_PI / slotCount);
-        if (fabs(touchBias - bias) > slotMargin) {
-            currentSelection = -1;
-        }
-    }
     lastTime = currentTime;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Hit detection using ray casting.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+static const float EPSILON = 1.0e-6f;
+static const float tmin = 0.0f;
 
 static bool
-rayTriangleIntersect(Ray* ray, float3 p0, float3 p1, float3 p2, float *tout)
+rayTriangleIntersect(Ray* ray, float3 p0, float3 p1, float3 p2, float* tout)
 {
-    static const float tmin = 0.0f;
-
     float3 e1 = p1 - p0;
     float3 e2 = p2 - p0;
     float3 s1 = cross(ray->direction, e2);
@@ -917,16 +942,60 @@ rayTriangleIntersect(Ray* ray, float3 p0, float3 p1, float3 p2, float *tout)
     return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Computes ray/plane intersection. Returns false if no intersection found.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 static bool
-rayPlaneIntersect(Ray* ray, float3 point, float3 normal)
+rayPlaneIntersect(Ray* ray, Plane* plane, float* tout)
 {
-    return false; // TODO
+    float denom = dot(ray->direction, plane->normal);
+    if (fabs(denom) > EPSILON) {
+        float t = - (plane->constant + dot(ray->position, plane->normal)) / denom;
+        if (t > tmin && t < *tout) {
+            *tout = t;
+            return true;
+        }
+    }
+    return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Computes ray/cylindr intersection. There are 0, 1 or 2 hits.
+// Returns true and sets *tout to the closest point or
+// returns false if no intersection found.
+////////////////////////////////////////////////////////////////////////////////////////////////////
 static bool
-rayCylinderIntersect(Ray* ray, float3 center, float radius)
+rayCylinderIntersect(Ray* ray, Cylinder* cylinder, float* tout)
 {
-    return false; // TODO
+    const float A = ray->direction.x * ray->direction.x + ray->direction.z * ray->direction.z;
+    if (A < EPSILON) return false; // ray misses
+
+    // Compute quadratic equation coefficients
+    const float B = 2.0f * (ray->direction.x * ray->position.x
+            + ray->direction.z * ray->position.z);
+    const float C = ray->position.x * ray->position.x
+            + ray->position.z * ray->position.z
+            - cylinder->radius * cylinder->radius;
+    float disc = B*B - 4*A*C;
+
+    if (disc < 0.0f) return false; // ray misses
+    disc = sqrt(disc);
+    const float denom = 2.0f * A;
+
+    // Nearest point
+    const float t1 = (-B - disc) / denom;
+    if (t1 > tmin && t1 < *tout) {
+        *tout = t1;
+        return true;
+    }
+
+    // Far point
+    const float t2 = (-B + disc) / denom;
+    if (t2 > tmin && t2 < *tout) {
+        *tout = t2;
+        return true;
+    }
+    return false;
 }
 
 // Creates a ray for an Android pixel coordinate given a camera, ray and coordinates.
@@ -1036,57 +1105,87 @@ static int intersectGeometry(Ray* ray, float *bestTime)
 }
 
 // This method computes the position of all the cards by updating bias based on a
-// simple physics model.
-// If the cards are still in motion, returns true.
+// simple physics model.  If the cards are still in motion, returns true.
+static bool doPhysics(float dt)
+{
+    const float minStepTime = 1.0f / 300.0f; // ~5 steps per frame
+    const int N = (dt > minStepTime) ? (1 + round(dt / minStepTime)) : 1;
+    dt /= N;
+    for (int i = 0; i < N; i++) {
+        // Force friction - always opposes motion
+        const float Ff = -frictionCoeff * velocity;
+
+        // Restoring force to match cards with slots
+        const float theta = startAngle + bias;
+        const float dtheta = 2.0f * M_PI / slotCount;
+        const float position = theta / dtheta;
+        const float fraction = position - floor(position); // fractional position between slots
+        float x;
+        if (fraction > 0.5f) {
+            x = - (1.0f - fraction);
+        } else {
+            x = fraction;
+        }
+        const float Fr = - springConstant * x;
+
+        // compute velocity
+        const float momentum = mass * velocity + (Ff + Fr)*dt;
+        velocity = momentum / mass;
+        bias += velocity * dt;
+    }
+    return fabs(velocity) > velocityThreshold;
+}
+
+static float easeOut(float x)
+{
+    return x;
+}
+
+// Computes the next value for bias using the current animation (physics or overscroll)
 static bool updateNextPosition(int64_t currentTime)
 {
-    if (animating) {
-        float dt = deltaTimeInSeconds(currentTime);
-        if (dt <= 0.0f)
-            return animating;
-        const float minStepTime = 1.0f / 300.0f; // ~5 steps per frame
-        const int N = (dt > minStepTime) ? (1 + round(dt / minStepTime)) : 1;
-        dt /= N;
-        for (int i = 0; i < N; i++) {
-            // Force friction - always opposes motion
-            const float Ff = -frictionCoeff * velocity;
+    static const float biasMin = 1e-4f; // close enough if we're within this margin of result
 
-            // Restoring force to match cards with slots
-            const float theta = startAngle + bias;
-            const float dtheta = 2.0f * M_PI / slotCount;
-            const float position = theta / dtheta;
-            const float fraction = position - floor(position); // fractional position between slots
-            float x;
-            if (fraction > 0.5f) {
-                x = - (1.0f - fraction);
-            } else {
-                x = fraction;
-            }
-            const float Fr = - springConstant * x;
+    float dt = deltaTimeInSeconds(currentTime);
 
-            // compute velocity
-            const float momentum = mass * velocity + (Ff + Fr)*dt;
-            velocity = momentum / mass;
-            bias += velocity * dt;
-        }
-
-        animating = fabs(velocity) > velocityThreshold;
-        if (!animating) {
-            sendAnimationFinished();
-        }
+    if (dt <= 0.0f) {
+        if (debugRendering) rsDebug("Time delta was <= 0", dt);
+        return true;
     }
-    lastTime = currentTime;
 
     const float firstBias = wedgeAngle(0.0f);
     const float lastBias = -max(0.0f, wedgeAngle(cardCount - visibleDetailCount));
-
-    if (bias > firstBias) {
-        bias = firstBias;
-    } else if (bias < lastBias) {
-        bias = lastBias;
+    bool stillAnimating = false;
+    if (overscroll) {
+        if (bias > firstBias) {
+            bias -= 4.0f * dt * easeOut((bias - firstBias) * 2.0f);
+            if (fabs(bias - firstBias) < biasMin) {
+                bias = firstBias;
+            } else {
+                stillAnimating = true;
+            }
+        } else if (bias < lastBias) {
+            bias += 4.0f * dt * easeOut((lastBias - bias) * 2.0f);
+            if (fabs(bias - lastBias) < biasMin) {
+                bias = lastBias;
+            } else {
+                stillAnimating = true;
+            }
+        } else {
+            overscroll = false;
+        }
+    } else {
+        stillAnimating = doPhysics(dt);
+        overscroll = bias > firstBias || bias < lastBias;
     }
-
-    return animating;
+    float newbias = clamp(bias, lastBias - wedgeAngle(OVERSCROLL_SLOTS),
+            firstBias + wedgeAngle(OVERSCROLL_SLOTS));
+    if (newbias != bias) { // we clamped
+        velocity = 0.0f;
+        overscroll = true;
+    }
+    bias = newbias;
+    return stillAnimating;
 }
 
 // Cull cards based on visibility and visibleSlotCount.
@@ -1133,7 +1232,7 @@ static void updateCardResources(int64_t currentTime)
     for (int i = cardCount-1; i >= 0; --i) {
         int data[1];
         if (cards[i].visible) {
-            if (debugTextureLoading) rsDebug("*** Texture stamp: ", cards[i].textureTimeStamp);
+            if (debugTextureLoading) rsDebug("*** Texture stamp: ", (int)cards[i].textureTimeStamp);
 
             // request texture from client if not loaded
             if (cards[i].textureState == STATE_INVALID) {
@@ -1238,10 +1337,9 @@ int root() {
     updateAllocationVars(cards);
 
     if (!initialized) {
-        if (debugTextureLoading){
+        if (debugTextureLoading) {
             rsDebug("*** initialized was false, updating all cards (cards = ", cards);
         }
-        const float2 zero = {0.0f, 0.0f};
         for (int i = 0; i < cardCount; i++) {
             initCard(cards + i);
         }
@@ -1254,8 +1352,13 @@ int root() {
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
 
-    const bool timeExpired = (currentTime - touchTime) > ANIMATION_SCALE_TIME;
-    bool stillAnimating = updateNextPosition(currentTime) || !timeExpired;
+    bool stillAnimating = (currentTime - touchTime) <= ANIMATION_SCALE_TIME;
+
+    if (!isDragging && animating) {
+        stillAnimating = updateNextPosition(currentTime);
+    }
+
+    lastTime = currentTime;
 
     cullCards();
 
@@ -1271,11 +1374,22 @@ int root() {
     rsgBindProgramStore(programStoreDetail);
     stillAnimating |= drawDetails(currentTime);
 
-    if (debugPicking) {
+    if (stillAnimating != animating) {
+        if (stillAnimating) {
+            // we just started animating
+            sendAnimationStarted();
+        } else {
+            // we were animating but stopped animating just now
+            sendAnimationFinished();
+        }
+        animating = stillAnimating;
+    }
+
+    if (debugRays) {
         renderWithRays();
     }
 
     //rsSendToClient(CMD_PING);
 
-    return stillAnimating ? 1 : 0;
+    return animating ? 1 : 0;
 }
