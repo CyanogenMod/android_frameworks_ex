@@ -67,6 +67,7 @@ public class CarouselController {
     private boolean mDrawCardsWithBlending = true;
     private boolean mDrawRuler = true;
     private float mStartAngle;
+    private float mCarouselRotationAngle;
     private float mRadius = DEFAULT_RADIUS;
     private float mCardRotation = 0.0f;
     private boolean mCardsFaceTangent = false;
@@ -111,6 +112,7 @@ public class CarouselController {
         setBackgroundBitmap(mBackgroundBitmap);
         setDetailLineBitmap(mDefaultLineBitmap);
         setStartAngle(mStartAngle);
+        setCarouselRotationAngle(mCarouselRotationAngle);
         setRadius(mRadius);
         setCardRotation(mCardRotation);
         setCardsFaceTangent(mCardsFaceTangent);
@@ -308,7 +310,7 @@ public class CarouselController {
      */
     public void setDetailTextureForItem(int n, float offx, float offy, float loffx, float loffy,
             Bitmap bitmap) {
-        if (mRenderScript != null) {
+        if (mRenderScript != null && mRS != null) {
             if (DBG) Log.v(TAG, "setDetailTextureForItem(" + n + ")");
             mRenderScript.setDetailTexture(n, offx, offy, loffx, loffy, bitmap);
             if (DBG) Log.v(TAG, "done");
@@ -462,6 +464,23 @@ public class CarouselController {
         }
     }
 
+    /**
+     * Set the current carousel rotation angle, in card units.
+     * This is measured in card positions, not in radians or degrees.
+     *
+     * A value of 0.0 means that card 0 is in the home position.
+     * A value of 1.0 means that card 1 is in the home position, and so on.
+     * The maximum value will be somewhat less than the total number of cards.
+     *
+     * @param angle
+     */
+    public void setCarouselRotationAngle(float angle) {
+        mCarouselRotationAngle = angle;
+        if (mRenderScript != null) {
+            mRenderScript.setCarouselRotationAngle(angle);
+        }
+    }
+
     public void setRadius(float radius) {
         mRadius = radius;
         if (mRenderScript != null) {
@@ -510,12 +529,6 @@ public class CarouselController {
         mUp = up;
         if (mRenderScript != null) {
             mRenderScript.setLookAt(eye, at, up);
-        }
-    }
-
-    public void requestFirstCardPosition() {
-        if (mRenderScript != null) {
-            mRenderScript.requestFirstCardPosition();
         }
     }
 

@@ -44,7 +44,6 @@ public class CarouselRS  {
     public static final int CMD_ANIMATION_FINISHED = 500;
     public static final int CMD_REQUEST_DETAIL_TEXTURE = 600;
     public static final int CMD_INVALIDATE_DETAIL_TEXTURE = 610;
-    public static final int CMD_REPORT_FIRST_CARD_POSITION = 700;
     public static final int CMD_PING = 1000; // for debugging
 
     private static final String TAG = "CarouselRS";
@@ -146,13 +145,9 @@ public class CarouselRS  {
 
         /**
          * Called when card animation has stopped.
+         * @param startAngle the angle of rotation, in radians, at which the animation stopped.
          */
-        void onAnimationFinished();
-
-        /**
-         * Called when the current position has been requested.
-         */
-        void onReportFirstCardPosition(int n);
+        void onAnimationFinished(float carouselRotationAngle);
     };
 
     private RSMessage mRsMessage = new RSMessage() {
@@ -199,11 +194,7 @@ public class CarouselRS  {
                     break;
 
                 case CMD_ANIMATION_FINISHED:
-                    mCallback.onAnimationFinished();
-                    break;
-
-                case CMD_REPORT_FIRST_CARD_POSITION:
-                    mCallback.onReportFirstCardPosition(mData[0]);
+                    mCallback.onAnimationFinished(Float.intBitsToFloat(mData[0]));
                     break;
 
                 case CMD_PING:
@@ -231,6 +222,7 @@ public class CarouselRS  {
         setVisibleSlots(DEFAULT_VISIBLE_SLOTS);
         createCards(DEFAULT_CARD_COUNT);
         setStartAngle(0.0f);
+        setCarouselRotationAngle(0.0f);
         setRadius(1.0f);
         setLookAt(mEyePoint, mAtPoint, mUp);
         setRadius(20.0f);
@@ -417,6 +409,10 @@ public class CarouselRS  {
         mScript.set_startAngle(theta);
     }
 
+    public void setCarouselRotationAngle(float theta) {
+        mScript.invoke_setCarouselRotationAngle(theta);
+    }
+
     public void setCallback(CarouselCallback callback)
     {
         mCallback = callback;
@@ -584,10 +580,6 @@ public class CarouselRS  {
 
     public void setSlotCount(int n) {
         mScript.set_slotCount(n);
-    }
-
-    public void requestFirstCardPosition() {
-        mScript.invoke_requestFirstCardPosition();
     }
 
     public void setRezInCardCount(float alpha) {

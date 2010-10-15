@@ -107,8 +107,8 @@ public abstract class MVCCarouselView extends RSSurfaceView {
             mRenderScript = new CarouselRS(mRS, mContext.getResources(),
                     getRenderScriptInfo().resId);
             mRenderScript.resumeRendering();
-            mController.setRS(mRS, mRenderScript);
         }
+        mController.setRS(mRS, mRenderScript);
     }
 
     @Override
@@ -423,10 +423,6 @@ public abstract class MVCCarouselView extends RSSurfaceView {
         mController.setLookAt(eye, at, up);
     }
 
-    public void requestFirstCardPosition() {
-        mController.requestFirstCardPosition();
-    }
-
     /**
      * This sets the number of cards in the distance that will be shown "rezzing in".
      * These alpha values will be faded in from the background to the foreground over
@@ -460,6 +456,7 @@ public abstract class MVCCarouselView extends RSSurfaceView {
             mRS = null;
             destroyRenderScript();
         }
+        mController.setRS(mRS, mRenderScript);
     }
 
     @Override

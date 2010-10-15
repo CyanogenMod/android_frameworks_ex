@@ -260,7 +260,7 @@ public class MVCCarouselViewHelper implements CarouselCallback {
 
     }
 
-    public void onAnimationFinished() {
+    public void onAnimationFinished(float carouselRotationAngle) {
 
     }
 
