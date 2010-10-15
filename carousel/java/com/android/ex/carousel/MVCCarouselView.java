@@ -423,10 +423,6 @@ public abstract class MVCCarouselView extends RSSurfaceView {
         mController.setLookAt(eye, at, up);
     }
 
-    public void requestFirstCardPosition() {
-        mController.requestFirstCardPosition();
-    }
-
     /**
      * This sets the number of cards in the distance that will be shown "rezzing in".
      * These alpha values will be faded in from the background to the foreground over

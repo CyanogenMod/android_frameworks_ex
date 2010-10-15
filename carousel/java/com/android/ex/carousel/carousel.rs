@@ -75,7 +75,6 @@ static const int CMD_ANIMATION_STARTED = 400;
 static const int CMD_ANIMATION_FINISHED = 500;
 static const int CMD_REQUEST_DETAIL_TEXTURE = 600;
 static const int CMD_INVALIDATE_DETAIL_TEXTURE = 610;
-static const int CMD_REPORT_FIRST_CARD_POSITION = 700;
 static const int CMD_PING = 1000;
 
 // Constants
@@ -136,7 +135,7 @@ rs_sampler linearClamp;
 #pragma rs export_func(createCards, copyCards, lookAt)
 #pragma rs export_func(doStart, doStop, doMotion, doLongPress, doSelection)
 #pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera, debugPicking)
-#pragma rs export_func(requestFirstCardPosition)
+#pragma rs export_func(setCarouselRotationAngle)
 
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
@@ -145,7 +144,6 @@ static bool initialized;
 float4 backgroundColor;
 static const float FLT_MAX = 1.0e37;
 static int currentSelection = -1;
-static int currentFirstCard = -1;
 static int64_t touchTime = -1;  // time of first touch (see doStart())
 static float touchBias = 0.0f; // bias on first touch
 static float velocity = 0.0f;  // angular velocity in radians/s
@@ -320,6 +318,19 @@ static float wedgeAngle(float cards)
     return cards * 2.0f * M_PI / slotCount;
 }
 
+// convert from carousel rotation angle (in card slot units) to radians.
+static float carouselRotationAngleToRadians(float carouselRotationAngle)
+{
+    return -wedgeAngle(carouselRotationAngle);
+}
+
+// convert from radians to carousel rotation angle (in card slot units).
+static float radiansToCarouselRotationAngle(float angle)
+{
+    return -angle * slotCount / ( 2.0f * M_PI );
+}
+
+
 // Return the lowest slot number for a given angular position.
 static int cardIndex(float angle)
 {
@@ -415,14 +426,8 @@ void setGeometry(int n, rs_mesh geometry)
         cards[n].geometryState = STATE_INVALID;
 }
 
-void requestFirstCardPosition()
-{
-    int data[1];
-    data[0] = currentFirstCard;
-    bool enqueued = rsSendToClient(CMD_REPORT_FIRST_CARD_POSITION, data, sizeof(data));
-    if (!enqueued) {
-        rsDebug("Couldn't send CMD_REPORT_FIRST_CARD_POSITION", 0);
-    }
+void setCarouselRotationAngle(float carouselRotationAngle) {
+    bias = carouselRotationAngleToRadians(carouselRotationAngle);
 }
 
 static float3 getAnimatedScaleForSelected()
@@ -788,13 +793,19 @@ int doSelection(float x, float y)
     return -1;
 }
 
+void sendAnimationFinished() {
+    float data[1];
+    data[0] = radiansToCarouselRotationAngle(bias);
+    rsSendToClient(CMD_ANIMATION_FINISHED, (int*) data, sizeof(data));
+}
+
 void doStart(float x, float y)
 {
     lastPosition.x = x;
     lastPosition.y = y;
     velocity = 0.0f;
     if (animating) {
-        rsSendToClient(CMD_ANIMATION_FINISHED);
+        sendAnimationFinished();
         animating = false;
         currentSelection = -1;
     } else {
@@ -1061,7 +1072,7 @@ static bool updateNextPosition(int64_t currentTime)
 
         animating = fabs(velocity) > velocityThreshold;
         if (!animating) {
-            rsSendToClient(CMD_ANIMATION_FINISHED);
+            sendAnimationFinished();
         }
     }
     lastTime = currentTime;
@@ -1095,15 +1106,11 @@ static int cullCards()
     const float thetaLast = slotPosition(visibleSlotCount - 1 + prefetchCardCountPerSide);
 
     int count = 0;
-    int firstVisible = -1;
     for (int i = 0; i < cardCount; i++) {
         if (visibleSlotCount > 0) {
             // If visibleSlotCount is specified, then only show up to visibleSlotCount cards.
             float p = cardPosition(i);
             if (p >= thetaFirst && p < thetaLast) {
-                if (firstVisible == -1 && p >= thetaSelectedLow && p < thetaSelectedHigh) {
-                    firstVisible = i;
-                }
                 cards[i].visible = true;
                 count++;
             } else {
@@ -1116,7 +1123,6 @@ static int cullCards()
             count++;
         }
     }
-    currentFirstCard = firstVisible;
     return count;
 }
 

@@ -260,11 +260,7 @@ public class CarouselViewHelper implements CarouselCallback {
 
     }
 
-    public void onAnimationFinished() {
-
-    }
-
-    public void onReportFirstCardPosition(int n) {
+    public void onAnimationFinished(float startAngle) {
 
     }
 
