@@ -1177,6 +1177,9 @@ static bool updateNextPosition(int64_t currentTime)
     } else {
         stillAnimating = doPhysics(dt);
         overscroll = bias > firstBias || bias < lastBias;
+        if (overscroll) {
+            velocity = 0.0f; // prevent bouncing due to v > 0 after overscroll animation.
+        }
     }
     float newbias = clamp(bias, lastBias - wedgeAngle(OVERSCROLL_SLOTS),
             firstBias + wedgeAngle(OVERSCROLL_SLOTS));
