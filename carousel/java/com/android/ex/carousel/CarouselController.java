@@ -17,6 +17,7 @@
 package com.android.ex.carousel;
 
 import com.android.ex.carousel.CarouselRS.CarouselCallback;
+import com.android.ex.carousel.MVCCarouselView.DetailAlignment;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -43,6 +44,8 @@ public class CarouselController {
     private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
     private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
     private final float DEFAULT_DRAG_FACTOR = 0.25f;
+    private final int DEFAULT_DETAIL_ALIGNMENT =
+            DetailAlignment.VIEW_TOP | DetailAlignment.LEFT;
     private CarouselRS mRenderScript;
     private RenderScriptGL mRS;
     private static final String TAG = "CarouselController";
@@ -62,8 +65,7 @@ public class CarouselController {
     private int mVisibleSlots = 0;
     private int mVisibleDetails = DEFAULT_VISIBLE_DETAIL_COUNT;
     private int mPrefetchCardCount = DEFAULT_PREFETCH_CARD_COUNT;
-    private boolean mDrawDetailBelowCard = false;
-    private boolean mDetailTexturesCentered = false;
+    private int mDetailTextureAlignment = DEFAULT_DETAIL_ALIGNMENT;
     private boolean mDrawCardsWithBlending = true;
     private boolean mDrawRuler = true;
     private float mStartAngle;
@@ -100,7 +102,7 @@ public class CarouselController {
         setVisibleSlots(mVisibleSlots);
         setVisibleDetails(mVisibleDetails);
         setPrefetchCardCount(mPrefetchCardCount);
-        setDrawDetailBelowCard(mDrawDetailBelowCard);
+        setDetailTextureAlignment(mDetailTextureAlignment);
         setDrawRuler(mDrawRuler);
         setCallback(mCarouselCallback);
         setDefaultBitmap(mDefaultBitmap);
@@ -205,27 +207,25 @@ public class CarouselController {
     }
 
     /**
-     * Set whether to draw the detail texture above or below the card.
+     * Sets how detail textures are aligned with respect to the card.
      *
-     * @param below False for above, true for below.
+     * @param alignment a bitmask of DetailAlignment flags.
      */
-    public void setDrawDetailBelowCard(boolean below) {
-        mDrawDetailBelowCard = below;
-        if (mRenderScript != null) {
-            mRenderScript.setDrawDetailBelowCard(below);
+    public void setDetailTextureAlignment(int alignment) {
+        int xBits = alignment & DetailAlignment.HORIZONTAL_ALIGNMENT_MASK;
+        if (xBits == 0 || ((xBits & (xBits - 1)) != 0)) {
+            throw new IllegalArgumentException(
+                    "Must specify exactly one horizontal alignment flag");
         }
-    }
+        int yBits = alignment & DetailAlignment.VERTICAL_ALIGNMENT_MASK;
+        if (yBits == 0 || ((yBits & (yBits - 1)) != 0)) {
+            throw new IllegalArgumentException(
+                    "Must specify exactly one vertical alignment flag");
+        }
 
-    /**
-     * Set whether to align the detail texture center with the card center.
-     * If not, left edges will be aligned instead.
-     *
-     * @param centered True for center-aligned, false for left-aligned.
-     */
-    public void setDetailTexturesCentered(boolean centered) {
-        mDetailTexturesCentered = centered;
+        mDetailTextureAlignment = alignment;
         if (mRenderScript != null) {
-            mRenderScript.setDetailTexturesCentered(centered);
+            mRenderScript.setDetailTextureAlignment(alignment);
         }
     }
 

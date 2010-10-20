@@ -53,6 +53,41 @@ public abstract class MVCCarouselView extends RSSurfaceView {
 
     CarouselController mController;
 
+    // Note: remember to update carousel.rs when changing the values below
+    public static class DetailAlignment {
+        /** Detail is centered vertically with respect to the card **/
+        public static final int CENTER_VERTICAL = 1;
+        /** Detail is aligned with the top edge of the carousel view **/
+        public static final int VIEW_TOP = 1 << 1;
+        /** Detail is aligned with the bottom edge of the carousel view (not yet implemented) **/
+        public static final int VIEW_BOTTOM = 1 << 2;
+        /** Detail is positioned above the card (not yet implemented) **/
+        public static final int ABOVE = 1 << 3;
+        /** Detail is positioned below the card **/
+        public static final int BELOW = 1 << 4;
+        /** Mask that selects those bits that control vertical alignment **/
+        public static final int VERTICAL_ALIGNMENT_MASK = 0xff;
+
+        /**
+         * Detail is centered horizontally with respect to either the top or bottom
+         * extent of the card, depending on whether the detail is above or below the card.
+         */
+        public static final int CENTER_HORIZONTAL = 1 << 8;
+        /**
+         * Detail is aligned with the left edge of either the top or the bottom of
+         * the card, depending on whether the detail is above or below the card.
+         */
+        public static final int LEFT = 1 << 9;
+        /**
+         * Detail is aligned with the right edge of either the top or the bottom of
+         * the card, depending on whether the detail is above or below the card.
+         * (not yet implemented)
+         */
+        public static final int RIGHT = 1 << 10;
+        /** Mask that selects those bits that control horizontal alignment **/
+        public static final int HORIZONTAL_ALIGNMENT_MASK = 0xff00;
+    }
+
     public static class Info {
         public Info(int _resId) { resId = _resId; }
         public int resId; // resource for renderscript resource (e.g. R.raw.carousel)
@@ -198,22 +233,12 @@ public abstract class MVCCarouselView extends RSSurfaceView {
     }
 
     /**
-     * Set whether to draw the detail texture above or below the card.
-     *
-     * @param below False for above, true for below.
+     * Sets how detail textures are aligned with respect to the card.
+     * 
+     * @param alignment a bitmask of DetailAlignment flags.
      */
-    public void setDrawDetailBelowCard(boolean below) {
-        mController.setDrawDetailBelowCard(below);
-    }
-
-    /**
-     * Set whether to align the detail texture center with the card center.
-     * If not, left edges will be aligned instead.
-     *
-     * @param centered True for center-aligned, false for left-aligned.
-     */
-    public void setDetailTexturesCentered(boolean centered) {
-        mController.setDetailTexturesCentered(centered);
+    public void setDetailTextureAlignment(int alignment) {
+        mController.setDetailTextureAlignment(alignment);
     }
 
     /**

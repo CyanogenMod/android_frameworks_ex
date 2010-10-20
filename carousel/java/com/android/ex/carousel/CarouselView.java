@@ -51,6 +51,8 @@ public abstract class CarouselView extends RSSurfaceView {
     private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
     private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
     private final float DEFAULT_DRAG_FACTOR = 0.25f;
+    private final int DEFAULT_DETAIL_ALIGNMENT =
+            DetailAlignment.VIEW_TOP | DetailAlignment.LEFT;
     private static final String TAG = "CarouselView";
     private static final boolean DBG = false;
     private CarouselRS mRenderScript;
@@ -71,8 +73,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private int mVisibleSlots = 0;
     private int mVisibleDetails = DEFAULT_VISIBLE_DETAIL_COUNT;
     private int mPrefetchCardCount = DEFAULT_PREFETCH_CARD_COUNT;
-    private boolean mDrawDetailBelowCard = false;
-    private boolean mDetailTexturesCentered = false;
+    private int mDetailTextureAlignment = DEFAULT_DETAIL_ALIGNMENT;
     private boolean mDrawCardsWithBlending = true;
     private boolean mDrawRuler = true;
     private float mStartAngle;
@@ -93,6 +94,41 @@ public abstract class CarouselView extends RSSurfaceView {
     private long mFadeInDuration = 250L;
     private Bitmap mDetailLoadingBitmap = Bitmap.createBitmap(
             new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
+
+    // Note: remember to update carousel.rs when changing the values below
+    public static class DetailAlignment {
+        /** Detail is centered vertically with respect to the card **/
+        public static final int CENTER_VERTICAL = 1;
+        /** Detail is aligned with the top edge of the carousel view **/
+        public static final int VIEW_TOP = 1 << 1;
+        /** Detail is aligned with the bottom edge of the carousel view (not yet implemented) **/
+        public static final int VIEW_BOTTOM = 1 << 2;
+        /** Detail is positioned above the card (not yet implemented) **/
+        public static final int ABOVE = 1 << 3;
+        /** Detail is positioned below the card **/
+        public static final int BELOW = 1 << 4;
+        /** Mask that selects those bits that control vertical alignment **/
+        public static final int VERTICAL_ALIGNMENT_MASK = 0xff;
+
+        /**
+         * Detail is centered horizontally with respect to either the top or bottom
+         * extent of the card, depending on whether the detail is above or below the card.
+         */
+        public static final int CENTER_HORIZONTAL = 1 << 8;
+        /**
+         * Detail is aligned with the left edge of either the top or the bottom of
+         * the card, depending on whether the detail is above or below the card.
+         */
+        public static final int LEFT = 1 << 9;
+        /**
+         * Detail is aligned with the right edge of either the top or the bottom of
+         * the card, depending on whether the detail is above or below the card.
+         * (not yet implemented)
+         */
+        public static final int RIGHT = 1 << 10;
+        /** Mask that selects those bits that control horizontal alignment **/
+        public static final int HORIZONTAL_ALIGNMENT_MASK = 0xff00;
+    }
 
     public static class Info {
         public Info(int _resId) { resId = _resId; }
@@ -149,7 +185,7 @@ public abstract class CarouselView extends RSSurfaceView {
         setVisibleSlots(mVisibleSlots);
         setVisibleDetails(mVisibleDetails);
         setPrefetchCardCount(mPrefetchCardCount);
-        setDrawDetailBelowCard(mDrawDetailBelowCard);
+        setDetailTextureAlignment(mDetailTextureAlignment);
         setDrawRuler(mDrawRuler);
         setCallback(mCarouselCallback);
         setDefaultBitmap(mDefaultBitmap);
@@ -267,27 +303,25 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
-     * Set whether to draw the detail texture above or below the card.
+     * Sets how detail textures are aligned with respect to the card.
      *
-     * @param below False for above, true for below.
+     * @param alignment a bitmask of DetailAlignment flags.
      */
-    public void setDrawDetailBelowCard(boolean below) {
-        mDrawDetailBelowCard = below;
-        if (mRenderScript != null) {
-            mRenderScript.setDrawDetailBelowCard(below);
+    public void setDetailTextureAlignment(int alignment) {
+        int xBits = alignment & DetailAlignment.HORIZONTAL_ALIGNMENT_MASK;
+        if (xBits == 0 || ((xBits & (xBits - 1)) != 0)) {
+            throw new IllegalArgumentException(
+                  "Must specify exactly one horizontal alignment flag");
         }
-    }
+        int yBits = alignment & DetailAlignment.VERTICAL_ALIGNMENT_MASK;
+        if (yBits == 0 || ((yBits & (yBits - 1)) != 0)) {
+          throw new IllegalArgumentException(
+                  "Must specify exactly one vertical alignment flag");
+        }
 
-    /**
-     * Set whether to align the detail texture center with the card center.
-     * If not, left edges will be aligned instead.
-     *
-     * @param centered True for center-aligned, false for left-aligned.
-     */
-    public void setDetailTexturesCentered(boolean centered) {
-        mDetailTexturesCentered = centered;
+        mDetailTextureAlignment = alignment;
         if (mRenderScript != null) {
-            mRenderScript.setDetailTexturesCentered(centered);
+            mRenderScript.setDetailTextureAlignment(alignment);
         }
     }
 
