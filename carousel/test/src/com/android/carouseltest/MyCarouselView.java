@@ -19,17 +19,22 @@ package com.android.carouseltest;
 import android.content.Context;
 import android.util.AttributeSet;
 
+import com.android.ex.carousel.CarouselController;
 import com.android.ex.carousel.CarouselView;
 import com.android.ex.carousel.CarouselView.Info;
 
 public class MyCarouselView extends CarouselView {
 
-    public MyCarouselView(Context context) {
-        this(context, null);
+    public MyCarouselView(Context context, CarouselController controller) {
+        this(context, null, controller);
     }
 
     public MyCarouselView(Context context, AttributeSet attrs) {
-        super(context, attrs);
+        this(context, attrs, new CarouselController());
+    }
+
+    public MyCarouselView(Context context, AttributeSet attrs, CarouselController controller) {
+        super(context, attrs, controller);
     }
 
     public Info getRenderScriptInfo() {

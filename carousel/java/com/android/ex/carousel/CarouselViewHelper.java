@@ -257,11 +257,11 @@ public class CarouselViewHelper implements CarouselCallback {
     }
 
     public void onAnimationStarted() {
-        if (DBG) Log.v(TAG, "onAnimationStarted()");
+
     }
 
-    public void onAnimationFinished(float startAngle) {
-        if (DBG) Log.v(TAG, "onAnimationFinished(" + startAngle + ")");
+    public void onAnimationFinished(float carouselRotationAngle) {
+
     }
 
     public void onResume() {

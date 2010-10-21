@@ -17,7 +17,7 @@
 package com.android.ex.carousel;
 
 import com.android.ex.carousel.CarouselRS.CarouselCallback;
-import com.android.ex.carousel.MVCCarouselView.DetailAlignment;
+import com.android.ex.carousel.CarouselView.DetailAlignment;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -103,6 +103,7 @@ public class CarouselController {
         setVisibleDetails(mVisibleDetails);
         setPrefetchCardCount(mPrefetchCardCount);
         setDetailTextureAlignment(mDetailTextureAlignment);
+        setDrawCardsWithBlending(mDrawCardsWithBlending);
         setDrawRuler(mDrawRuler);
         setCallback(mCarouselCallback);
         setDefaultBitmap(mDefaultBitmap);

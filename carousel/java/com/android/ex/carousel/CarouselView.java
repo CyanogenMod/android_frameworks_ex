@@ -44,15 +44,6 @@ import android.view.SurfaceHolder;
  */
 public abstract class CarouselView extends RSSurfaceView {
     private static final boolean USE_DEPTH_BUFFER = true;
-    private final int DEFAULT_SLOT_COUNT = 10;
-    private final float DEFAULT_RADIUS = 20.0f;
-    private final int DEFAULT_VISIBLE_DETAIL_COUNT = 3;
-    private final int DEFAULT_PREFETCH_CARD_COUNT = 2;
-    private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
-    private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
-    private final float DEFAULT_DRAG_FACTOR = 0.25f;
-    private final int DEFAULT_DETAIL_ALIGNMENT =
-            DetailAlignment.VIEW_TOP | DetailAlignment.LEFT;
     private static final String TAG = "CarouselView";
     private static final boolean DBG = false;
     private CarouselRS mRenderScript;
@@ -60,40 +51,7 @@ public abstract class CarouselView extends RSSurfaceView {
     private Context mContext;
     private boolean mTracking;
 
-    // These shadow the state of the renderer in case the surface changes so the surface
-    // can be restored to its previous state.
-    private Bitmap mDefaultBitmap;
-    private Bitmap mLoadingBitmap;
-    private Bitmap mBackgroundBitmap;
-    private Bitmap mDefaultLineBitmap = Bitmap.createBitmap(
-            new int[] {0x00000000, 0xffffffff, 0x00000000}, 0, 3, 3, 1, Bitmap.Config.ARGB_4444);
-    private Mesh mDefaultGeometry;
-    private Mesh mLoadingGeometry;
-    private int mCardCount = 0;
-    private int mVisibleSlots = 0;
-    private int mVisibleDetails = DEFAULT_VISIBLE_DETAIL_COUNT;
-    private int mPrefetchCardCount = DEFAULT_PREFETCH_CARD_COUNT;
-    private int mDetailTextureAlignment = DEFAULT_DETAIL_ALIGNMENT;
-    private boolean mDrawCardsWithBlending = true;
-    private boolean mDrawRuler = true;
-    private float mStartAngle;
-    private float mCarouselRotationAngle;
-    private float mRadius = DEFAULT_RADIUS;
-    private float mCardRotation = 0.0f;
-    private boolean mCardsFaceTangent = false;
-    private float mSwaySensitivity = DEFAULT_SWAY_SENSITIVITY;
-    private float mFrictionCoefficient = DEFAULT_FRICTION_COEFFICIENT;
-    private float mDragFactor = DEFAULT_DRAG_FACTOR;
-    private int mSlotCount = DEFAULT_SLOT_COUNT;
-    private float mEye[] = { 20.6829f, 2.77081f, 16.7314f };
-    private float mAt[] = { 14.7255f, -3.40001f, -1.30184f };
-    private float mUp[] = { 0.0f, 1.0f, 0.0f };
-    private Float4 mBackgroundColor = new Float4(0.0f, 0.0f, 0.0f, 1.0f);
-    private CarouselCallback mCarouselCallback;
-    private float mRezInCardCount = 0.0f;
-    private long mFadeInDuration = 250L;
-    private Bitmap mDetailLoadingBitmap = Bitmap.createBitmap(
-            new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
+    CarouselController mController;
 
     // Note: remember to update carousel.rs when changing the values below
     public static class DetailAlignment {
@@ -138,23 +96,32 @@ public abstract class CarouselView extends RSSurfaceView {
     public abstract Info getRenderScriptInfo();
 
     public CarouselView(Context context) {
-        this(context, null);
+        this(context, new CarouselController());
+    }
+
+    public CarouselView(Context context, CarouselController controller) {
+        this(context, null, controller);
     }
 
     /**
      * Constructor used when this widget is created from a layout file.
      */
     public CarouselView(Context context, AttributeSet attrs) {
+        this(context, attrs, new CarouselController());
+    }
+
+    public CarouselView(Context context, AttributeSet attrs, CarouselController controller) {
         super(context, attrs);
         mContext = context;
+        mController = controller;
         boolean useDepthBuffer = true;
         ensureRenderScript();
         // TODO: add parameters to layout
 
-        setOnLongClickListener(new OnLongClickListener() {
+        setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
                 if (interpretLongPressEvents()) {
-                    mRenderScript.doLongPress();
+                    mController.onLongPress();
                     return true;
                 } else {
                     return false;
@@ -166,49 +133,32 @@ public abstract class CarouselView extends RSSurfaceView {
     private void ensureRenderScript() {
         if (mRS == null) {
             RenderScriptGL.SurfaceConfig sc = new RenderScriptGL.SurfaceConfig();
-            sc.setDepth(16, 24);
+            if (USE_DEPTH_BUFFER) {
+                sc.setDepth(16, 24);
+            }
             mRS = createRenderScript(sc);
         }
         if (mRenderScript == null) {
-            mRenderScript = new CarouselRS(mRS, getResources(), getRenderScriptInfo().resId);
+            mRenderScript = new CarouselRS(mRS, mContext.getResources(),
+                    getRenderScriptInfo().resId);
             mRenderScript.resumeRendering();
         }
+        mController.setRS(mRS, mRenderScript);
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
         super.surfaceChanged(holder, format, w, h);
-        //mRS.contextSetSurface(w, h, holder.getSurface());
-        mRenderScript.resumeRendering();
-        setSlotCount(mSlotCount);
-        createCards(mCardCount);
-        setVisibleSlots(mVisibleSlots);
-        setVisibleDetails(mVisibleDetails);
-        setPrefetchCardCount(mPrefetchCardCount);
-        setDetailTextureAlignment(mDetailTextureAlignment);
-        setDrawRuler(mDrawRuler);
-        setCallback(mCarouselCallback);
-        setDefaultBitmap(mDefaultBitmap);
-        setLoadingBitmap(mLoadingBitmap);
-        setDefaultGeometry(mDefaultGeometry);
-        setLoadingGeometry(mLoadingGeometry);
-        setBackgroundColor(mBackgroundColor.x, mBackgroundColor.y, mBackgroundColor.z,
-                mBackgroundColor.w);
-        setBackgroundBitmap(mBackgroundBitmap);
-        setDetailLineBitmap(mDefaultLineBitmap);
-        setStartAngle(mStartAngle);
-        setCarouselRotationAngle(mCarouselRotationAngle);
-        setRadius(mRadius);
-        setCardRotation(mCardRotation);
-        setCardsFaceTangent(mCardsFaceTangent);
-        setSwaySensitivity(mSwaySensitivity);
-        setFrictionCoefficient(mFrictionCoefficient);
-        setDragFactor(mDragFactor);
-        setLookAt(mEye, mAt, mUp);
-        setRezInCardCount(mRezInCardCount);
-        setFadeInDuration(mFadeInDuration);
-        setDetailLoadingBitmap(mDetailLoadingBitmap);
-        setDrawCardsWithBlending(mDrawCardsWithBlending);
+        mController.onSurfaceChanged();
+    }
+
+    public CarouselController getController() {
+        return mController;
+    }
+
+    public void setController(CarouselController controller) {
+        mController = controller;
+        mController.setRS(mRS, mRenderScript);
     }
 
     /**
@@ -229,13 +179,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @return the loaded mesh or null if it cannot be loaded
      */
     public Mesh loadGeometry(int resId) {
-        Resources res = mContext.getResources();
-        FileA3D model = FileA3D.createFromResource(mRS, res, resId);
-        FileA3D.IndexEntry entry = model.getIndexEntry(0);
-        if(entry == null || entry.getClassID() != FileA3D.ClassID.MESH) {
-            return null;
-        }
-        return (Mesh) entry.getObject();
+        return mController.loadGeometry(mContext.getResources(), resId);
     }
 
     /**
@@ -244,9 +188,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param resId
      */
     public void setGeometryForItem(int n, Mesh mesh) {
-        if (mRenderScript != null) {
-            mRenderScript.setGeometry(n, mesh);
-        }
+        mController.setGeometryForItem(n, mesh);
     }
 
     /**
@@ -256,10 +198,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param n the number of slots
      */
     public void setSlotCount(int n) {
-        mSlotCount = n;
-        if (mRenderScript != null) {
-            mRenderScript.setSlotCount(n);
-        }
+        mController.setSlotCount(n);
     }
 
     /**
@@ -268,22 +207,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param n the number of visible slots
      */
     public void setVisibleSlots(int n) {
-        mVisibleSlots = n;
-        if (mRenderScript != null) {
-            mRenderScript.setVisibleSlots(n);
-        }
-    }
-
-    /**
-     * Set the number of detail textures that can be visible at one time.
-     *
-     * @param n the number of slots
-     */
-    public void setVisibleDetails(int n) {
-        mVisibleDetails = n;
-        if (mRenderScript != null) {
-            mRenderScript.setVisibleDetails(n);
-        }
+        mController.setVisibleSlots(n);
     }
 
     /**
@@ -296,40 +220,36 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param n the number of cards; should be even, so the count is the same on each side
      */
     public void setPrefetchCardCount(int n) {
-        mPrefetchCardCount = n;
-        if (mRenderScript != null) {
-            mRenderScript.setPrefetchCardCount(n);
-        }
+        mController.setPrefetchCardCount(n);
+    }
+
+    /**
+     * Set the number of detail textures that can be visible at one time.
+     *
+     * @param n the number of slots
+     */
+    public void setVisibleDetails(int n) {
+        mController.setVisibleDetails(n);
     }
 
     /**
      * Sets how detail textures are aligned with respect to the card.
-     *
+     * 
      * @param alignment a bitmask of DetailAlignment flags.
      */
     public void setDetailTextureAlignment(int alignment) {
-        int xBits = alignment & DetailAlignment.HORIZONTAL_ALIGNMENT_MASK;
-        if (xBits == 0 || ((xBits & (xBits - 1)) != 0)) {
-            throw new IllegalArgumentException(
-                  "Must specify exactly one horizontal alignment flag");
-        }
-        int yBits = alignment & DetailAlignment.VERTICAL_ALIGNMENT_MASK;
-        if (yBits == 0 || ((yBits & (yBits - 1)) != 0)) {
-          throw new IllegalArgumentException(
-                  "Must specify exactly one vertical alignment flag");
-        }
-
-        mDetailTextureAlignment = alignment;
-        if (mRenderScript != null) {
-            mRenderScript.setDetailTextureAlignment(alignment);
-        }
+        mController.setDetailTextureAlignment(alignment);
     }
 
+    /**
+     * Set whether blending is enabled while drawing the card textures. This should be true when
+     * translucent cards need to be supported, and false when all cards are fully opaque. Setting
+     * to false provides a performance boost.
+     *
+     * @param enabled True to enable blending, and false to disable it.
+     */
     public void setDrawCardsWithBlending(boolean enabled) {
-        mDrawCardsWithBlending = enabled;
-        if (mRenderScript != null) {
-            mRenderScript.setDrawCardsWithBlending(enabled);
-        }
+        mController.setDrawCardsWithBlending(enabled);
     }
 
     /**
@@ -338,10 +258,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param drawRuler True to draw a ruler, false to draw nothing where the ruler would go.
      */
     public void setDrawRuler(boolean drawRuler) {
-        mDrawRuler = drawRuler;
-        if (mRenderScript != null) {
-            mRenderScript.setDrawRuler(drawRuler);
-        }
+        mController.setDrawRuler(drawRuler);
     }
 
     /**
@@ -353,14 +270,11 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param n the number of cards to create.
      */
     public void createCards(int n) {
-        mCardCount = n;
-        if (mRenderScript != null) {
-            mRenderScript.createCards(n);
-        }
+        mController.createCards(n);
     }
 
     public int getCardCount() {
-        return mCardCount;
+        return mController.getCardCount();
     }
 
     /**
@@ -374,13 +288,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param bitmap the bitmap image to show
      */
     public void setTextureForItem(int n, Bitmap bitmap) {
-        // Also check against mRS, to handle the case where the result is being delivered by a
-        // background thread but the sender no longer exists.
-        if (mRenderScript != null && mRS != null) {
-            if (DBG) Log.v(TAG, "setTextureForItem(" + n + ")");
-            mRenderScript.setTexture(n, bitmap);
-            if (DBG) Log.v(TAG, "done");
-        }
+        mController.setTextureForItem(n, bitmap);
     }
 
     /**
@@ -399,11 +307,7 @@ public abstract class CarouselView extends RSSurfaceView {
      */
     public void setDetailTextureForItem(int n, float offx, float offy, float loffx, float loffy,
             Bitmap bitmap) {
-        if (mRenderScript != null && mRS != null) {
-            if (DBG) Log.v(TAG, "setDetailTextureForItem(" + n + ")");
-            mRenderScript.setDetailTexture(n, offx, offy, loffx, loffy, bitmap);
-            if (DBG) Log.v(TAG, "done");
-        }
+        mController.setDetailTextureForItem(n, offx, offy, loffx, loffy, bitmap);
     }
 
     /**
@@ -415,10 +319,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param bitmap
      */
     public void setDefaultBitmap(Bitmap bitmap) {
-        mDefaultBitmap = bitmap;
-        if (mRenderScript != null) {
-            mRenderScript.setDefaultBitmap(bitmap);
-        }
+        mController.setDefaultBitmap(bitmap);
     }
 
     /**
@@ -430,10 +331,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param bitmap
      */
     public void setLoadingBitmap(Bitmap bitmap) {
-        mLoadingBitmap = bitmap;
-        if (mRenderScript != null) {
-            mRenderScript.setLoadingBitmap(bitmap);
-        }
+        mController.setLoadingBitmap(bitmap);
     }
 
     /**
@@ -446,10 +344,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param alpha the amount of alpha
      */
     public void setBackgroundColor(float red, float green, float blue, float alpha) {
-        mBackgroundColor = new Float4(red, green, blue, alpha);
-        if (mRenderScript != null) {
-            mRenderScript.setBackgroundColor(mBackgroundColor);
-        }
+        mController.setBackgroundColor(red, green, blue, alpha);
     }
 
     /**
@@ -459,10 +354,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param bitmap
      */
     public void setBackgroundBitmap(Bitmap bitmap) {
-        mBackgroundBitmap = bitmap;
-        if (mRenderScript != null) {
-            mRenderScript.setBackgroundTexture(bitmap);
-        }
+        mController.setBackgroundBitmap(bitmap);
     }
 
     /**
@@ -472,10 +364,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param bitmap
      */
     public void setDetailLoadingBitmap(Bitmap bitmap) {
-        mDetailLoadingBitmap = bitmap;
-        if (mRenderScript != null) {
-            mRenderScript.setDetailLoadingTexture(bitmap);
-        }
+        mController.setDetailLoadingBitmap(bitmap);
     }
 
     /**
@@ -486,10 +375,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param bitmap
      */
     public void setDetailLineBitmap(Bitmap bitmap) {
-        mDefaultLineBitmap = bitmap;
-        if (mRenderScript != null) {
-            mRenderScript.setDetailLineTexture(bitmap);
-        }
+        mController.setDetailLineBitmap(bitmap);
     }
 
     /**
@@ -499,10 +385,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param mesh
      */
     public void setDefaultGeometry(Mesh mesh) {
-        mDefaultGeometry = mesh;
-        if (mRenderScript != null) {
-            mRenderScript.setDefaultGeometry(mesh);
-        }
+        mController.setDefaultGeometry(mesh);
     }
 
     /**
@@ -512,10 +395,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param mesh
      */
     public void setLoadingGeometry(Mesh mesh) {
-        mLoadingGeometry = mesh;
-        if (mRenderScript != null) {
-            mRenderScript.setLoadingGeometry(mesh);
-        }
+        mController.setLoadingGeometry(mesh);
     }
 
     /**
@@ -525,10 +405,7 @@ public abstract class CarouselView extends RSSurfaceView {
      */
     public void setCallback(CarouselCallback callback)
     {
-        mCarouselCallback = callback;
-        if (mRenderScript != null) {
-            mRenderScript.setCallback(callback);
-        }
+        mController.setCallback(callback);
     }
 
     /**
@@ -540,78 +417,35 @@ public abstract class CarouselView extends RSSurfaceView {
      */
     public void setStartAngle(float angle)
     {
-        mStartAngle = angle;
-        if (mRenderScript != null) {
-            mRenderScript.setStartAngle(angle);
-        }
-    }
-
-    /**
-     * Set the current carousel rotation angle, in card units.
-     * This is measured in card positions, not in radians or degrees.
-     *
-     * A value of 0.0 means that card 0 is in the home position.
-     * A value of 1.0 means that card 1 is in the home position, and so on.
-     * The maximum value will be somewhat less than the total number of cards.
-     *
-     * @param angle
-     */
-    public void setCarouselRotationAngle(float angle) {
-        mCarouselRotationAngle = angle;
-        if (mRenderScript != null) {
-            mRenderScript.setCarouselRotationAngle(angle);
-        }
+        mController.setStartAngle(angle);
     }
 
     public void setRadius(float radius) {
-        mRadius = radius;
-        if (mRenderScript != null) {
-            mRenderScript.setRadius(radius);
-        }
+        mController.setRadius(radius);
     }
 
     public void setCardRotation(float cardRotation) {
-        mCardRotation = cardRotation;
-        if (mRenderScript != null) {
-            mRenderScript.setCardRotation(cardRotation);
-        }
+        mController.setCardRotation(cardRotation);
     }
 
     public void setCardsFaceTangent(boolean faceTangent) {
-        mCardsFaceTangent = faceTangent;
-        if (mRenderScript != null) {
-          mRenderScript.setCardsFaceTangent(faceTangent);
-        }
+        mController.setCardsFaceTangent(faceTangent);
     }
 
     public void setSwaySensitivity(float swaySensitivity) {
-        mSwaySensitivity = swaySensitivity;
-        if (mRenderScript != null) {
-            mRenderScript.setSwaySensitivity(swaySensitivity);
-        }
+        mController.setSwaySensitivity(swaySensitivity);
     }
 
     public void setFrictionCoefficient(float frictionCoefficient) {
-        mFrictionCoefficient = frictionCoefficient;
-        if (mRenderScript != null) {
-            mRenderScript.setFrictionCoefficient(frictionCoefficient);
-        }
+        mController.setFrictionCoefficient(frictionCoefficient);
     }
 
     public void setDragFactor(float dragFactor) {
-        mDragFactor = dragFactor;
-        if (mRenderScript != null) {
-            mRenderScript.setDragFactor(dragFactor);
-        }
+        mController.setDragFactor(dragFactor);
     }
 
     public void setLookAt(float[] eye, float[] at, float[] up) {
-        mEye = eye;
-        mAt = at;
-        mUp = up;
-        if (mRenderScript != null) {
-            mRenderScript.setLookAt(eye, at, up);
-        }
+        mController.setLookAt(eye, at, up);
     }
 
     /**
@@ -623,10 +457,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param n the number of cards to rez in.
      */
     public void setRezInCardCount(float n) {
-        mRezInCardCount = n;
-        if (mRenderScript != null) {
-            mRenderScript.setRezInCardCount(n);
-        }
+        mController.setRezInCardCount(n);
     }
 
     /**
@@ -639,10 +470,7 @@ public abstract class CarouselView extends RSSurfaceView {
      * @param t
      */
     public void setFadeInDuration(long t) {
-        mFadeInDuration = t;
-        if (mRenderScript != null) {
-            mRenderScript.setFadeInDuration(t);
-        }
+        mController.setFadeInDuration(t);
     }
 
     @Override
@@ -653,6 +481,7 @@ public abstract class CarouselView extends RSSurfaceView {
             mRS = null;
             destroyRenderScript();
         }
+        mController.setRS(mRS, mRenderScript);
     }
 
     @Override
@@ -675,17 +504,17 @@ public abstract class CarouselView extends RSSurfaceView {
         switch (action) {
             case MotionEvent.ACTION_DOWN:
                 mTracking = true;
-                mRenderScript.doStart(x, y);
+                mController.onTouchStarted(x, y);
                 break;
 
             case MotionEvent.ACTION_MOVE:
                 if (mTracking) {
-                    mRenderScript.doMotion(x, y);
+                    mController.onTouchMoved(x, y);
                 }
                 break;
 
             case MotionEvent.ACTION_UP:
-                mRenderScript.doStop(x, y);
+                mController.onTouchStopped(x, y);
                 mTracking = false;
                 break;
         }

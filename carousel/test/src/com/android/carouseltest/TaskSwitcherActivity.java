@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import com.android.carouseltest.R;
 
+import com.android.ex.carousel.CarouselController;
 import com.android.ex.carousel.CarouselViewHelper;
 
 import android.app.Activity;
@@ -58,6 +59,7 @@ public class TaskSwitcherActivity extends Activity {
     private boolean mPortraitMode = true;
     private ArrayList<ActivityDescription> mActivityDescriptions
             = new ArrayList<ActivityDescription>();
+    private CarouselController mController;
     private MyCarouselView mView;
     private Bitmap mBlankBitmap = Bitmap.createBitmap(128, 128, Config.RGB_565);
     private LocalCarouselViewHelper mHelper;
@@ -200,7 +202,8 @@ public class TaskSwitcherActivity extends Activity {
         final Resources res = getResources();
         final View decorView = getWindow().getDecorView();
 
-        mView = new MyCarouselView(this);
+        mController = new CarouselController();
+        mView = new MyCarouselView(this, mController);
         mHelper = new LocalCarouselViewHelper(this);
         mHelper.setCarouselView(mView);
         mView.setSlotCount(CARD_SLOTS);
