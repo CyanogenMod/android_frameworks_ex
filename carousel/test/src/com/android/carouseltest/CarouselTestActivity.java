@@ -17,6 +17,7 @@
 package com.android.carouseltest;
 
 import com.android.carouseltest.MyCarouselView;
+import com.android.ex.carousel.CarouselController;
 import com.android.ex.carousel.CarouselView;
 import com.android.ex.carousel.CarouselViewHelper;
 
@@ -45,6 +46,7 @@ public class CarouselTestActivity extends Activity {
     private static final int DETAIL_TEXTURE_HEIGHT = 80;
     private static final int VISIBLE_DETAIL_COUNT = 3;
     private static final boolean INCREMENTAL_ADD = false; // To debug incrementally adding cards
+    private CarouselController mController;
     private CarouselView mView;
     private Paint mPaint = new Paint();
     private CarouselViewHelper mHelper;
@@ -119,7 +121,8 @@ public class CarouselTestActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mView = new MyCarouselView(this);
+        mController = new CarouselController();
+        mView = new MyCarouselView(this, mController);
         mView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
         mPaint.setColor(0xffffffff);
         final Resources res = getResources();
