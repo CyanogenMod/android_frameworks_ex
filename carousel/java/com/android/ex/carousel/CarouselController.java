@@ -66,7 +66,7 @@ public class CarouselController {
     private int mVisibleDetails = DEFAULT_VISIBLE_DETAIL_COUNT;
     private int mPrefetchCardCount = DEFAULT_PREFETCH_CARD_COUNT;
     private int mDetailTextureAlignment = DEFAULT_DETAIL_ALIGNMENT;
-    private boolean mDrawCardsWithBlending = true;
+    private boolean mForceBlendCardsWithZ = false;
     private boolean mDrawRuler = true;
     private float mStartAngle;
     private float mCarouselRotationAngle;
@@ -103,7 +103,7 @@ public class CarouselController {
         setVisibleDetails(mVisibleDetails);
         setPrefetchCardCount(mPrefetchCardCount);
         setDetailTextureAlignment(mDetailTextureAlignment);
-        setDrawCardsWithBlending(mDrawCardsWithBlending);
+        setForceBlendCardsWithZ(mForceBlendCardsWithZ);
         setDrawRuler(mDrawRuler);
         setCallback(mCarouselCallback);
         setDefaultBitmap(mDefaultBitmap);
@@ -231,16 +231,17 @@ public class CarouselController {
     }
 
     /**
-     * Set whether blending is enabled while drawing the card textures. This should be true when
-     * translucent cards need to be supported, and false when all cards are fully opaque. Setting
-     * to false provides a performance boost.
+     * Set whether depth is enabled while blending. Generally, this is discouraged because
+     * it causes bad artifacts. Careful attention to geometry and alpha transparency of
+     * textures can mitigate much of this. Geometry for an individual item must be drawn
+     * back-to-front, for example.
      *
-     * @param enabled True to enable blending, and false to disable it.
+     * @param enabled True to enable depth while blending, and false to disable it.
      */
-    public void setDrawCardsWithBlending(boolean enabled) {
-        mDrawCardsWithBlending = enabled;
+    public void setForceBlendCardsWithZ(boolean enabled) {
+        mForceBlendCardsWithZ = enabled;
         if (mRenderScript != null) {
-            mRenderScript.setDrawCardsWithBlending(enabled);
+            mRenderScript.setForceBlendCardsWithZ(enabled);
         }
     }
 
@@ -406,7 +407,9 @@ public class CarouselController {
 
     /**
      * This geometry will be shown when no geometry has been loaded for a given slot. If not set,
-     * a quad will be drawn in its place. It is shared for all cards.
+     * a quad will be drawn in its place. It is shared for all cards. If something other than
+     * simple planar geometry is used, consider enabling depth test with
+     * {@link CarouselController#setForceBlendCardsWithZ(boolean)}
      *
      * @param mesh
      */
@@ -419,7 +422,9 @@ public class CarouselController {
 
     /**
      * This is an intermediate version of the object to show while geometry is loading. If not set,
-     * a quad will be drawn in its place.  It is shared for all cards.
+     * a quad will be drawn in its place.  It is shared for all cards. If something other than
+     * simple planar geometry is used, consider enabling depth test with
+     * {@link CarouselView#setForceBlendCardsWithZ(boolean)}
      *
      * @param mesh
      */

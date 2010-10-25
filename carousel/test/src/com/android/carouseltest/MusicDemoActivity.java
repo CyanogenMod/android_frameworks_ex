@@ -96,6 +96,7 @@ public class MusicDemoActivity extends Activity {
         mView.setDefaultGeometry(mView.loadGeometry(CD_GEOMETRY));
         mView.setFadeInDuration(250);
         mView.setRezInCardCount(3.0f);
+        mView.setForceBlendCardsWithZ(false);
     }
 
     @Override
