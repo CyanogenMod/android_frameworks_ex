@@ -709,11 +709,11 @@ static bool drawDetails(int64_t currentTime)
                 if (detailTextureAlignment & BELOW) {
                     screenCoord.y = min(screenCoordLeft.y, screenCoordRight.y);
                 } else if (detailTextureAlignment & CENTER_VERTICAL) {
-                    screenCoord.y -= rsAllocationGetDimY(cards[i].detailTexture) / 2.;
+                    screenCoord.y -= round(rsAllocationGetDimY(cards[i].detailTexture) / 2.0f);
                 }
                 if (detailTextureAlignment & CENTER_HORIZONTAL) {
-                    screenCoord.x += (screenCoordRight.x - screenCoordLeft.x) / 2. -
-                        rsAllocationGetDimX(cards[i].detailTexture) / 2.;
+                    screenCoord.x += round((screenCoordRight.x - screenCoordLeft.x) / 2.0f -
+                        rsAllocationGetDimX(cards[i].detailTexture) / 2.0f);
                 }
 
                 // Compute alpha for gradually fading in details. Applied to both line and
