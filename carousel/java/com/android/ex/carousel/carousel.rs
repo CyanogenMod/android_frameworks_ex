@@ -278,9 +278,10 @@ void init() {
 static void updateAllocationVars(Card_t* newcards)
 {
     // Cards
-    rs_allocation cardAlloc = rsGetAllocation(newcards);
-    // TODO: use new rsIsObject()
-    cardCount = (cardAllocationValid && cardAlloc.p != 0) ? rsAllocationGetDimX(cardAlloc) : 0;
+    rs_allocation cardAlloc = {0};
+    rsSetObject(&cardAlloc, rsGetAllocation(newcards));
+    cardCount = (cardAllocationValid && rsIsObject(cardAlloc)) ? rsAllocationGetDimX(cardAlloc) : 0;
+    rsClearObject(&cardAlloc);
 }
 
 void setRadius(float rad)
