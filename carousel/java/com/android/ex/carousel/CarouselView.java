@@ -149,6 +149,7 @@ public abstract class CarouselView extends RSSurfaceView {
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
         super.surfaceChanged(holder, format, w, h);
+        // setZOrderOnTop(true);
         mController.onSurfaceChanged();
     }
 
@@ -234,7 +235,7 @@ public abstract class CarouselView extends RSSurfaceView {
 
     /**
      * Sets how detail textures are aligned with respect to the card.
-     * 
+     *
      * @param alignment a bitmask of DetailAlignment flags.
      */
     public void setDetailTextureAlignment(int alignment) {
@@ -242,14 +243,15 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
-     * Set whether blending is enabled while drawing the card textures. This should be true when
-     * translucent cards need to be supported, and false when all cards are fully opaque. Setting
-     * to false provides a performance boost.
+     * Set whether depth is enabled while blending. Generally, this is discouraged because
+     * it causes bad artifacts. Careful attention to geometry and alpha transparency of
+     * textures can mitigate much of this. For example, geometry for an item must be drawn
+     * back-to-front if any edges overlap.
      *
-     * @param enabled True to enable blending, and false to disable it.
+     * @param enabled True to enable depth while blending, and false to disable it.
      */
-    public void setDrawCardsWithBlending(boolean enabled) {
-        mController.setDrawCardsWithBlending(enabled);
+    public void setForceBlendCardsWithZ(boolean enabled) {
+        mController.setForceBlendCardsWithZ(enabled);
     }
 
     /**
@@ -380,7 +382,9 @@ public abstract class CarouselView extends RSSurfaceView {
 
     /**
      * This geometry will be shown when no geometry has been loaded for a given slot. If not set,
-     * a quad will be drawn in its place. It is shared for all cards.
+     * a quad will be drawn in its place. It is shared for all cards. If something other than
+     * simple planar geometry is used, consider enabling depth test with
+     * {@link CarouselView#setForceBlendCardsWithZ(boolean)}
      *
      * @param mesh
      */
@@ -390,7 +394,9 @@ public abstract class CarouselView extends RSSurfaceView {
 
     /**
      * This is an intermediate version of the object to show while geometry is loading. If not set,
-     * a quad will be drawn in its place.  It is shared for all cards.
+     * a quad will be drawn in its place.  It is shared for all cards. If something other than
+     * simple planar geometry is used, consider enabling depth test with
+     * {@link CarouselView#setForceBlendCardsWithZ(boolean)}
      *
      * @param mesh
      */

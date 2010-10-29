@@ -122,8 +122,9 @@ public class CarouselTestActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         mController = new CarouselController();
-        mView = new MyCarouselView(this, mController);
-        mView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+        setContentView(R.layout.carousel_test);
+        mView = (CarouselView) findViewById(R.id.carousel);
+        mView.getHolder().setFormat(PixelFormat.RGBA_8888);
         mPaint.setColor(0xffffffff);
         final Resources res = getResources();
 
@@ -155,8 +156,6 @@ public class CarouselTestActivity extends Activity {
                 flags, PixelFormat.TRANSLUCENT);
         getWindow().setAttributes(lp);
         */
-
-        setContentView(mView);
     }
 
     @Override

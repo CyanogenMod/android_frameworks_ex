@@ -147,7 +147,7 @@ int visibleSlotCount; // number of visible slots (for culling)
 int visibleDetailCount; // number of visible detail textures to show
 int prefetchCardCount; // how many cards to keep in memory
 int detailTextureAlignment; // How to align detail texture with respect to card
-bool drawCardsWithBlending; // Enable blending while drawing cards (for translucent card textures)
+bool forceBlendCardsWithZ; // Enable depth buffer while blending
 bool drawRuler; // whether to draw a ruler from the card to the detail texture
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
@@ -159,9 +159,10 @@ int fadeInDuration; // amount of time (in ms) for smoothly switching out texture
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
 float detailFadeRate; // rate at which details fade as they move into the distance
 float4 backgroundColor;
-rs_program_store programStore;
-rs_program_store programStoreOpaque;
-rs_program_store programStoreDetail;
+rs_program_store programStoreAlphaZ;
+rs_program_store programStoreAlphaNoZ;
+rs_program_store programStoreNoAlphaZ;
+rs_program_store programStoreNoAlphaNoZ;
 rs_program_fragment singleTextureFragmentProgram;
 rs_program_fragment multiTextureFragmentProgram;
 rs_program_vertex vertexProgram;
@@ -1410,7 +1411,11 @@ int root() {
     }
 
     rsgBindProgramFragment(singleTextureFragmentProgram);
-    rsgBindProgramStore(programStoreOpaque);
+    // rsgClearDepth() currently follows the value of glDepthMask(), so it's disabled when
+    // the mask is disabled. We may want to change the following to always draw w/o Z for
+    // the background if we can guarantee the depth buffer will get cleared and
+    // there's a performance advantage.
+    rsgBindProgramStore(forceBlendCardsWithZ ? programStoreNoAlphaZ : programStoreNoAlphaNoZ);
     drawBackground();
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
@@ -1428,13 +1433,13 @@ int root() {
     updateCardResources(currentTime);
 
     // Draw cards opaque only if requested, and always draw detail textures with blending.
-    if (drawCardsWithBlending) {
-        rsgBindProgramStore(programStore);
+    if (forceBlendCardsWithZ) {
+        rsgBindProgramStore(programStoreAlphaZ);
     } else {
-        // programStoreOpaque is already bound
+        rsgBindProgramStore(programStoreAlphaNoZ);
     }
     stillAnimating |= drawCards(currentTime);
-    rsgBindProgramStore(programStoreDetail);
+    rsgBindProgramStore(programStoreAlphaNoZ);
     stillAnimating |= drawDetails(currentTime);
 
     if (stillAnimating != animating) {

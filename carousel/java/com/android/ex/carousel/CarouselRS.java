@@ -19,6 +19,8 @@ package com.android.ex.carousel;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.renderscript.*;
+import android.renderscript.ProgramStore.BlendDstFunc;
+import android.renderscript.ProgramStore.BlendSrcFunc;
 import android.renderscript.RenderScript.RSMessage;
 import android.util.Log;
 
@@ -56,9 +58,10 @@ public class CarouselRS  {
     private ScriptC_carousel mScript;
     private ScriptField_Card mCards;
     private ScriptField_FragmentShaderConstants_s mFSConst;
-    private ProgramStore mProgramStore;
-    private ProgramStore mProgramStoreOpaque;
-    private ProgramStore mProgramStoreDetail;
+    private ProgramStore mProgramStoreAlphaZ;
+    private ProgramStore mProgramStoreAlphaNoZ;
+    private ProgramStore mProgramStoreNoAlphaZ;
+    private ProgramStore mProgramStoreNoAlphaNoZ;
     private ProgramFragment mSingleTextureFragmentProgram;
     private ProgramFragment mMultiTextureFragmentProgram;
     private ProgramVertex mVertexProgram;
@@ -315,22 +318,40 @@ public class CarouselRS  {
     }
 
     private void initProgramStore() {
-        ProgramStore.Builder programStoreBuilder = new ProgramStore.Builder(mRS, null, null);
-        programStoreBuilder.setDepthFunc(ProgramStore.DepthFunc.LESS);
-        programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
-                ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA);
-        programStoreBuilder.setDitherEnable(true);
-        programStoreBuilder.setDepthMask(true);
-        mProgramStore = programStoreBuilder.create();
-        mScript.set_programStore(mProgramStore);
+        final boolean dither = true;
+        mProgramStoreAlphaZ = new ProgramStore.Builder(mRS)
+                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
+                        ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
+                .setDitherEnable(dither)
+                .setDepthFunc(ProgramStore.DepthFunc.LESS)
+                .setDepthMask(true)
+                .create();
+        mScript.set_programStoreAlphaZ(mProgramStoreAlphaZ);
 
-        programStoreBuilder.setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
-                ProgramStore.BlendDstFunc.ZERO);
-        mProgramStoreOpaque = programStoreBuilder.create();
-        mScript.set_programStoreOpaque(mProgramStoreOpaque);
+        mProgramStoreAlphaNoZ = new ProgramStore.Builder(mRS)
+                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
+                        ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
+                .setDitherEnable(dither)
+                .setDepthFunc(ProgramStore.DepthFunc.ALWAYS)
+                .setDepthMask(false)
+                .create();
+        mScript.set_programStoreAlphaNoZ(mProgramStoreAlphaNoZ);
 
-        mProgramStoreDetail = ProgramStore.BLEND_ALPHA_DEPTH_NO_DEPTH(mRS);
-        mScript.set_programStoreDetail(mProgramStoreDetail);
+        mProgramStoreNoAlphaZ = new ProgramStore.Builder(mRS)
+                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, ProgramStore.BlendDstFunc.ZERO)
+                .setDitherEnable(dither)
+                .setDepthFunc(ProgramStore.DepthFunc.LESS)
+                .setDepthMask(true)
+                .create();
+        mScript.set_programStoreNoAlphaZ(mProgramStoreNoAlphaZ);
+
+        mProgramStoreNoAlphaNoZ = new ProgramStore.Builder(mRS)
+                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, ProgramStore.BlendDstFunc.ZERO)
+                .setDitherEnable(dither)
+                .setDepthFunc(ProgramStore.DepthFunc.ALWAYS)
+                .setDepthMask(false)
+                .create();
+        mScript.set_programStoreNoAlphaNoZ(mProgramStoreNoAlphaNoZ);
     }
 
     public void createCards(int count)
@@ -371,8 +392,8 @@ public class CarouselRS  {
         mScript.set_detailTextureAlignment(alignment);
     }
 
-    public void setDrawCardsWithBlending(boolean enabled) {
-        mScript.set_drawCardsWithBlending(enabled);
+    public void setForceBlendCardsWithZ(boolean enabled) {
+        mScript.set_forceBlendCardsWithZ(enabled);
     }
 
     public void setDrawRuler(boolean drawRuler) {
