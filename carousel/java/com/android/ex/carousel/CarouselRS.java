@@ -48,6 +48,12 @@ public class CarouselRS  {
     public static final int CMD_INVALIDATE_DETAIL_TEXTURE = 610;
     public static final int CMD_PING = 1000; // for debugging
 
+    // Drag models *** THIS LIST MUST MATCH THOSE IN carousel.rs ***
+    public static final int DRAG_MODEL_SCREEN_DELTA = 0;
+    public static final int DRAG_MODEL_PLANE = 1;
+    public static final int DRAG_MODEL_CYLINDER_INSIDE = 2;
+    public static final int DRAG_MODEL_CYLINDER_OUTSIDE = 3;
+
     private static final String TAG = "CarouselRS";
     private static final int DEFAULT_SLOT_COUNT = 10;
     private static final boolean MIPMAP = false;
@@ -242,7 +248,7 @@ public class CarouselRS  {
     }
 
     public void setRadius(float radius) {
-        mScript.set_radius(radius);
+        mScript.invoke_setRadius(radius);
     }
 
     public void setCardRotation(float cardRotation) {
@@ -263,6 +269,10 @@ public class CarouselRS  {
 
     public void setDragFactor(float dragFactor) {
         mScript.set_dragFactor(dragFactor);
+    }
+
+    public void setDragModel(int model) {
+        mScript.set_dragModel(model);
     }
 
     private void initVertexProgram() {

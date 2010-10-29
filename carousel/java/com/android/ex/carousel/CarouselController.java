@@ -26,7 +26,6 @@ import android.renderscript.Float4;
 import android.renderscript.Mesh;
 import android.renderscript.RenderScriptGL;
 import android.util.Log;
-import android.view.SurfaceHolder;
 
 /**
  * <p>
@@ -50,7 +49,6 @@ public class CarouselController {
     private RenderScriptGL mRS;
     private static final String TAG = "CarouselController";
     private static final boolean DBG = false;
-    private boolean mTracking;
 
     // These shadow the state of the renderer in case the surface changes so the surface
     // can be restored to its previous state.
@@ -86,6 +84,7 @@ public class CarouselController {
     private long mFadeInDuration = 250L;
     private Bitmap mDetailLoadingBitmap = Bitmap.createBitmap(
             new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
+    private int mDragModel = CarouselRS.DRAG_MODEL_SCREEN_DELTA;
 
     public CarouselController() {
         boolean useDepthBuffer = true;
@@ -122,6 +121,7 @@ public class CarouselController {
         setSwaySensitivity(mSwaySensitivity);
         setFrictionCoefficient(mFrictionCoefficient);
         setDragFactor(mDragFactor);
+        setDragModel(mDragModel);
         setLookAt(mEye, mAt, mUp);
         setRezInCardCount(mRezInCardCount);
         setFadeInDuration(mFadeInDuration);
@@ -491,6 +491,22 @@ public class CarouselController {
         mRadius = radius;
         if (mRenderScript != null) {
             mRenderScript.setRadius(radius);
+        }
+    }
+
+    /**
+     * Sets the current model for dragging. There are currently four drag models:
+     * {@link CarouselView#DRAG_MODEL_SCREEN_DELTA}
+     * {@link CarouselView#DRAG_MODEL_PLANE}
+     * {@link CarouselView#DRAG_MODEL_CYLINDER_INSIDE}
+     * {@link CarouselView#DRAG_MODEL_CYLINDER_OUTSIDE}
+     *
+     * @param model
+     */
+    public void setDragModel(int model) {
+        mDragModel  = model;
+        if (mRenderScript != null) {
+            mRenderScript.setDragModel(model);
         }
     }
 
