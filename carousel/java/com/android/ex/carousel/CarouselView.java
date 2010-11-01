@@ -20,17 +20,12 @@ import android.view.View;
 import com.android.ex.carousel.CarouselRS.CarouselCallback;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.PixelFormat;
-import android.graphics.Bitmap.Config;
-import android.renderscript.FileA3D;
 import android.renderscript.Float4;
 import android.renderscript.Mesh;
 import android.renderscript.RSSurfaceView;
 import android.renderscript.RenderScriptGL;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
@@ -45,13 +40,22 @@ import android.view.SurfaceHolder;
 public abstract class CarouselView extends RSSurfaceView {
     private static final boolean USE_DEPTH_BUFFER = true;
     private static final String TAG = "CarouselView";
-    private static final boolean DBG = false;
     private CarouselRS mRenderScript;
     private RenderScriptGL mRS;
     private Context mContext;
     private boolean mTracking;
 
     CarouselController mController;
+
+    // Drag relative to x coordinate of motion on screen
+    public static final int DRAG_MODEL_SCREEN_DELTA = CarouselRS.DRAG_MODEL_SCREEN_DELTA;
+    // Drag relative to projected point on plane of carousel
+    public static final int DRAG_MODEL_PLANE = CarouselRS.DRAG_MODEL_PLANE;
+    // Drag relative to projected point on inside (far point) of cylinder centered around carousel
+    public static final int DRAG_MODEL_CYLINDER_INSIDE = CarouselRS.DRAG_MODEL_CYLINDER_INSIDE;
+    // Drag relative to projected point on outside (near point) of cylinder centered around carousel
+    public static final int DRAG_MODEL_CYLINDER_OUTSIDE = CarouselRS.DRAG_MODEL_CYLINDER_OUTSIDE;
+
 
     // Note: remember to update carousel.rs when changing the values below
     public static class DetailAlignment {
@@ -448,6 +452,10 @@ public abstract class CarouselView extends RSSurfaceView {
 
     public void setDragFactor(float dragFactor) {
         mController.setDragFactor(dragFactor);
+    }
+
+    public void setDragModel(int model) {
+        mController.setDragModel(model);
     }
 
     public void setLookAt(float[] eye, float[] at, float[] up) {

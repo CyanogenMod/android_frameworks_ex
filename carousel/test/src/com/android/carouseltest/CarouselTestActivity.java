@@ -141,6 +141,7 @@ public class CarouselTestActivity extends Activity {
         mView.setRezInCardCount(3.0f);
         mView.setFadeInDuration(250);
         mView.setVisibleDetails(VISIBLE_DETAIL_COUNT);
+        mView.setDragModel(CarouselView.DRAG_MODEL_PLANE);
         if (INCREMENTAL_ADD) {
             mView.postDelayed(mAddCardRunnable, 2000);
         }

@@ -122,6 +122,12 @@ static const int CMD_REQUEST_DETAIL_TEXTURE = 600;
 static const int CMD_INVALIDATE_DETAIL_TEXTURE = 610;
 static const int CMD_PING = 1000;
 
+// Drag model *** THIS LIST MUST MATCH THOSE IN CarouselRS.java. ***
+static const int DRAG_MODEL_SCREEN_DELTA = 0; // Drag relative to x coordinate of motion vector
+static const int DRAG_MODEL_PLANE = 1; // Drag relative to projected point on plane of carousel
+static const int DRAG_MODEL_CYLINDER_INSIDE = 2; // Drag relative to point on inside of cylinder
+static const int DRAG_MODEL_CYLINDER_OUTSIDE = 3; // Drag relative to point on outside of cylinder
+
 // Constants
 static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
 static const float3 SELECTED_SCALE_FACTOR = { 0.2f, 0.2f, 0.2f }; // increase by this %
@@ -159,6 +165,7 @@ int fadeInDuration; // amount of time (in ms) for smoothly switching out texture
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
 float detailFadeRate; // rate at which details fade as they move into the distance
 float4 backgroundColor;
+int dragModel = DRAG_MODEL_SCREEN_DELTA;
 rs_program_store programStoreAlphaZ;
 rs_program_store programStoreAlphaNoZ;
 rs_program_store programStoreNoAlphaZ;
@@ -179,7 +186,7 @@ rs_matrix4x4 modelviewMatrix;
 FragmentShaderConstants* shaderConstants;
 rs_sampler linearClamp;
 
-#pragma rs export_func(createCards, copyCards, lookAt)
+#pragma rs export_func(createCards, copyCards, lookAt, setRadius)
 #pragma rs export_func(doStart, doStop, doMotion, doLongPress, doSelection)
 #pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera)
 #pragma rs export_func(setCarouselRotationAngle)
@@ -205,6 +212,11 @@ static Plane carouselPlane = {
        { 0.0f, 0.0f, 0.0f }, // point
        { 0.0f, 1.0f, 0.0f }, // normal
        0.0f // plane constant (= -dot(P, N))
+};
+
+static Cylinder carouselCylinder = {
+        {0.0f, 0.0f, 0.0f }, // center
+        1.0f // radius - update with carousel radius.
 };
 
 // Because allocations can't have 0 dimensions, we have to track whether or not
@@ -238,6 +250,8 @@ static bool __attribute__((overloadable))
 static bool __attribute__((overloadable))
         makeRayForPixelAt(Ray* ray, rs_matrix4x4* model, rs_matrix4x4* proj, float x, float y);
 static float deltaTimeInSeconds(int64_t current);
+static bool rayPlaneIntersect(Ray* ray, Plane* plane, float* tout);
+static bool rayCylinderIntersect(Ray* ray, Cylinder* cylinder, float* tout);
 
 void init() {
     // initializers currently have a problem when the variables are exported, so initialize
@@ -248,7 +262,7 @@ void init() {
     visibleSlotCount = 1;
     visibleDetailCount = 3;
     bias = 0.0f;
-    radius = 1.0f;
+    radius = carouselCylinder.radius = 1.0f;
     cardRotation = 0.0f;
     cardsFaceTangent = false;
     updateCamera = true;
@@ -267,6 +281,11 @@ static void updateAllocationVars(Card_t* newcards)
     rs_allocation cardAlloc = rsGetAllocation(newcards);
     // TODO: use new rsIsObject()
     cardCount = (cardAllocationValid && cardAlloc.p != 0) ? rsAllocationGetDimX(cardAlloc) : 0;
+}
+
+void setRadius(float rad)
+{
+    radius = carouselCylinder.radius = rad;
 }
 
 void createCards(int n)
@@ -848,6 +867,7 @@ static void updateCameraMatrix(float width, float height)
 // Behavior/Physics
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 static int64_t lastTime = 0L; // keep track of how much time has passed between frames
+static float lastAngle = 0.0f;
 static float2 lastPosition;
 static bool animating = false;
 static float velocityThreshold = 0.1f * M_PI / 180.0f;
@@ -858,9 +878,48 @@ static float mass = 5.0f; // kg
 static const float G = 9.80f; // gravity constant, in m/s
 static const float springConstant = 0.0f;
 
+// Computes a hit angle from the center of the carousel to a point on either a plane
+// or on a cylinder. If neither is hit, returns false.
+static bool hitAngle(float x, float y, float *angle)
+{
+    Ray ray;
+    makeRayForPixelAt(&ray, &camera, x, y);
+    float t = FLT_MAX;
+    if (dragModel == DRAG_MODEL_PLANE && rayPlaneIntersect(&ray, &carouselPlane, &t)) {
+        const float3 point = (ray.position + t*ray.direction);
+        const float3 direction = point - carouselPlane.point;
+        *angle = atan2(direction.x, direction.z);
+        if (debugSelection) rsDebug("Plane Angle = ", degrees(*angle));
+        return true;
+    } else if ((dragModel == DRAG_MODEL_CYLINDER_INSIDE || dragModel == DRAG_MODEL_CYLINDER_OUTSIDE)
+            && rayCylinderIntersect(&ray, &carouselCylinder, &t)) {
+        const float3 point = (ray.position + t*ray.direction);
+        const float3 direction = point - carouselCylinder.center;
+        *angle = atan2(direction.x, direction.z);
+        if (debugSelection) rsDebug("Cylinder Angle = ", degrees(*angle));
+        return true;
+    }
+    return false;
+}
+
 static float dragFunction(float x, float y)
 {
-    return dragFactor * ((x - lastPosition.x) / rsgGetWidth()) * M_PI;
+    float result;
+    float angle;
+    if (hitAngle(x, y, &angle)) {
+        result = angle - lastAngle;
+        // Handle singularity where atan2 switches between +- PI
+        if (result < -M_PI) {
+            result += 2.0f * M_PI;
+        } else if (result > M_PI) {
+            result -= 2.0f * M_PI;
+        }
+        lastAngle = angle;
+    } else {
+        // If we didn't hit anything or drag model wasn't plane or cylinder, we use screen delta
+        result = dragFactor * ((x - lastPosition.x) / rsgGetWidth()) * M_PI;
+    }
+    return result;
 }
 
 static float deltaTimeInSeconds(int64_t current)
@@ -891,6 +950,7 @@ void sendAnimationFinished() {
 void doStart(float x, float y)
 {
     touchPosition = lastPosition = (float2) { x, y };
+    lastAngle = hitAngle(x,y, &lastAngle) ? lastAngle : 0.0f;
     velocity = 0.0f;
     velocityTracker = 0.0f;
     velocityTrackerCount = 0;
@@ -1045,14 +1105,14 @@ rayCylinderIntersect(Ray* ray, Cylinder* cylinder, float* tout)
 
     // Nearest point
     const float t1 = (-B - disc) / denom;
-    if (t1 > tmin && t1 < *tout) {
+    if (dragModel == DRAG_MODEL_CYLINDER_OUTSIDE && t1 > tmin && t1 < *tout) {
         *tout = t1;
         return true;
     }
 
     // Far point
     const float t2 = (-B + disc) / denom;
-    if (t2 > tmin && t2 < *tout) {
+    if (dragModel == DRAG_MODEL_CYLINDER_INSIDE && t2 > tmin && t2 < *tout) {
         *tout = t2;
         return true;
     }
