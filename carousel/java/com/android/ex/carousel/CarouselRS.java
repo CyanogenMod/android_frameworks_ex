@@ -371,17 +371,15 @@ public class CarouselRS  {
         // track of when the allocation is not valid.
         if (mCards != null) {
             // resize the array
-            ScriptField_Card tmpcards = new ScriptField_Card(mRS, count > 0 ? count : 1);
-            mScript.bind_tmpCards(tmpcards);
-            mScript.invoke_copyCards(count);
-            mScript.bind_cards(tmpcards);
-            mScript.bind_tmpCards(null);
-            mCards = tmpcards;
+            int oldSize = mCards.getAllocation().getType().getX();
+            int newSize = count > 0 ? count : 1;
+            mCards.resize(newSize);
+            mScript.invoke_createCards(oldSize, count);
         } else {
             // create array from scratch
             mCards = new ScriptField_Card(mRS, count > 0 ? count : 1);
             mScript.bind_cards(mCards);
-            mScript.invoke_createCards(count);
+            mScript.invoke_createCards(0, count);
         }
     }
 

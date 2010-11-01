@@ -21,7 +21,7 @@
 #include "rs_graphics.rsh"
 
 typedef struct __attribute__((aligned(4))) Card {
-    // *** Update copyCard if you add/remove fields here.
+    // *** Update initCard if you add/remove fields here.
     rs_allocation texture; // basic card texture
     rs_allocation detailTexture; // screen-aligned detail texture
     float2 detailTextureOffset; // offset to add, in screen coordinates
@@ -144,8 +144,6 @@ const bool debugRays = false; // shows visual depiction of hit tests, See render
 
 // Exported variables. These will be reflected to Java set_* variables.
 Card_t *cards; // array of cards to draw
-// TODO: remove tmpCards code when allocations support resizing
-Card_t *tmpCards; // temporary array used to prevent flashing when we add more cards
 float startAngle; // position of initial card, in radians
 int slotCount; // number of positions where a card can be
 int cardCount; // number of cards in stack
@@ -289,44 +287,12 @@ void setRadius(float rad)
     radius = carouselCylinder.radius = rad;
 }
 
-void createCards(int n)
-{
-    if (debugTextureLoading) {
-        rsDebug("*** CreateCards with count", n);
-    }
-
-    // Since allocations can't have 0-size, we track validity ourselves based on the call to
-    // this method.
-    cardAllocationValid = n > 0;
-
-    initialized = false;
-    updateAllocationVars(cards);
-}
-
-void copyCard(Card_t* dest, Card_t * src)
-{
-    rsSetObject(&dest->texture, src->texture);
-    rsSetObject(&dest->detailTexture, src->detailTexture);
-    dest->detailTextureOffset = src->detailTextureOffset;
-    dest->detailLineOffset = src->detailLineOffset;
-    rsSetObject(&dest->geometry, src->geometry);
-    dest->matrix = src->matrix;
-    dest->textureState = src->textureState;
-    dest->detailTextureState = src->detailTextureState;
-    dest->geometryState = src->geometryState;
-    dest->visible = src->visible;
-    dest->textureTimeStamp = src->textureTimeStamp;
-    dest->detailTextureTimeStamp = src->detailTextureTimeStamp;
-}
-
 void initCard(Card_t* card)
 {
+    // Object refs are always initilized cleared.
     static const float2 zero = {0.0f, 0.0f};
-    rsClearObject(&card->texture);
-    rsClearObject(&card->detailTexture);
     card->detailTextureOffset = zero;
     card->detailLineOffset = zero;
-    rsClearObject(&card->geometry);
     rsMatrixLoadIdentity(&card->matrix);
     card->textureState = STATE_INVALID;
     card->detailTextureState = STATE_INVALID;
@@ -336,39 +302,23 @@ void initCard(Card_t* card)
     card->detailTextureTimeStamp = 0;
 }
 
-void copyCards(int n)
+void createCards(int start, int total)
 {
-    unsigned int oldsize = cardAllocationValid ? rsAllocationGetDimX(rsGetAllocation(cards)) : 0;
-    unsigned int newsize = rsAllocationGetDimX(rsGetAllocation(tmpCards));
-    unsigned int copysize = min(oldsize, newsize);
-
-    // Copy existing cards
-    for (int i = 0; i < copysize; i++) {
-        if (debugTextureLoading) {
-            rsDebug("copying card ", i);
-        }
-        copyCard(tmpCards + i, cards + i);
-        // Release these now so we don't have to wait for GC for cards allocation.
-        // Assumes we're done with the cards allocation structure.
-        rsClearObject(&cards[i].texture);
-        rsClearObject(&cards[i].detailTexture);
-        rsClearObject(&cards[i].geometry);
-        cards[i].textureState = STATE_INVALID;
-        cards[i].detailTextureState = STATE_INVALID;
-        cards[i].geometryState = STATE_INVALID;
+    if (debugTextureLoading) {
+        rsDebug("*** CreateCards with start", start);
+        rsDebug("*** CreateCards with count", total);
     }
 
-    // Initialize remaining cards.
-    int first = cardAllocationValid ? min(oldsize, newsize) : 0;
-    for (int k = first; k < newsize; k++) {
-        initCard(tmpCards + k);
+    for (int k = start; k < total; k++) {
+        initCard(cards + k);
     }
 
-    // Since allocations can't have 0-size, we use the same trick as createCards() where
-    // we track validity ourselves. Grrr.
-    cardAllocationValid = n > 0;
+    // Since allocations can't have 0-size, we track validity ourselves based on the call to
+    // this method.
+    cardAllocationValid = total > 0;
 
-    updateAllocationVars(tmpCards);
+    initialized = false;
+    updateAllocationVars(cards);
 }
 
 // Computes an alpha value for a card using elapsed time and constant fadeInDuration
