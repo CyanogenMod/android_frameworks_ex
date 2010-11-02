@@ -16,8 +16,6 @@
 
 package com.android.carouseltest;
 
-import com.android.carouseltest.MyCarouselView;
-import com.android.ex.carousel.CarouselController;
 import com.android.ex.carousel.CarouselView;
 import com.android.ex.carousel.CarouselViewHelper;
 
@@ -45,8 +43,7 @@ public class CarouselTestActivity extends Activity {
     private static final int DETAIL_TEXTURE_WIDTH = 200;
     private static final int DETAIL_TEXTURE_HEIGHT = 80;
     private static final int VISIBLE_DETAIL_COUNT = 3;
-    private static final boolean INCREMENTAL_ADD = false; // To debug incrementally adding cards
-    private CarouselController mController;
+    private static boolean INCREMENTAL_ADD = false; // To debug incrementally adding cards
     private CarouselView mView;
     private Paint mPaint = new Paint();
     private CarouselViewHelper mHelper;
@@ -121,7 +118,6 @@ public class CarouselTestActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mController = new CarouselController();
         setContentView(R.layout.carousel_test);
         mView = (CarouselView) findViewById(R.id.carousel);
         mView.getHolder().setFormat(PixelFormat.RGBA_8888);
@@ -147,16 +143,6 @@ public class CarouselTestActivity extends Activity {
         }
 
         mGlossyOverlay = BitmapFactory.decodeResource(res, R.drawable.glossy_overlay);
-
-        /*
-        mView.setBackgroundColor(0x80ffffff);
-        int flags = WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER;
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
-                mView.getWidth(), mView.getHeight(),
-                WindowManager.LayoutParams.TYPE_APPLICATION,
-                flags, PixelFormat.TRANSLUCENT);
-        getWindow().setAttributes(lp);
-        */
     }
 
     @Override

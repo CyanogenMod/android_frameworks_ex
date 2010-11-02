@@ -129,8 +129,9 @@ static const int DRAG_MODEL_CYLINDER_INSIDE = 2; // Drag relative to point on in
 static const int DRAG_MODEL_CYLINDER_OUTSIDE = 3; // Drag relative to point on outside of cylinder
 
 // Constants
+static const int ANIMATION_DELAY_TIME = 100; // hold off scale animation until this time
 static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
-static const float3 SELECTED_SCALE_FACTOR = { 0.2f, 0.2f, 0.2f }; // increase by this %
+static const float3 SELECTED_SCALE_FACTOR = { 0.1f, 0.1f, 0.1f }; // increase by this %
 static const float OVERSCROLL_SLOTS = 1.0f; // amount of allowed overscroll (in slots)
 
 // Debug flags
@@ -192,7 +193,6 @@ rs_sampler linearClamp;
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
-static bool initialized;
 static const float FLT_MAX = 1.0e37;
 static int animatedSelection = -1;
 static int currentFirstCard = -1;
@@ -264,7 +264,6 @@ void init() {
     cardRotation = 0.0f;
     cardsFaceTangent = false;
     updateCamera = true;
-    initialized = false;
     backgroundColor = (float4) { 0.0f, 0.0f, 0.0f, 1.0f };
     cardAllocationValid = false;
     cardCount = 0;
@@ -304,11 +303,6 @@ void initCard(Card_t* card)
 
 void createCards(int start, int total)
 {
-    if (debugTextureLoading) {
-        rsDebug("*** CreateCards with start", start);
-        rsDebug("*** CreateCards with count", total);
-    }
-
     for (int k = start; k < total; k++) {
         initCard(cards + k);
     }
@@ -317,7 +311,6 @@ void createCards(int start, int total)
     // this method.
     cardAllocationValid = total > 0;
 
-    initialized = false;
     updateAllocationVars(cards);
 }
 
@@ -459,12 +452,20 @@ void setCarouselRotationAngle(float carouselRotationAngle) {
     bias = carouselRotationAngleToRadians(carouselRotationAngle);
 }
 
-static float3 getAnimatedScaleForSelected()
+// Gets animated scale value for current selected card.
+// If card is currently being animated, returns true,  otherwise returns false.
+static bool getAnimatedScaleForSelected(float3* scale)
 {
-    int64_t dt = (rsUptimeMillis() - touchTime);
-    float fraction = (dt < ANIMATION_SCALE_TIME) ? (float) dt / ANIMATION_SCALE_TIME : 1.0f;
     const float3 one = { 1.0f, 1.0f, 1.0f };
-    return one + fraction * SELECTED_SCALE_FACTOR;
+    int64_t dt = rsUptimeMillis() - touchTime;
+    if (dt >= ANIMATION_DELAY_TIME) {
+        float fraction = (float) (dt - ANIMATION_DELAY_TIME) / ANIMATION_SCALE_TIME;
+        fraction = min(fraction, 1.0f);
+        *scale = one + fraction * SELECTED_SCALE_FACTOR;
+    } else {
+        *scale = one;
+    }
+    return dt < (ANIMATION_DELAY_TIME + ANIMATION_SCALE_TIME); // still animating;
 }
 
 // The Verhulst logistic function: http://en.wikipedia.org/wiki/Logistic_function
@@ -487,10 +488,15 @@ static float getSwayAngleForVelocity(float v, bool enableSway)
     return sway;
 }
 
-// matrix: The output matrix.
-// i: The card we're getting the matrix for.
-// enableSway: Whether to enable swaying. (We want it on for cards, and off for detail textures.)
-static void getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
+/*
+ * Composes a matrix for the given card.
+ * matrix: The output matrix.
+ * i: The card we're getting the matrix for.
+ * enableSway: Whether to enable swaying. (We want it on for cards, and off for detail textures.)
+ *
+ * returns true if an animation is being applied to the given card
+ */
+static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
 {
     float theta = cardPosition(i);
     float swayAngle = getSwayAngleForVelocity(velocity, enableSway);
@@ -501,11 +507,14 @@ static void getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
       rotation -= theta;
     }
     rsMatrixRotate(matrix, degrees(rotation), 0, 1, 0);
+    bool stillAnimating = false;
     if (i == animatedSelection && enableSelection) {
-        float3 scale = getAnimatedScaleForSelected();
+        float3 scale;
+        stillAnimating = getAnimatedScaleForSelected(&scale);
         rsMatrixScale(matrix, scale.x, scale.y, scale.z);
     }
     // TODO: apply custom matrix for cards[i].geometry
+    return stillAnimating;
 }
 
 /*
@@ -555,7 +564,7 @@ static bool drawCards(int64_t currentTime)
 
             // Draw geometry
             rs_matrix4x4 matrix = modelviewMatrix;
-            getMatrixForCard(&matrix, i, true);
+            stillAnimating |= getMatrixForCard(&matrix, i, true);
             rsgProgramVertexLoadModelMatrix(&matrix);
             if (cards[i].geometryState == STATE_LOADED && cards[i].geometry.p != 0) {
                 rsgDrawMesh(cards[i].geometry);
@@ -636,7 +645,7 @@ static bool drawDetails(int64_t currentTime)
 
                 // Compute position in screen space of top corner or bottom corner of card
                 rsMatrixLoad(&model, &modelviewMatrix);
-                getMatrixForCard(&model, i, false);
+                stillAnimating |= getMatrixForCard(&model, i, false);
                 rs_matrix4x4 matrix;
                 rsMatrixLoadMultiply(&matrix, &projectionMatrix, &model);
 
@@ -728,8 +737,8 @@ static bool drawDetails(int64_t currentTime)
                         rulerBottom = screenCoord.y;
                     }
                     const float halfWidth = lineWidth * 0.5f;
-                    const float x0 = cards[i].detailLineOffset.x + screenCoord.x - halfWidth;
-                    const float x1 = cards[i].detailLineOffset.x + screenCoord.x + halfWidth;
+                    const float x0 = trunc(cards[i].detailLineOffset.x + screenCoord.x - halfWidth);
+                    const float x1 = x0 + lineWidth;
                     const float y0 = rulerBottom + yPadding;
                     const float y1 = rulerTop - yPadding - cards[i].detailLineOffset.y;
 
@@ -1410,16 +1419,6 @@ int root() {
     rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
 
     updateAllocationVars(cards);
-
-    if (!initialized) {
-        if (debugTextureLoading) {
-            rsDebug("*** initialized was false, updating all cards (cards = ", cards);
-        }
-        for (int i = 0; i < cardCount; i++) {
-            initCard(cards + i);
-        }
-        initialized = true;
-    }
 
     rsgBindProgramFragment(singleTextureFragmentProgram);
     // rsgClearDepth() currently follows the value of glDepthMask(), so it's disabled when
