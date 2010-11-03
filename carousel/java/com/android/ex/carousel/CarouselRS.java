@@ -610,20 +610,20 @@ public class CarouselRS  {
         mScript.invoke_doLongPress();
     }
 
-    public void doMotion(float x, float y) {
-        mScript.invoke_doMotion(x,y);
+    public void doMotion(float x, float y, long t) {
+        mScript.invoke_doMotion(x, y, t);
     }
 
     public void doSelection(float x, float y) {
         mScript.invoke_doSelection(x, y);
     }
 
-    public void doStart(float x, float y) {
-        mScript.invoke_doStart(x, y);
+    public void doStart(float x, float y, long t) {
+        mScript.invoke_doStart(x, y, t);
     }
 
-    public void doStop(float x, float y) {
-        mScript.invoke_doStop(x, y);
+    public void doStop(float x, float y, long t) {
+        mScript.invoke_doStop(x, y, t);
     }
 
     public void setSlotCount(int n) {

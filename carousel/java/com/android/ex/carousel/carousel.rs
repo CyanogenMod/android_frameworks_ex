@@ -907,23 +907,22 @@ void sendAnimationFinished() {
     rsSendToClient(CMD_ANIMATION_FINISHED, (int*) data, sizeof(data));
 }
 
-void doStart(float x, float y)
+void doStart(float x, float y, long eventTime)
 {
     touchPosition = lastPosition = (float2) { x, y };
     lastAngle = hitAngle(x,y, &lastAngle) ? lastAngle : 0.0f;
     velocity = 0.0f;
     velocityTracker = 0.0f;
     velocityTrackerCount = 0;
-    touchTime = rsUptimeMillis();
+    touchTime = lastTime = eventTime;
     touchBias = bias;
     isDragging = true;
     enableSelection = true;
     animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
 }
 
-void doStop(float x, float y)
+void doStop(float x, float y, long eventTime)
 {
-    int64_t currentTime = rsUptimeMillis();
     updateAllocationVars(cards);
 
     if (enableSelection) {
@@ -944,7 +943,7 @@ void doStop(float x, float y)
         }
     }
     enableSelection = false;
-    lastTime = rsUptimeMillis();
+    lastTime = eventTime;
     isDragging = false;
 }
 
@@ -963,11 +962,10 @@ void doLongPress()
     lastTime = rsUptimeMillis();
 }
 
-void doMotion(float x, float y)
+void doMotion(float x, float y, long eventTime)
 {
     const float firstBias = wedgeAngle(0.0f);
     const float lastBias = -max(0.0f, wedgeAngle(cardCount - visibleDetailCount));
-    int64_t currentTime = rsUptimeMillis();
     float deltaOmega = dragFunction(x, y);
     if (!enableSelection) {
         bias += deltaOmega;
@@ -979,7 +977,7 @@ void doMotion(float x, float y)
     bool inside = (distance < selectionRadius);
     enableSelection &= inside;
     lastPosition = (float2) { x, y };
-    float dt = deltaTimeInSeconds(currentTime);
+    float dt = deltaTimeInSeconds(eventTime);
     if (dt > 0.0f) {
         float v = deltaOmega / dt;
         velocityTracker += v;
@@ -987,7 +985,7 @@ void doMotion(float x, float y)
     }
     velocity = velocityTrackerCount > 0 ?
                 (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
-    lastTime = currentTime;
+    lastTime = eventTime;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

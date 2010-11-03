@@ -508,8 +508,6 @@ public abstract class CarouselView extends RSSurfaceView {
     public boolean onTouchEvent(MotionEvent event) {
         super.onTouchEvent(event);
         final int action = event.getAction();
-        final float x = event.getX();
-        final float y = event.getY();
 
         if (mRenderScript == null) {
             return true;
@@ -518,17 +516,21 @@ public abstract class CarouselView extends RSSurfaceView {
         switch (action) {
             case MotionEvent.ACTION_DOWN:
                 mTracking = true;
-                mController.onTouchStarted(x, y);
+                mController.onTouchStarted(event.getX(), event.getY(), event.getEventTime());
                 break;
 
             case MotionEvent.ACTION_MOVE:
                 if (mTracking) {
-                    mController.onTouchMoved(x, y);
+                    for (int i = 0; i < event.getHistorySize(); i++) {
+                        mController.onTouchMoved(event.getHistoricalX(i), event.getHistoricalY(i),
+                                event.getHistoricalEventTime(i));
+                    }
+                    mController.onTouchMoved(event.getX(), event.getY(), event.getEventTime());
                 }
                 break;
 
             case MotionEvent.ACTION_UP:
-                mController.onTouchStopped(x, y);
+                mController.onTouchStopped(event.getX(), event.getY(), event.getEventTime());
                 mTracking = false;
                 break;
         }
