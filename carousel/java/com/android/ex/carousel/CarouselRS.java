@@ -72,6 +72,9 @@ public class CarouselRS  {
     private ProgramFragment mMultiTextureFragmentProgram;
     private ProgramVertex mVertexProgram;
     private ProgramRaster mRasterProgram;
+    private Allocation[] mAllocationPool;
+    private int mVisibleSlots;
+    private int mPrefetchCardCount;
     private CarouselCallback mCallback;
     private float[] mEyePoint = new float[] { 2.0f, 0.0f, 0.0f };
     private float[] mAtPoint = new float[] { 0.0f, 0.0f, 0.0f };
@@ -385,6 +388,7 @@ public class CarouselRS  {
 
     public void setVisibleSlots(int count)
     {
+        mVisibleSlots = count;
         mScript.set_visibleSlotCount(count);
     }
 
@@ -393,6 +397,7 @@ public class CarouselRS  {
     }
 
     public void setPrefetchCardCount(int count) {
+        mPrefetchCardCount = count;
         mScript.set_prefetchCardCount(count);
     }
 
@@ -451,6 +456,35 @@ public class CarouselRS  {
         return allocation;
     }
 
+    private Allocation allocationFromPool(int n, Bitmap bitmap, boolean mipmap)
+    {
+        int count = mVisibleSlots + mPrefetchCardCount;
+        if (mAllocationPool == null || mAllocationPool.length != count) {
+            Allocation[] tmp = new Allocation[count];
+            int oldsize = mAllocationPool == null ? 0 : mAllocationPool.length;
+            for (int i = 0; i < Math.min(count, oldsize); i++) {
+                tmp[i] = mAllocationPool[i];
+            }
+            mAllocationPool = tmp;
+        }
+        Allocation allocation = mAllocationPool[n % count];
+        if (allocation == null) {
+            allocation = allocationFromBitmap(bitmap, mipmap);
+            mAllocationPool[n % count]  = allocation;
+        } else if (bitmap != null) {
+            if (bitmap.getWidth() == allocation.getType().getX()
+                && bitmap.getHeight() == allocation.getType().getY()) {
+                allocation.updateFromBitmap(bitmap);
+                allocation.uploadToTexture(0);
+            } else {
+                Log.v(TAG, "Warning, bitmap has different size. Taking slow path");
+                allocation = allocationFromBitmap(bitmap, mipmap);
+                mAllocationPool[n % count]  = allocation;
+            }
+        }
+        return allocation;
+    }
+
     public void setTexture(int n, Bitmap bitmap)
     {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
@@ -462,18 +496,10 @@ public class CarouselRS  {
                 item = new ScriptField_Card.Item();
             }
             if (bitmap != null) {
-                if (DBG) Log.v(TAG, "creating new bitmap");
-                item.texture = Allocation.createFromBitmap(mRS, bitmap,
-                        elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
-                if (DBG) Log.v(TAG, "uploadToTexture(" + n + ")");
-                item.texture.uploadToTexture(0);
-                if (DBG) Log.v(TAG, "done...");
+                item.texture = allocationFromPool(n, bitmap, MIPMAP);
             } else {
                 if (item.texture != null) {
                     if (DBG) Log.v(TAG, "unloading texture " + n);
-                    // Don't wait for GC to free native memory.
-                    // Only works if textures are not shared.
-                    item.texture.destroy();
                     item.texture = null;
                 }
             }
@@ -495,9 +521,7 @@ public class CarouselRS  {
             float width = 0.0f;
             float height = 0.0f;
             if (bitmap != null) {
-                item.detailTexture = Allocation.createFromBitmap(mRS, bitmap,
-                        elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
-                item.detailTexture.uploadToTexture(0);
+                item.detailTexture = allocationFromBitmap(bitmap, MIPMAP);
                 width = bitmap.getWidth();
                 height = bitmap.getHeight();
             } else {
