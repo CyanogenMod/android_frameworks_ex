@@ -589,18 +589,20 @@ public class CarouselController {
      * Tells the carousel that a touch event has started at the designated location.
      * @param x The number of pixels from the left edge that the event occurred
      * @param y The number of pixels from the top edge that the event occurred
+     * @param t The time stamp of the event
      */
-    public void onTouchStarted(float x, float y) {
-        mRenderScript.doStart(x, y);
+    public void onTouchStarted(float x, float y, long t) {
+        mRenderScript.doStart(x, y, t);
     }
 
     /**
      * Tells the carousel that a touch event has moved to the designated location.
      * @param x The number of pixels from the left edge that the event occurred
      * @param y The number of pixels from the top edge that the event occurred
+     * @param t The time stamp of the event
      */
-    public void onTouchMoved(float x, float y) {
-        mRenderScript.doMotion(x, y);
+    public void onTouchMoved(float x, float y, long t) {
+        mRenderScript.doMotion(x, y, t);
     }
 
     /**
@@ -614,8 +616,9 @@ public class CarouselController {
      * Tells the carousel that a touch event has stopped at the designated location.
      * @param x The number of pixels from the left edge that the event occurred
      * @param y The number of pixels from the top edge that the event occurred
+     * @param t The time stamp of the event
      */
-    public void onTouchStopped(float x, float y) {
-        mRenderScript.doStop(x, y);
+    public void onTouchStopped(float x, float y, long t) {
+        mRenderScript.doStop(x, y, t);
     }
 }
