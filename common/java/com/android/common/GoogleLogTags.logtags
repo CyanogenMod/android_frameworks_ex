@@ -42,6 +42,7 @@ option java_package com.android.common
 
 # @param changes Number of changes made to database in reconstruct
 202001 vending_reconstruct (changes|1)
+202901 transaction_event (data|3)
 
 #####
 # Google Services Framework
