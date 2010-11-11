@@ -37,6 +37,7 @@ public class CarouselRS  {
 
     // Client messages *** THIS LIST MUST MATCH THOSE IN carousel.rs ***
     public static final int CMD_CARD_SELECTED = 100;
+    public static final int CMD_DETAIL_SELECTED = 105;
     public static final int CMD_CARD_LONGPRESS = 110;
     public static final int CMD_REQUEST_TEXTURE = 200;
     public static final int CMD_INVALIDATE_TEXTURE = 210;
@@ -104,6 +105,14 @@ public class CarouselRS  {
         void onCardSelected(int n);
 
         /**
+         * Called when the detail texture for a card is tapped
+         * @param n the id of the card
+         * @param x how far the user tapped from the left edge of the card, in pixels
+         * @param y how far the user tapped from the top edge of the card, in pixels
+         */
+        void onDetailSelected(int n, int x, int y);
+
+        /**
          * Called when a card is long-pressed
          * @param n the id of the card
          */
@@ -157,7 +166,8 @@ public class CarouselRS  {
 
         /**
          * Called when card animation has stopped.
-         * @param startAngle the angle of rotation, in radians, at which the animation stopped.
+         * @param carouselRotationAngle the angle of rotation, in radians, at which the animation
+         * stopped.
          */
         void onAnimationFinished(float carouselRotationAngle);
     };
@@ -168,6 +178,10 @@ public class CarouselRS  {
             switch (mID) {
                 case CMD_CARD_SELECTED:
                     mCallback.onCardSelected(mData[0]);
+                    break;
+
+                case CMD_DETAIL_SELECTED:
+                    mCallback.onDetailSelected(mData[0], mData[1], mData[2]);
                     break;
 
                 case CMD_CARD_LONGPRESS:
@@ -612,10 +626,6 @@ public class CarouselRS  {
 
     public void doMotion(float x, float y, long t) {
         mScript.invoke_doMotion(x, y, t);
-    }
-
-    public void doSelection(float x, float y) {
-        mScript.invoke_doSelection(x, y);
     }
 
     public void doStart(float x, float y, long t) {

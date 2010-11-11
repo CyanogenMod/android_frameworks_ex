@@ -65,6 +65,11 @@ public class CarouselTestActivity extends Activity {
         }
 
         @Override
+        public void onDetailSelected(int id, int x, int y) {
+            Log.v(TAG, "Yay, detail " + id + " was selected at " + x + ", " + y);
+        }
+
+        @Override
         public DetailTextureParameters getDetailTextureParameters(int id) {
             return mDetailTextureParameters;
         }
