@@ -32,6 +32,7 @@ import static android.renderscript.Element.*;
 public class CarouselRS  {
     private static final int DEFAULT_VISIBLE_SLOTS = 1;
     private static final int DEFAULT_CARD_COUNT = 0;
+    private static final int DEFAULT_ROW_COUNT = 1;
 
     // Client messages *** THIS LIST MUST MATCH THOSE IN carousel.rs ***
     public static final int CMD_CARD_SELECTED = 100;
@@ -73,6 +74,7 @@ public class CarouselRS  {
     private ProgramRaster mRasterProgram;
     private Allocation[] mAllocationPool;
     private int mVisibleSlots;
+    private int mRowCount;
     private int mPrefetchCardCount;
     private CarouselCallback mCallback;
     private float[] mEyePoint = new float[] { 2.0f, 0.0f, 0.0f };
@@ -244,6 +246,7 @@ public class CarouselRS  {
         initVertexProgram();
         setSlotCount(DEFAULT_SLOT_COUNT);
         setVisibleSlots(DEFAULT_VISIBLE_SLOTS);
+        setRowCount(DEFAULT_ROW_COUNT);
         createCards(DEFAULT_CARD_COUNT);
         setStartAngle(0.0f);
         setCarouselRotationAngle(0.0f);
@@ -408,6 +411,15 @@ public class CarouselRS  {
         mScript.set_visibleDetailCount(count);
     }
 
+    public void setRowCount(int count) {
+        mRowCount = count;
+        mScript.set_rowCount(count);
+    }
+
+    public void setRowSpacing(float spacing) {
+        mScript.set_rowSpacing(spacing);
+    }
+
     public void setPrefetchCardCount(int count) {
         mPrefetchCardCount = count;
         mScript.set_prefetchCardCount(count);
@@ -470,7 +482,7 @@ public class CarouselRS  {
 
     private Allocation allocationFromPool(int n, Bitmap bitmap, boolean mipmap)
     {
-        int count = mVisibleSlots + mPrefetchCardCount;
+        int count = (mVisibleSlots + mPrefetchCardCount) * mRowCount;
         if (mAllocationPool == null || mAllocationPool.length != count) {
             Allocation[] tmp = new Allocation[count];
             int oldsize = mAllocationPool == null ? 0 : mAllocationPool.length;
