@@ -19,8 +19,6 @@ package com.android.ex.carousel;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.renderscript.*;
-import android.renderscript.ProgramStore.BlendDstFunc;
-import android.renderscript.ProgramStore.BlendSrcFunc;
 import android.renderscript.RenderScript.RSMessage;
 import android.util.Log;
 
@@ -549,6 +547,27 @@ public class CarouselRS  {
             }
             mCards.set(item, n, false); // This is primarily used for reference counting.
             mScript.invoke_setDetailTexture(n, offx, offy, loffx, loffy, item.detailTexture);
+        }
+    }
+
+    void invalidateDetailTexture(int n, boolean eraseCurrent)
+    {
+        if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
+
+        synchronized(this) {
+            ScriptField_Card.Item item = mCards.get(n);
+            if (item == null) {
+                throw new IllegalStateException("invalidateDetailTexture without an existing card");
+            }
+            if (eraseCurrent && item.detailTexture != null) {
+                if (DBG) Log.v(TAG, "unloading texture " + n);
+                // Don't wait for GC to free native memory.
+                // Only works if textures are not shared.
+                item.detailTexture.destroy();
+                item.detailTexture = null;
+            }
+            mCards.set(item, n, false); // This is primarily used for reference counting.
+            mScript.invoke_invalidateDetailTexture(n, eraseCurrent);
         }
     }
 

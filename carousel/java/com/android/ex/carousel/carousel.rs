@@ -73,6 +73,8 @@ typedef struct FragmentShaderConstants_s {
 enum {
     STATE_INVALID = 0, // item hasn't been loaded
     STATE_LOADING, // we've requested an item but are waiting for it to load
+    STATE_STALE, // we have an old item, but should request an update
+    STATE_UPDATING, // we've requested an update, and will display the old one in the meantime
     STATE_LOADED // item was delivered
 };
 
@@ -190,8 +192,8 @@ rs_sampler linearClamp;
 
 #pragma rs export_func(createCards, copyCards, lookAt, setRadius)
 #pragma rs export_func(doStart, doStop, doMotion, doLongPress)
-#pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera)
-#pragma rs export_func(setCarouselRotationAngle)
+#pragma rs export_func(setTexture, setGeometry, setDetailTexture, invalidateDetailTexture)
+#pragma rs export_func(debugCamera, setCarouselRotationAngle)
 
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
@@ -435,12 +437,26 @@ void setDetailTexture(int n, float offx, float offy, float loffx, float loffy, r
 {
     if (n < 0 || n >= cardCount) return;
     rsSetObject(&cards[n].detailTexture, texture);
+    if (cards[n].detailTextureState != STATE_STALE &&
+        cards[n].detailTextureState != STATE_UPDATING) {
+        cards[n].detailTextureTimeStamp = rsUptimeMillis();
+    }
     cards[n].detailTextureOffset.x = offx;
     cards[n].detailTextureOffset.y = offy;
     cards[n].detailLineOffset.x = loffx;
     cards[n].detailLineOffset.y = loffy;
     cards[n].detailTextureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
-    cards[n].detailTextureTimeStamp = rsUptimeMillis();
+}
+
+void invalidateDetailTexture(int n, bool eraseCurrent)
+{
+    if (n < 0 || n >= cardCount) return;
+    if (eraseCurrent) {
+        cards[n].detailTextureState = STATE_INVALID;
+        rsClearObject(&cards[n].detailTexture);
+    } else {
+        cards[n].detailTextureState = STATE_STALE;
+    }
 }
 
 void setGeometry(int n, rs_mesh geometry)
@@ -645,7 +661,10 @@ static bool drawDetails(int64_t currentTime)
 
     for (int i = cardCount-1; i >= 0; --i) {
         if (cards[i].cardVisible) {
-            if (cards[i].detailTextureState == STATE_LOADED && cards[i].detailTexture.p != 0) {
+            const int state = cards[i].detailTextureState;
+            const bool isLoaded = (state == STATE_LOADED) || (state == STATE_STALE) ||
+                (state == STATE_UPDATING);
+            if (isLoaded && cards[i].detailTexture.p != 0) {
                 const float lineWidth = rsAllocationGetDimX(detailLineTexture);
 
                 // Compute position in screen space of top corner or bottom corner of card
@@ -1376,6 +1395,14 @@ static void updateCardResources(int64_t currentTime)
                 bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
                 if (enqueued) {
                     cards[i].detailTextureState = STATE_LOADING;
+                } else {
+                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
+                }
+            } else if (cards[i].detailTextureState == STATE_STALE) {
+                data[0] = i;
+                bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
+                if (enqueued) {
+                    cards[i].detailTextureState = STATE_UPDATING;
                 } else {
                     if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
                 }

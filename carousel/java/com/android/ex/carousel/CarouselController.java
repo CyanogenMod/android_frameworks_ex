@@ -320,6 +320,22 @@ public class CarouselController {
     }
 
     /**
+     * Sets the specified detail texture as invalid. If eraseCurrent is true, the texture will be
+     * immediately cleared from view and an invalidate handler will be called. If eraseCurrent is
+     * false, a replacement texture will be requested, and the old texture will be left in place
+     * in the meantime.
+     * @param n the card to invalidate the detail texture for
+     * @param eraseCurrent whether to erase the current texture
+     */
+    public void invalidateDetailTexture(int n, boolean eraseCurrent) {
+        if (mRenderScript != null && mRS != null) {
+            if (DBG) Log.v(TAG, "invalidateDetailTexture(" + n + ")");
+            mRenderScript.invalidateDetailTexture(n, false);
+            if (DBG) Log.v(TAG, "done");
+        }
+    }
+
+    /**
      * Sets the bitmap to show on a card when the card draws the very first time.
      * Generally, this bitmap will only be seen during the first few frames of startup
      * or when the number of cards are changed.  It can be ignored in most cases,
