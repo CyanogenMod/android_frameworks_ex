@@ -252,6 +252,10 @@ public class CarouselViewHelper implements CarouselCallback {
         if (DBG) Log.v(TAG, "onCardSelected(" + n + ")");
     }
 
+    public void onDetailSelected(int n, int x, int y) {
+        if (DBG) Log.v(TAG, "onDetailSelected(" + n + ", " + x + ", " + y + ")");
+    }
+
     public void onCardLongPress(int n) {
         if (DBG) Log.v(TAG, "onCardLongPress(" + n + ")");
     }

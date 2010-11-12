@@ -26,12 +26,14 @@ typedef struct __attribute__((aligned(4))) Card {
     rs_allocation detailTexture; // screen-aligned detail texture
     float2 detailTextureOffset; // offset to add, in screen coordinates
     float2 detailLineOffset; // offset to add to detail line, in screen coordinates
+    float2 detailTexturePosition[2]; // screen coordinates of detail texture, computed at draw time
     rs_mesh geometry;
     rs_matrix4x4 matrix; // custom transform for this card/geometry
     int textureState;  // whether or not the primary card texture is loaded.
     int detailTextureState; // whether or not the detail for the card is loaded.
     int geometryState; // whether or not geometry is loaded
-    int visible; // not bool because of packing bug?
+    int cardVisible; // not bool because of packing bug?
+    int detailVisible; // not bool because of packing bug?
     int64_t textureTimeStamp; // time when this texture was last updated, in seconds
     int64_t detailTextureTimeStamp; // time when this texture was last updated, in seconds
 } Card_t;
@@ -111,6 +113,7 @@ enum {
 
 // Client messages *** THIS LIST MUST MATCH THOSE IN CarouselRS.java. ***
 static const int CMD_CARD_SELECTED = 100;
+static const int CMD_DETAIL_SELECTED = 105;
 static const int CMD_CARD_LONGPRESS = 110;
 static const int CMD_REQUEST_TEXTURE = 200;
 static const int CMD_INVALIDATE_TEXTURE = 210;
@@ -186,7 +189,7 @@ FragmentShaderConstants* shaderConstants;
 rs_sampler linearClamp;
 
 #pragma rs export_func(createCards, copyCards, lookAt, setRadius)
-#pragma rs export_func(doStart, doStop, doMotion, doLongPress, doSelection)
+#pragma rs export_func(doStart, doStop, doMotion, doLongPress)
 #pragma rs export_func(setTexture, setGeometry, setDetailTexture, debugCamera)
 #pragma rs export_func(setCarouselRotationAngle)
 
@@ -243,6 +246,7 @@ static PerspectiveCamera camera = {
 
 // Forward references
 static int intersectGeometry(Ray* ray, float *bestTime);
+static int intersectDetailTexture(float x, float y, float2 *tapCoordinates);
 static bool __attribute__((overloadable))
         makeRayForPixelAt(Ray* ray, PerspectiveCamera* cam, float x, float y);
 static bool __attribute__((overloadable))
@@ -296,7 +300,8 @@ void initCard(Card_t* card)
     card->textureState = STATE_INVALID;
     card->detailTextureState = STATE_INVALID;
     card->geometryState = STATE_INVALID;
-    card->visible = false;
+    card->cardVisible = false;
+    card->detailVisible = false;
     card->textureTimeStamp = 0;
     card->detailTextureTimeStamp = 0;
 }
@@ -527,7 +532,7 @@ static bool drawCards(int64_t currentTime)
     const float endAngle = startAngle + visibleSlotCount * wedgeAngle;
     bool stillAnimating = false;
     for (int i = cardCount-1; i >= 0; i--) {
-        if (cards[i].visible) {
+        if (cards[i].cardVisible) {
             // If this card was recently loaded, this will be < 1.0f until the animation completes
             float animatedAlpha = getAnimatedAlpha(cards[i].textureTimeStamp, currentTime);
             if (animatedAlpha < 1.0f) {
@@ -639,7 +644,7 @@ static bool drawDetails(int64_t currentTime)
     const float endDetailFadeAngle = startDetailFadeAngle + detailFadeRate * wedgeAngle;
 
     for (int i = cardCount-1; i >= 0; --i) {
-        if (cards[i].visible) {
+        if (cards[i].cardVisible) {
             if (cards[i].detailTextureState == STATE_LOADED && cards[i].detailTexture.p != 0) {
                 const float lineWidth = rsAllocationGetDimX(detailLineTexture);
 
@@ -711,7 +716,12 @@ static bool drawDetails(int64_t currentTime)
 
                 const float blendedAlpha = min(1.0f, animatedAlpha * positionAlpha);
 
-                if (blendedAlpha == 0.0f) continue; // nothing to draw
+                if (blendedAlpha == 0.0f) {
+                    cards[i].detailVisible = false;
+                    continue; // nothing to draw
+                } else {
+                    cards[i].detailVisible = true;
+                }
                 if (blendedAlpha == 1.0f) {
                     rsgBindProgramFragment(singleTextureFragmentProgram);
                 } else {
@@ -762,6 +772,10 @@ static bool drawDetails(int64_t currentTime)
                 const float x1 = cards[i].detailLineOffset.x + screenCoord.x + offx + textureWidth;
                 const float y0 = textureTop + offy - textureHeight - cards[i].detailLineOffset.y;
                 const float y1 = textureTop + offy - cards[i].detailLineOffset.y;
+                cards[i].detailTexturePosition[0].x = x0;
+                cards[i].detailTexturePosition[0].y = height - y1;
+                cards[i].detailTexturePosition[1].x = x1;
+                cards[i].detailTexturePosition[1].y = height - y0;
 
                 if (blendedAlpha == 1.0f) {
                     rsgBindTexture(singleTextureFragmentProgram, 0, cards[i].detailTexture);
@@ -926,9 +940,18 @@ void doStop(float x, float y, long eventTime)
     updateAllocationVars(cards);
 
     if (enableSelection) {
-        int data[1];
-        int selection = doSelection(x, y);
-        if (selection != -1) {
+        int data[3];
+        int selection;
+        float2 point;
+
+        if ((selection = intersectDetailTexture(x, y, &point)) != -1) {
+            if (debugSelection) rsDebug("Selected detail texture on doStop():", selection);
+            data[0] = selection;
+            data[1] = point.x;
+            data[2] = point.y;
+            rsSendToClientBlocking(CMD_DETAIL_SELECTED, data, sizeof(data));
+        }
+        else if ((selection = doSelection(x, y))!= -1) {
             if (debugSelection) rsDebug("Selected item on doStop():", selection);
             data[0] = selection;
             rsSendToClientBlocking(CMD_CARD_SELECTED, data, sizeof(data));
@@ -1150,11 +1173,29 @@ makeRayForPixelAt(Ray* ray, rs_matrix4x4* model, rs_matrix4x4* proj, float x, fl
     return true;
 }
 
+static int intersectDetailTexture(float x, float y, float2 *tapCoordinates)
+{
+    for (int id = 0; id < cardCount; id++) {
+        if (cards[id].detailVisible) {
+            const int x0 = cards[id].detailTexturePosition[0].x;
+            const int y0 = cards[id].detailTexturePosition[0].y;
+            const int x1 = cards[id].detailTexturePosition[1].x;
+            const int y1 = cards[id].detailTexturePosition[1].y;
+            if (x >= x0 && x <= x1 && y >= y0 && y <= y1) {
+                float2 point = { x - x0, y - y0 };
+                *tapCoordinates = point;
+                return id;
+            }
+        }
+    }
+    return -1;
+}
+
 static int intersectGeometry(Ray* ray, float *bestTime)
 {
     int hit = -1;
     for (int id = 0; id < cardCount; id++) {
-        if (cards[id].visible) {
+        if (cards[id].cardVisible) {
             rs_matrix4x4 matrix;
             float3 p[4];
 
@@ -1292,15 +1333,18 @@ static int cullCards()
             // If visibleSlotCount is specified, then only show up to visibleSlotCount cards.
             float p = cardPosition(i);
             if (p >= thetaFirst && p < thetaLast) {
-                cards[i].visible = true;
+                cards[i].cardVisible = true;
+                // cards[i].detailVisible will be set at draw time
                 count++;
             } else {
-                cards[i].visible = false;
+                cards[i].cardVisible = false;
+                cards[i].detailVisible = false;
             }
         } else {
             // Cull the rest of the cards using bounding box of geometry.
             // TODO
-            cards[i].visible = true;
+            cards[i].cardVisible = true;
+            // cards[i].detailVisible will be set at draw time
             count++;
         }
     }
@@ -1313,7 +1357,7 @@ static void updateCardResources(int64_t currentTime)
 {
     for (int i = cardCount-1; i >= 0; --i) {
         int data[1];
-        if (cards[i].visible) {
+        if (cards[i].cardVisible) {
             if (debugTextureLoading) rsDebug("*** Texture stamp: ", (int)cards[i].textureTimeStamp);
 
             // request texture from client if not loaded
