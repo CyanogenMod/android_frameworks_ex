@@ -569,7 +569,8 @@ public class CarouselRS  {
         synchronized(this) {
             ScriptField_Card.Item item = mCards.get(n);
             if (item == null) {
-                throw new IllegalStateException("invalidateDetailTexture without an existing card");
+                // This card was never created, so there's nothing to invalidate.
+                return;
             }
             if (eraseCurrent && item.detailTexture != null) {
                 if (DBG) Log.v(TAG, "unloading texture " + n);
