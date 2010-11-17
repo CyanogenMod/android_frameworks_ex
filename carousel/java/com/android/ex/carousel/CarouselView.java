@@ -229,6 +229,20 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
+     * Sets the number of rows of cards to show in each slot.
+     */
+    public void setRowCount(int n) {
+        mController.setRowCount(n);
+    }
+
+    /**
+     * Sets the spacing between each row of cards when rowCount > 1.
+     */
+    public void setRowSpacing(float s) {
+        mController.setRowSpacing(s);
+    }
+
+    /**
      * Set the number of detail textures that can be visible at one time.
      *
      * @param n the number of slots

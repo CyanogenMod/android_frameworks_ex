@@ -169,6 +169,9 @@ int fadeInDuration; // amount of time (in ms) for smoothly switching out texture
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
 float detailFadeRate; // rate at which details fade as they move into the distance
 float4 backgroundColor;
+int rowCount;  // number of rows of cards in a given slot, default 1
+float rowSpacing;  // spacing between rows of cards
+
 int dragModel = DRAG_MODEL_SCREEN_DELTA;
 rs_program_store programStoreAlphaZ;
 rs_program_store programStoreAlphaNoZ;
@@ -273,6 +276,8 @@ void init() {
     backgroundColor = (float4) { 0.0f, 0.0f, 0.0f, 1.0f };
     cardAllocationValid = false;
     cardCount = 0;
+    rowCount = 1;
+    rowSpacing = 0.0f;
     fadeInDuration = 250;
     rezInCardCount = 0.0f; // alpha will ramp to 1.0f over this many cards (0.0f means disabled)
     detailFadeRate = 0.5f; // fade details over this many slot positions.
@@ -281,10 +286,9 @@ void init() {
 static void updateAllocationVars(Card_t* newcards)
 {
     // Cards
-    rs_allocation cardAlloc = {0};
+    rs_allocation cardAlloc;
     rsSetObject(&cardAlloc, rsGetAllocation(newcards));
     cardCount = (cardAllocationValid && rsIsObject(cardAlloc)) ? rsAllocationGetDimX(cardAlloc) : 0;
-    rsClearObject(&cardAlloc);
 }
 
 void setRadius(float rad)
@@ -329,22 +333,22 @@ float getAnimatedAlpha(int64_t startTime, int64_t currentTime)
     return min(1.0f, (float) alpha);
 }
 
-// Return angle for position p. Typically p will be an integer position, but can be fractional.
-static float cardPosition(float p)
+// Returns total angle for given number of slots
+static float wedgeAngle(float slots)
 {
-    return startAngle + bias + 2.0f * M_PI * p / slotCount;
+    return slots * 2.0f * M_PI / slotCount;
 }
 
-// Return slot for a card in position p. Typically p will be an integer slot, but can be fractional.
-static float slotPosition(float p)
+// Return angle of slot in position p.
+static float slotPosition(int p)
 {
-    return startAngle + 2.0f * M_PI * p / slotCount;
+    return startAngle + wedgeAngle(p);
 }
 
-// Returns total angle for given number of cards
-static float wedgeAngle(float cards)
+// Return angle for card in position p.
+static float cardPosition(int p)
 {
-    return cards * 2.0f * M_PI / slotCount;
+    return bias + slotPosition(p / rowCount);
 }
 
 // convert from carousel rotation angle (in card slot units) to radians.
@@ -357,13 +361,6 @@ static float carouselRotationAngleToRadians(float carouselRotationAngle)
 static float radiansToCarouselRotationAngle(float angle)
 {
     return -angle * slotCount / ( 2.0f * M_PI );
-}
-
-
-// Return the lowest slot number for a given angular position.
-static int cardIndex(float angle)
-{
-    return floor(angle - startAngle - bias) * slotCount / (2.0f * M_PI);
 }
 
 // Set basic camera properties:
@@ -509,6 +506,19 @@ static float getSwayAngleForVelocity(float v, bool enableSway)
     return sway;
 }
 
+// Returns the vertical offset for a card in its slot,
+// depending on the number of rows configured.
+static float getVerticalOffsetForCard(int i) {
+   if (rowCount == 1) {
+       // fast path
+       return 0;
+   }
+   const float cardHeight = cardVertices[3].y - cardVertices[0].y;
+   const float totalHeight = rowCount * (cardHeight + rowSpacing) - rowSpacing;
+   const float rowOffset = (i % rowCount) * (cardHeight + rowSpacing);
+   return (cardHeight - totalHeight) / 2 + rowOffset;
+}
+
 /*
  * Composes a matrix for the given card.
  * matrix: The output matrix.
@@ -522,7 +532,7 @@ static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
     float theta = cardPosition(i);
     float swayAngle = getSwayAngleForVelocity(velocity, enableSway);
     rsMatrixRotate(matrix, degrees(theta), 0, 1, 0);
-    rsMatrixTranslate(matrix, radius, 0, 0);
+    rsMatrixTranslate(matrix, radius, getVerticalOffsetForCard(i), 0);
     float rotation = cardRotation + swayAngle;
     if (!cardsFaceTangent) {
       rotation -= theta;
@@ -1006,8 +1016,9 @@ void doLongPress()
 
 void doMotion(float x, float y, long eventTime)
 {
+    const int totalSlots = (cardCount + rowCount - 1) / rowCount;
     const float firstBias = wedgeAngle(0.0f);
-    const float lastBias = -max(0.0f, wedgeAngle(cardCount - visibleDetailCount));
+    const float lastBias = -max(0.0f, wedgeAngle(totalSlots - visibleDetailCount));
     float deltaOmega = dragFunction(x, y);
     if (!enableSelection) {
         bias += deltaOmega;
@@ -1292,8 +1303,9 @@ static bool updateNextPosition(int64_t currentTime)
         return true;
     }
 
+    const int totalSlots = (cardCount + rowCount - 1) / rowCount;
     const float firstBias = wedgeAngle(0.0f);
-    const float lastBias = -max(0.0f, wedgeAngle(cardCount - visibleDetailCount));
+    const float lastBias = -max(0.0f, wedgeAngle(totalSlots - visibleDetailCount));
     bool stillAnimating = false;
     if (overscroll) {
         if (bias > firstBias) {

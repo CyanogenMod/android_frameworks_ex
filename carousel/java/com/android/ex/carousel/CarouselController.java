@@ -40,6 +40,8 @@ public class CarouselController {
     private final float DEFAULT_RADIUS = 20.0f;
     private final int DEFAULT_VISIBLE_DETAIL_COUNT = 3;
     private final int DEFAULT_PREFETCH_CARD_COUNT = 2;
+    private final int DEFAULT_ROW_COUNT = 1;
+    private final float DEFAULT_ROW_SPACING = 0.0f;
     private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
     private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
     private final float DEFAULT_DRAG_FACTOR = 0.25f;
@@ -75,6 +77,8 @@ public class CarouselController {
     private float mFrictionCoefficient = DEFAULT_FRICTION_COEFFICIENT;
     private float mDragFactor = DEFAULT_DRAG_FACTOR;
     private int mSlotCount = DEFAULT_SLOT_COUNT;
+    private int mRowCount = DEFAULT_ROW_COUNT;
+    private float mRowSpacing = DEFAULT_ROW_SPACING;
     private float mEye[] = { 20.6829f, 2.77081f, 16.7314f };
     private float mAt[] = { 14.7255f, -3.40001f, -1.30184f };
     private float mUp[] = { 0.0f, 1.0f, 0.0f };
@@ -101,6 +105,8 @@ public class CarouselController {
         setVisibleSlots(mVisibleSlots);
         setVisibleDetails(mVisibleDetails);
         setPrefetchCardCount(mPrefetchCardCount);
+        setRowCount(mRowCount);
+        setRowSpacing(mRowSpacing);
         setDetailTextureAlignment(mDetailTextureAlignment);
         setForceBlendCardsWithZ(mForceBlendCardsWithZ);
         setDrawRuler(mDrawRuler);
@@ -204,6 +210,26 @@ public class CarouselController {
         mPrefetchCardCount = n;
         if (mRenderScript != null) {
             mRenderScript.setPrefetchCardCount(n);
+        }
+    }
+
+    /**
+     * Sets the number of rows of cards to show in each slot.
+     */
+    public void setRowCount(int n) {
+        mRowCount = n;
+        if (mRenderScript != null) {
+            mRenderScript.setRowCount(n);
+        }
+    }
+
+    /**
+     * Sets the spacing between each row of cards when rowCount > 1.
+     */
+    public void setRowSpacing(float s) {
+        mRowSpacing = s;
+        if (mRenderScript != null) {
+            mRenderScript.setRowSpacing(s);
         }
     }
 
