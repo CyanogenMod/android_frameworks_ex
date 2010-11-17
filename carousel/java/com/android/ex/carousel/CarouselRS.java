@@ -54,6 +54,9 @@ public class CarouselRS  {
     public static final int DRAG_MODEL_CYLINDER_INSIDE = 2;
     public static final int DRAG_MODEL_CYLINDER_OUTSIDE = 3;
 
+    public static final int FILL_DIRECTION_CCW = +1;
+    public static final int FILL_DIRECTION_CW = -1;
+
     private static final String TAG = "CarouselRS";
     private static final int DEFAULT_SLOT_COUNT = 10;
     private static final boolean MIPMAP = false;
@@ -291,6 +294,10 @@ public class CarouselRS  {
 
     public void setDragModel(int model) {
         mScript.set_dragModel(model);
+    }
+
+    public void setFillDirection(int direction) {
+        mScript.set_fillDirection(direction);
     }
 
     private void initVertexProgram() {

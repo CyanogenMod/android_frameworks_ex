@@ -89,6 +89,7 @@ public class CarouselController {
     private Bitmap mDetailLoadingBitmap = Bitmap.createBitmap(
             new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
     private int mDragModel = CarouselRS.DRAG_MODEL_SCREEN_DELTA;
+    private int mFillDirection = CarouselRS.FILL_DIRECTION_CCW;
 
     public CarouselController() {
         boolean useDepthBuffer = true;
@@ -128,6 +129,7 @@ public class CarouselController {
         setFrictionCoefficient(mFrictionCoefficient);
         setDragFactor(mDragFactor);
         setDragModel(mDragModel);
+        setFillDirection(mFillDirection);
         setLookAt(mEye, mAt, mUp);
         setRezInCardCount(mRezInCardCount);
         setFadeInDuration(mFadeInDuration);
@@ -549,6 +551,18 @@ public class CarouselController {
         mDragModel  = model;
         if (mRenderScript != null) {
             mRenderScript.setDragModel(model);
+        }
+    }
+
+    /** Sets the direction to fill in cards around the carousel.
+     *
+     * @param direction Either {@link CarouselRS#FILL_DIRECTION_CCW} or
+     * {@link CarouselRS#FILL_DIRECTION_CW}.
+     */
+    public void setFillDirection(int direction) {
+        mFillDirection = direction;
+        if (mRenderScript != null) {
+            mRenderScript.setFillDirection(direction);
         }
     }
 

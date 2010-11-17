@@ -56,6 +56,10 @@ public abstract class CarouselView extends RSSurfaceView {
     // Drag relative to projected point on outside (near point) of cylinder centered around carousel
     public static final int DRAG_MODEL_CYLINDER_OUTSIDE = CarouselRS.DRAG_MODEL_CYLINDER_OUTSIDE;
 
+    // Draw cards counterclockwise around the carousel
+    public static final int FILL_DIRECTION_CCW = CarouselRS.FILL_DIRECTION_CCW;
+    // Draw cards clockwise around the carousel
+    public static final int FILL_DIRECTION_CW = CarouselRS.FILL_DIRECTION_CW;
 
     // Note: remember to update carousel.rs when changing the values below
     public static class DetailAlignment {

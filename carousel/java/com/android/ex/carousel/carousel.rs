@@ -173,6 +173,7 @@ int rowCount;  // number of rows of cards in a given slot, default 1
 float rowSpacing;  // spacing between rows of cards
 
 int dragModel = DRAG_MODEL_SCREEN_DELTA;
+int fillDirection; // the order in which to lay out cards: +1 for CCW (default), -1 for CW
 rs_program_store programStoreAlphaZ;
 rs_program_store programStoreAlphaNoZ;
 rs_program_store programStoreNoAlphaZ;
@@ -342,7 +343,7 @@ static float wedgeAngle(float slots)
 // Return angle of slot in position p.
 static float slotPosition(int p)
 {
-    return startAngle + wedgeAngle(p);
+    return startAngle + wedgeAngle(p) * fillDirection;
 }
 
 // Return angle for card in position p.
@@ -350,6 +351,25 @@ static float cardPosition(int p)
 {
     return bias + slotPosition(p / rowCount);
 }
+
+// Return the lowest possible bias value, based on the fill direction
+static float minimumBias()
+{
+    const int totalSlots = (cardCount + rowCount - 1) / rowCount;
+    return (fillDirection > 0) ?
+        -max(0.0f, wedgeAngle(totalSlots - visibleDetailCount)) :
+        wedgeAngle(0.0f);
+}
+
+// Return the highest possible bias value, based on the fill direction
+static float maximumBias()
+{
+    const int totalSlots = (cardCount + rowCount - 1) / rowCount;
+    return (fillDirection > 0) ?
+        wedgeAngle(0.0f) :
+        max(0.0f, wedgeAngle(totalSlots - visibleDetailCount));
+}
+
 
 // convert from carousel rotation angle (in card slot units) to radians.
 static float carouselRotationAngleToRadians(float carouselRotationAngle)
@@ -1016,14 +1036,13 @@ void doLongPress()
 
 void doMotion(float x, float y, long eventTime)
 {
-    const int totalSlots = (cardCount + rowCount - 1) / rowCount;
-    const float firstBias = wedgeAngle(0.0f);
-    const float lastBias = -max(0.0f, wedgeAngle(totalSlots - visibleDetailCount));
+    const float highBias = maximumBias();
+    const float lowBias = minimumBias();
     float deltaOmega = dragFunction(x, y);
     if (!enableSelection) {
         bias += deltaOmega;
-        bias = clamp(bias, lastBias - wedgeAngle(OVERSCROLL_SLOTS),
-                firstBias + wedgeAngle(OVERSCROLL_SLOTS));
+        bias = clamp(bias, lowBias - wedgeAngle(OVERSCROLL_SLOTS),
+                highBias + wedgeAngle(OVERSCROLL_SLOTS));
     }
     const float2 delta = (float2) { x, y } - touchPosition;
     float distance = sqrt(dot(delta, delta));
@@ -1303,22 +1322,21 @@ static bool updateNextPosition(int64_t currentTime)
         return true;
     }
 
-    const int totalSlots = (cardCount + rowCount - 1) / rowCount;
-    const float firstBias = wedgeAngle(0.0f);
-    const float lastBias = -max(0.0f, wedgeAngle(totalSlots - visibleDetailCount));
+    const float highBias = maximumBias();
+    const float lowBias = minimumBias();
     bool stillAnimating = false;
     if (overscroll) {
-        if (bias > firstBias) {
-            bias -= 4.0f * dt * easeOut((bias - firstBias) * 2.0f);
-            if (fabs(bias - firstBias) < biasMin) {
-                bias = firstBias;
+        if (bias > highBias) {
+            bias -= 4.0f * dt * easeOut((bias - highBias) * 2.0f);
+            if (fabs(bias - highBias) < biasMin) {
+                bias = highBias;
             } else {
                 stillAnimating = true;
             }
-        } else if (bias < lastBias) {
-            bias += 4.0f * dt * easeOut((lastBias - bias) * 2.0f);
-            if (fabs(bias - lastBias) < biasMin) {
-                bias = lastBias;
+        } else if (bias < lowBias) {
+            bias += 4.0f * dt * easeOut((lowBias - bias) * 2.0f);
+            if (fabs(bias - lowBias) < biasMin) {
+                bias = lowBias;
             } else {
                 stillAnimating = true;
             }
@@ -1327,13 +1345,13 @@ static bool updateNextPosition(int64_t currentTime)
         }
     } else {
         stillAnimating = doPhysics(dt);
-        overscroll = bias > firstBias || bias < lastBias;
+        overscroll = bias > highBias || bias < lowBias;
         if (overscroll) {
             velocity = 0.0f; // prevent bouncing due to v > 0 after overscroll animation.
         }
     }
-    float newbias = clamp(bias, lastBias - wedgeAngle(OVERSCROLL_SLOTS),
-            firstBias + wedgeAngle(OVERSCROLL_SLOTS));
+    float newbias = clamp(bias, lowBias - wedgeAngle(OVERSCROLL_SLOTS),
+            highBias + wedgeAngle(OVERSCROLL_SLOTS));
     if (newbias != bias) { // we clamped
         velocity = 0.0f;
         overscroll = true;
@@ -1363,7 +1381,7 @@ static int cullCards()
         if (visibleSlotCount > 0) {
             // If visibleSlotCount is specified, then only show up to visibleSlotCount cards.
             float p = cardPosition(i);
-            if (p >= thetaFirst && p < thetaLast) {
+            if (p >= thetaFirst && p < thetaLast || p <= thetaFirst && p > thetaLast) {
                 cards[i].cardVisible = true;
                 // cards[i].detailVisible will be set at draw time
                 count++;
