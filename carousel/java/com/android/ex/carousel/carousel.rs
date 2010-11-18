@@ -297,7 +297,7 @@ void setRadius(float rad)
     radius = carouselCylinder.radius = rad;
 }
 
-void initCard(Card_t* card)
+static void initCard(Card_t* card)
 {
     // Object refs are always initilized cleared.
     static const float2 zero = {0.0f, 0.0f};
@@ -327,7 +327,7 @@ void createCards(int start, int total)
 }
 
 // Computes an alpha value for a card using elapsed time and constant fadeInDuration
-float getAnimatedAlpha(int64_t startTime, int64_t currentTime)
+static float getAnimatedAlpha(int64_t startTime, int64_t currentTime)
 {
     double timeElapsed = (double) (currentTime - startTime); // in ms
     double alpha = (double) timeElapsed / fadeInDuration;
@@ -950,7 +950,7 @@ static float deltaTimeInSeconds(int64_t current)
     return (lastTime > 0L) ? (float) (current - lastTime) / 1000.0f : 0.0f;
 }
 
-int doSelection(float x, float y)
+static int doSelection(float x, float y)
 {
     Ray ray;
     if (makeRayForPixelAt(&ray, &camera, x, y)) {
@@ -960,11 +960,11 @@ int doSelection(float x, float y)
     return -1;
 }
 
-void sendAnimationStarted() {
+static void sendAnimationStarted() {
     rsSendToClient(CMD_ANIMATION_STARTED);
 }
 
-void sendAnimationFinished() {
+static void sendAnimationFinished() {
     float data[1];
     data[0] = radiansToCarouselRotationAngle(bias);
     rsSendToClient(CMD_ANIMATION_FINISHED, (int*) data, sizeof(data));
