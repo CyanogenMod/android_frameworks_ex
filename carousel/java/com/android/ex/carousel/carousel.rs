@@ -194,11 +194,6 @@ rs_matrix4x4 modelviewMatrix;
 FragmentShaderConstants* shaderConstants;
 rs_sampler linearClamp;
 
-#pragma rs export_func(createCards, copyCards, lookAt, setRadius)
-#pragma rs export_func(doStart, doStop, doMotion, doLongPress)
-#pragma rs export_func(setTexture, setGeometry, setDetailTexture, invalidateDetailTexture)
-#pragma rs export_func(debugCamera, setCarouselRotationAngle)
-
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
