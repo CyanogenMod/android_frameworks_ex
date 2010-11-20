@@ -61,6 +61,7 @@ public class CarouselController {
             new int[] {0x00000000, 0xffffffff, 0x00000000}, 0, 3, 3, 1, Bitmap.Config.ARGB_4444);
     private Mesh mDefaultGeometry;
     private Mesh mLoadingGeometry;
+    private float[] mDefaultCardMatrix;
     private int mCardCount = 0;
     private int mVisibleSlots = 0;
     private int mVisibleDetails = DEFAULT_VISIBLE_DETAIL_COUNT;
@@ -115,6 +116,7 @@ public class CarouselController {
         setDefaultBitmap(mDefaultBitmap);
         setLoadingBitmap(mLoadingBitmap);
         setDefaultGeometry(mDefaultGeometry);
+        setDefaultCardMatrix(mDefaultCardMatrix);
         setLoadingGeometry(mLoadingGeometry);
         setBackgroundColor(mBackgroundColor.x, mBackgroundColor.y, mBackgroundColor.z,
                 mBackgroundColor.w);
@@ -461,6 +463,21 @@ public class CarouselController {
         mDefaultGeometry = mesh;
         if (mRenderScript != null) {
             mRenderScript.setDefaultGeometry(mesh);
+        }
+    }
+
+    /**
+     * Sets the matrix used to transform card geometries.  By default, this
+     * is the identity matrix, but you can specify a different matrix if you
+     * want to scale, translate and / or rotate the card before drawing.
+     *
+     * @param matrix array of 9 or 16 floats representing a 3x3 or 4x4 matrix,
+     * or null as a shortcut for an identity matrix.
+     */
+    public void setDefaultCardMatrix(float[] matrix) {
+        mDefaultCardMatrix = matrix;
+        if (mRenderScript != null) {
+           mRenderScript.setDefaultCardMatrix(matrix);
         }
     }
 

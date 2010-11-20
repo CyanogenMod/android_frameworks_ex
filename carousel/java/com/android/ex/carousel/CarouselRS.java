@@ -300,6 +300,27 @@ public class CarouselRS  {
         mScript.set_fillDirection(direction);
     }
 
+    public void setDefaultCardMatrix(float[] matrix) {
+        int dimensions;
+        if (matrix == null || matrix.length == 0) {
+          dimensions = 0;
+        } else if (matrix.length == 16) {
+          dimensions = 4;
+        } else if (matrix.length == 9) {
+          dimensions = 3;
+        } else {
+          throw new IllegalArgumentException("matrix length not 0,9 or 16");
+        }
+
+        Matrix4f rsMatrix = new Matrix4f();  // initialized as identity.
+        for (int i = 0; i < dimensions; i++) {
+            for (int j = 0; j < dimensions; j++) {
+                rsMatrix.set(i, j, matrix[i*dimensions + j]);
+            }
+        }
+        mScript.set_defaultCardMatrix(rsMatrix);
+    }
+
     private void initVertexProgram() {
         ProgramVertex.Builder pvb = new ProgramVertex.Builder(mRS, null, null);
         mVertexProgram = pvb.create();

@@ -415,6 +415,18 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
+     * Sets the matrix used to transform card geometries.  By default, this
+     * is the identity matrix, but you can specify a different matrix if you
+     * want to scale, translate and / or rotate the card before drawing.
+     *
+     * @param matrix array of 9 or 16 floats representing a 3x3 or 4x4 matrix,
+     * or null as a shortcut for an identity matrix.
+     */
+    public void setDefaultCardMatrix(float[] matrix) {
+        mController.setDefaultCardMatrix(matrix);
+    }
+
+    /**
      * This is an intermediate version of the object to show while geometry is loading. If not set,
      * a quad will be drawn in its place.  It is shared for all cards. If something other than
      * simple planar geometry is used, consider enabling depth test with
