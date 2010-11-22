@@ -189,6 +189,7 @@ rs_allocation detailLineTexture; // used to draw detail line (as a quad, of cour
 rs_allocation detailLoadingTexture; // used when detail texture is loading
 rs_mesh defaultGeometry; // shown when no geometry is loaded
 rs_mesh loadingGeometry; // shown when geometry is loading
+rs_matrix4x4 defaultCardMatrix;
 rs_matrix4x4 projectionMatrix;
 rs_matrix4x4 modelviewMatrix;
 FragmentShaderConstants* shaderConstants;
@@ -277,6 +278,7 @@ void init() {
     fadeInDuration = 250;
     rezInCardCount = 0.0f; // alpha will ramp to 1.0f over this many cards (0.0f means disabled)
     detailFadeRate = 0.5f; // fade details over this many slot positions.
+    rsMatrixLoadIdentity(&defaultCardMatrix);
 }
 
 static void updateAllocationVars(Card_t* newcards)
@@ -298,7 +300,7 @@ static void initCard(Card_t* card)
     static const float2 zero = {0.0f, 0.0f};
     card->detailTextureOffset = zero;
     card->detailLineOffset = zero;
-    rsMatrixLoadIdentity(&card->matrix);
+    rsMatrixLoad(&card->matrix, &defaultCardMatrix);
     card->textureState = STATE_INVALID;
     card->detailTextureState = STATE_INVALID;
     card->geometryState = STATE_INVALID;
@@ -559,7 +561,7 @@ static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
         stillAnimating = getAnimatedScaleForSelected(&scale);
         rsMatrixScale(matrix, scale.x, scale.y, scale.z);
     }
-    // TODO: apply custom matrix for cards[i].geometry
+    rsMatrixLoadMultiply(matrix, &cards[i].matrix, matrix);
     return stillAnimating;
 }
 
