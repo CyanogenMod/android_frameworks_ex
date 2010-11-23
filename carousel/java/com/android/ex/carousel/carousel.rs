@@ -312,6 +312,12 @@ static void initCard(Card_t* card)
 
 void createCards(int start, int total)
 {
+    if (!cardAllocationValid) {
+        // If the allocation is invalid, it contains a single place-holder
+        // card that has not yet been initialized (see CarouselRS.createCards).
+        // Here we ensure that it is initialized when growing the total.
+        start = 0;
+    }
     for (int k = start; k < total; k++) {
         initCard(cards + k);
     }
