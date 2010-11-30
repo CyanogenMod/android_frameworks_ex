@@ -124,7 +124,10 @@ public class LoggingEvents {
         public static final String EXTRA_N_BEST_CHOOSE_INDEX = "index";  // value should be int
 
         public static final int TEXT_MODIFIED = 17;
+        public static final String EXTRA_AFTER_N_BEST_CHOOSE = "after";
+        public static final String EXTRA_BEFORE_N_BEST_CHOOSE = "before";
         public static final String EXTRA_TEXT_MODIFIED_LENGTH = "length";  // value should be int
+        public static final String EXTRA_TEXT_REPLACED_LENGTH = "rlength";  // value should be int
         public static final String EXTRA_TEXT_MODIFIED_TYPE = "type";  // value should be int below
         public static final int TEXT_MODIFIED_TYPE_CHOOSE_SUGGESTION = 1;
         public static final int TEXT_MODIFIED_TYPE_TYPING_DELETION = 2;
