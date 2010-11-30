@@ -103,6 +103,7 @@ public class CarouselController {
 
     public void onSurfaceChanged() {
         setSlotCount(mSlotCount);
+        setDefaultCardMatrix(mDefaultCardMatrix);
         createCards(mCardCount);
         setVisibleSlots(mVisibleSlots);
         setVisibleDetails(mVisibleDetails);
@@ -116,7 +117,6 @@ public class CarouselController {
         setDefaultBitmap(mDefaultBitmap);
         setLoadingBitmap(mLoadingBitmap);
         setDefaultGeometry(mDefaultGeometry);
-        setDefaultCardMatrix(mDefaultCardMatrix);
         setLoadingGeometry(mLoadingGeometry);
         setBackgroundColor(mBackgroundColor.x, mBackgroundColor.y, mBackgroundColor.z,
                 mBackgroundColor.w);
