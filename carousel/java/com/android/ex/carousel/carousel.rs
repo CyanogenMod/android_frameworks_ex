@@ -896,7 +896,8 @@ static int64_t lastTime = 0L; // keep track of how much time has passed between 
 static float lastAngle = 0.0f;
 static float2 lastPosition;
 static bool animating = false;
-static float velocityThreshold = 0.1f * M_PI / 180.0f;
+static float stopVelocity = 0.1f * M_PI / 180.0f; // slower than this: carousel stops
+static float selectionVelocity = 15.0f * M_PI / 180.0f; // faster than this: tap won't select
 static float velocityTracker;
 static int velocityTrackerCount;
 static float mass = 5.0f; // kg
@@ -977,13 +978,13 @@ void doStart(float x, float y, long eventTime)
 {
     touchPosition = lastPosition = (float2) { x, y };
     lastAngle = hitAngle(x,y, &lastAngle) ? lastAngle : 0.0f;
+    enableSelection = fabs(velocity) < selectionVelocity;
     velocity = 0.0f;
     velocityTracker = 0.0f;
     velocityTrackerCount = 0;
     touchTime = lastTime = eventTime;
     touchBias = bias;
     isDragging = true;
-    enableSelection = true;
     animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
 }
 
@@ -1013,7 +1014,7 @@ void doStop(float x, float y, long eventTime)
         // TODO: move velocity tracking to Java
         velocity = velocityTrackerCount > 0 ?
                     (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
-        if (fabs(velocity) > velocityThreshold) {
+        if (fabs(velocity) > stopVelocity) {
             animating = true;
         }
     }
@@ -1305,7 +1306,7 @@ static bool doPhysics(float dt)
         velocity = momentum / mass;
         bias += velocity * dt;
     }
-    return fabs(velocity) > velocityThreshold;
+    return fabs(velocity) > stopVelocity;
 }
 
 static float easeOut(float x)
