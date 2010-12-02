@@ -578,7 +578,7 @@ public class CarouselRS  {
                 height = bitmap.getHeight();
             } else {
                 if (item.detailTexture != null) {
-                    if (DBG) Log.v(TAG, "unloading texture " + n);
+                    if (DBG) Log.v(TAG, "unloading detail texture " + n);
                     // Don't wait for GC to free native memory.
                     // Only works if textures are not shared.
                     item.detailTexture.destroy();
@@ -587,6 +587,28 @@ public class CarouselRS  {
             }
             mCards.set(item, n, false); // This is primarily used for reference counting.
             mScript.invoke_setDetailTexture(n, offx, offy, loffx, loffy, item.detailTexture);
+        }
+    }
+
+    void invalidateTexture(int n, boolean eraseCurrent)
+    {
+        if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
+
+        synchronized(this) {
+            ScriptField_Card.Item item = mCards.get(n);
+            if (item == null) {
+                // This card was never created, so there's nothing to invalidate.
+                return;
+            }
+            if (eraseCurrent && item.texture != null) {
+                if (DBG) Log.v(TAG, "unloading texture " + n);
+                // Don't wait for GC to free native memory.
+                // Only works if textures are not shared.
+                item.texture.destroy();
+                item.texture = null;
+            }
+            mCards.set(item, n, false); // This is primarily used for reference counting.
+            mScript.invoke_invalidateTexture(n, eraseCurrent);
         }
     }
 
@@ -601,7 +623,7 @@ public class CarouselRS  {
                 return;
             }
             if (eraseCurrent && item.detailTexture != null) {
-                if (DBG) Log.v(TAG, "unloading texture " + n);
+                if (DBG) Log.v(TAG, "unloading detail texture " + n);
                 // Don't wait for GC to free native memory.
                 // Only works if textures are not shared.
                 item.detailTexture.destroy();

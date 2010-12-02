@@ -449,8 +449,11 @@ void setTexture(int n, rs_allocation texture)
 {
     if (n < 0 || n >= cardCount) return;
     rsSetObject(&cards[n].texture, texture);
+    if (cards[n].textureState != STATE_STALE &&
+        cards[n].textureState != STATE_UPDATING) {
+        cards[n].textureTimeStamp = rsUptimeMillis();
+    }
     cards[n].textureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
-    cards[n].textureTimeStamp = rsUptimeMillis();
 }
 
 void setDetailTexture(int n, float offx, float offy, float loffx, float loffy, rs_allocation texture)
@@ -466,6 +469,17 @@ void setDetailTexture(int n, float offx, float offy, float loffx, float loffy, r
     cards[n].detailLineOffset.x = loffx;
     cards[n].detailLineOffset.y = loffy;
     cards[n].detailTextureState = (texture.p != 0) ? STATE_LOADED : STATE_INVALID;
+}
+
+void invalidateTexture(int n, bool eraseCurrent)
+{
+    if (n < 0 || n >= cardCount) return;
+    if (eraseCurrent) {
+        cards[n].textureState = STATE_INVALID;
+        rsClearObject(&cards[n].texture);
+    } else {
+        cards[n].textureState = STATE_STALE;
+    }
 }
 
 void invalidateDetailTexture(int n, bool eraseCurrent)
@@ -603,7 +617,9 @@ static bool drawCards(int64_t currentTime)
 
             // Bind the appropriate shader network.  If there's no alpha blend, then
             // switch to single shader for better performance.
-            const bool loaded = cards[i].textureState == STATE_LOADED;
+            const int state = cards[i].textureState;
+            const bool loaded = (state == STATE_LOADED) || (state == STATE_STALE) ||
+                (state == STATE_UPDATING);
             if (shaderConstants->fadeAmount == 1.0f || shaderConstants->fadeAmount < 0.01f) {
                 rsgBindProgramFragment(singleTextureFragmentProgram);
                 rsgBindTexture(singleTextureFragmentProgram, 0,
@@ -1419,6 +1435,14 @@ static void updateCardResources(int64_t currentTime)
                 bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
                 if (enqueued) {
                     cards[i].textureState = STATE_LOADING;
+                } else {
+                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
+                }
+            } else if (cards[i].textureState == STATE_STALE) {
+                data[0] = i;
+                bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
+                if (enqueued) {
+                    cards[i].textureState = STATE_UPDATING;
                 } else {
                     if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
                 }
