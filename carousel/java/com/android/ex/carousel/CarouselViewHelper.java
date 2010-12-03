@@ -3,6 +3,7 @@ package com.android.ex.carousel;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -256,8 +257,9 @@ public class CarouselViewHelper implements CarouselCallback {
         if (DBG) Log.v(TAG, "onDetailSelected(" + n + ", " + x + ", " + y + ")");
     }
 
-    public void onCardLongPress(int n) {
-        if (DBG) Log.v(TAG, "onCardLongPress(" + n + ")");
+    public void onCardLongPress(int n, int touchPosition[], Rect detailCoordinates) {
+        if (DBG) Log.v(TAG, "onCardLongPress(" + n + ", (" + touchPosition + "), (" +
+                detailCoordinates +") )");
     }
 
     public void onAnimationStarted() {
