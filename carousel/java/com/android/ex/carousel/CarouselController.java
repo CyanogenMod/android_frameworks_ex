@@ -350,6 +350,24 @@ public class CarouselController {
     }
 
     /**
+     * Sets the specified texture as invalid. If {@code eraseCurrent} is true,
+     * the texture will be immediately cleared from view and an invalidate
+     * handler will be called. If {@code eraseCurrent} is false, a replacement
+     * texture will be requested, and the old texture will be left in place in
+     * the meantime.
+     *
+     * @param n the card to invalidate the detail texture for
+     * @param eraseCurrent whether to erase the current texture
+     */
+    public void invalidateTexture(int n, boolean eraseCurrent) {
+        if (mRenderScript != null && mRS != null) {
+            if (DBG) Log.v(TAG, "invalidateTexture(" + n + ", " + eraseCurrent + ")");
+            mRenderScript.invalidateTexture(n, eraseCurrent);
+            if (DBG) Log.v(TAG, "done");
+        }
+    }
+
+    /**
      * Sets the specified detail texture as invalid. If eraseCurrent is true, the texture will be
      * immediately cleared from view and an invalidate handler will be called. If eraseCurrent is
      * false, a replacement texture will be requested, and the old texture will be left in place
@@ -359,8 +377,8 @@ public class CarouselController {
      */
     public void invalidateDetailTexture(int n, boolean eraseCurrent) {
         if (mRenderScript != null && mRS != null) {
-            if (DBG) Log.v(TAG, "invalidateDetailTexture(" + n + ")");
-            mRenderScript.invalidateDetailTexture(n, false);
+            if (DBG) Log.v(TAG, "invalidateDetailTexture(" + n + ", " + eraseCurrent + ")");
+            mRenderScript.invalidateDetailTexture(n, eraseCurrent);
             if (DBG) Log.v(TAG, "done");
         }
     }
