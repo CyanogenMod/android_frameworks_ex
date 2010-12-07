@@ -1001,6 +1001,7 @@ void doStart(float x, float y, long eventTime)
     touchTime = lastTime = eventTime;
     touchBias = bias;
     isDragging = true;
+    overscroll = false;
     animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
 }
 
