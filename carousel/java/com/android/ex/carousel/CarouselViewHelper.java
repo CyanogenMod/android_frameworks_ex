@@ -269,11 +269,11 @@ public class CarouselViewHelper implements CarouselCallback {
     }
 
     public void onResume() {
-        mCarouselView.onResume();
+        mCarouselView.resume();
     }
 
     public void onPause() {
-        mCarouselView.onPause();
+        mCarouselView.pause();
     }
 
     public void onDestroy() {

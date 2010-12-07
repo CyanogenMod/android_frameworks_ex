@@ -19,7 +19,7 @@ package com.android.ex.carousel;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.renderscript.*;
-import android.renderscript.RenderScript.RSMessage;
+import android.renderscript.RenderScript.RSMessageHandler;
 import android.util.Log;
 
 import static android.renderscript.Element.*;
@@ -175,7 +175,7 @@ public class CarouselRS  {
         void onAnimationFinished(float carouselRotationAngle);
     };
 
-    private RSMessage mRsMessage = new RSMessage() {
+    private RSMessageHandler mRsMessage = new RSMessageHandler() {
         public void run() {
             if (mCallback == null) return;
             switch (mID) {
@@ -241,8 +241,8 @@ public class CarouselRS  {
         mRes = res;
 
         // create the script object
-        mScript = new ScriptC_carousel(mRS, mRes, resId, true);
-        mRS.mMessageCallback = mRsMessage;
+        mScript = new ScriptC_carousel(mRS, mRes, resId);
+        mRS.setMessageHandler(mRsMessage);
         initProgramStore();
         initFragmentProgram();
         initRasterProgram();
@@ -526,7 +526,7 @@ public class CarouselRS  {
         } else if (bitmap != null) {
             if (bitmap.getWidth() == allocation.getType().getX()
                 && bitmap.getHeight() == allocation.getType().getY()) {
-                allocation.updateFromBitmap(bitmap);
+                allocation.copyFrom(bitmap);
                 allocation.uploadToTexture(0);
             } else {
                 Log.v(TAG, "Warning, bitmap has different size. Taking slow path");
@@ -695,11 +695,11 @@ public class CarouselRS  {
 
     public void pauseRendering() {
         // Used to update multiple states at once w/o redrawing for each.
-        mRS.contextBindRootScript(null);
+        mRS.bindRootScript(null);
     }
 
     public void resumeRendering() {
-        mRS.contextBindRootScript(mScript);
+        mRS.bindRootScript(mScript);
     }
 
     public void doLongPress() {
