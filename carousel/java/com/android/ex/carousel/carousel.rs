@@ -1045,12 +1045,18 @@ void doLongPress()
     int64_t currentTime = rsUptimeMillis();
     updateAllocationVars(cards);
     // Selection happens for most recent position detected in doMotion()
-    int selection = doSelection(lastPosition.x, lastPosition.y);
-    if (selection != -1) {
-        if (debugSelection) rsDebug("doLongPress(), selection = ", selection);
-        int data[1];
-        data[0] = selection;
+    if (enableSelection && animatedSelection != -1) {
+        if (debugSelection) rsDebug("doLongPress(), selection = ", animatedSelection);
+        int data[7];
+        data[0] = animatedSelection;
+        data[1] = lastPosition.x;
+        data[2] = lastPosition.y;
+        data[3] = cards[animatedSelection].detailTexturePosition[0].x;
+        data[4] = cards[animatedSelection].detailTexturePosition[0].y;
+        data[5] = cards[animatedSelection].detailTexturePosition[1].x;
+        data[6] = cards[animatedSelection].detailTexturePosition[1].y;
         rsSendToClientBlocking(CMD_CARD_LONGPRESS, data, sizeof(data));
+        enableSelection = false;
     }
     lastTime = rsUptimeMillis();
 }

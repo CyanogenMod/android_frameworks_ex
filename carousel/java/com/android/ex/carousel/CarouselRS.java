@@ -18,6 +18,7 @@ package com.android.ex.carousel;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.renderscript.*;
 import android.renderscript.RenderScript.RSMessageHandler;
 import android.util.Log;
@@ -118,8 +119,10 @@ public class CarouselRS  {
         /**
          * Called when a card is long-pressed
          * @param n the id of the card
+         * @param touchPosition position of where the user pressed, in screen coordinates
+         * @param detailCoordinates position of detail texture, in screen coordinates
          */
-        void onCardLongPress(int n);
+        void onCardLongPress(int n, int touchPosition[], Rect detailCoordinates);
 
         /**
          * Called when texture is needed for card n.  This happens when the given card becomes
@@ -188,7 +191,9 @@ public class CarouselRS  {
                     break;
 
                 case CMD_CARD_LONGPRESS:
-                    mCallback.onCardLongPress(mData[0]);
+                    int touchPosition[] = { mData[1], mData[2] };
+                    Rect detailCoordinates = new Rect(mData[3], mData[4], mData[5], mData[6]);
+                    mCallback.onCardLongPress(mData[0], touchPosition, detailCoordinates);
                     break;
 
                 case CMD_REQUEST_TEXTURE:
