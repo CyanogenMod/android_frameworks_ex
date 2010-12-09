@@ -752,4 +752,19 @@ public class CarouselRS  {
             throw new IllegalArgumentException("Unknown configuration");
         }
     }
+
+    public Mesh loadGeometry(int resId) {
+        if (resId == 0) {
+          return null;
+        }
+        FileA3D model = FileA3D.createFromResource(mRS, mRes, resId);
+        if (model == null) {
+          return null;
+        }
+        FileA3D.IndexEntry entry = model.getIndexEntry(0);
+        if(entry == null || entry.getClassID() != FileA3D.ClassID.MESH) {
+            return null;
+        }
+        return (Mesh) entry.getObject();
+    }
 }
