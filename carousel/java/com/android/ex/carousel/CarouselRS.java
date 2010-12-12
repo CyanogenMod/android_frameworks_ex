@@ -68,15 +68,13 @@ public class CarouselRS  {
     private ScriptC_carousel mScript;
     private ScriptField_Card mCards;
     private ScriptField_FragmentShaderConstants_s mFSConst;
-    private ProgramStore mProgramStoreAlphaZ;
-    private ProgramStore mProgramStoreAlphaNoZ;
-    private ProgramStore mProgramStoreNoAlphaZ;
-    private ProgramStore mProgramStoreNoAlphaNoZ;
+    private ScriptField_ProgramStore_s mProgramStoresCard;
     private ProgramFragment mSingleTextureFragmentProgram;
     private ProgramFragment mMultiTextureFragmentProgram;
     private ProgramVertex mVertexProgram;
     private ProgramRaster mRasterProgram;
     private Allocation[] mAllocationPool;
+    private boolean mForceBlendCardsWithZ;
     private int mVisibleSlots;
     private int mRowCount;
     private int mPrefetchCardCount;
@@ -379,40 +377,37 @@ public class CarouselRS  {
     }
 
     private void initProgramStore() {
+        resizeProgramStoresCard(1);
+
         final boolean dither = true;
-        mProgramStoreAlphaZ = new ProgramStore.Builder(mRS)
-                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
-                        ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
-                .setDitherEnable(dither)
-                .setDepthFunc(ProgramStore.DepthFunc.LESS)
-                .setDepthMask(true)
-                .create();
-        mScript.set_programStoreAlphaZ(mProgramStoreAlphaZ);
+        final ProgramStore.DepthFunc depthFunc = mForceBlendCardsWithZ ?
+                ProgramStore.DepthFunc.LESS : ProgramStore.DepthFunc.ALWAYS;
 
-        mProgramStoreAlphaNoZ = new ProgramStore.Builder(mRS)
-                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
-                        ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
-                .setDitherEnable(dither)
-                .setDepthFunc(ProgramStore.DepthFunc.ALWAYS)
-                .setDepthMask(false)
-                .create();
-        mScript.set_programStoreAlphaNoZ(mProgramStoreAlphaNoZ);
+        // Background: Alpha disabled, depth optional
+        mScript.set_programStoreBackground(new ProgramStore.Builder(mRS)
+            .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, ProgramStore.BlendDstFunc.ZERO)
+            .setDitherEnable(dither)
+            .setDepthFunc(depthFunc)
+            .setDepthMask(mForceBlendCardsWithZ)
+            .create());
 
-        mProgramStoreNoAlphaZ = new ProgramStore.Builder(mRS)
-                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, ProgramStore.BlendDstFunc.ZERO)
-                .setDitherEnable(dither)
-                .setDepthFunc(ProgramStore.DepthFunc.LESS)
-                .setDepthMask(true)
-                .create();
-        mScript.set_programStoreNoAlphaZ(mProgramStoreNoAlphaZ);
+        // Card: Alpha enabled, depth optional
+        setProgramStoreCard(0, new ProgramStore.Builder(mRS)
+            .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
+                ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
+            .setDitherEnable(dither)
+            .setDepthFunc(depthFunc)
+            .setDepthMask(mForceBlendCardsWithZ)
+            .create());
 
-        mProgramStoreNoAlphaNoZ = new ProgramStore.Builder(mRS)
-                .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, ProgramStore.BlendDstFunc.ZERO)
-                .setDitherEnable(dither)
-                .setDepthFunc(ProgramStore.DepthFunc.ALWAYS)
-                .setDepthMask(false)
-                .create();
-        mScript.set_programStoreNoAlphaNoZ(mProgramStoreNoAlphaNoZ);
+        // Detail: Alpha enabled, depth disabled
+        mScript.set_programStoreDetail(new ProgramStore.Builder(mRS)
+            .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
+                ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
+            .setDitherEnable(dither)
+            .setDepthFunc(ProgramStore.DepthFunc.ALWAYS)
+            .setDepthMask(false)
+            .create());
     }
 
     public void createCards(int count)
@@ -466,8 +461,74 @@ public class CarouselRS  {
         mScript.set_detailTextureAlignment(alignment);
     }
 
+    private void resizeProgramStoresCard(int count) {
+        // enableResize works around a Renderscript bug that keeps resizes from being propagated.
+        // TODO(jshuma): Remove enableResize once the Renderscript bug is fixed
+        final boolean enableResize = false;
+
+        if (mProgramStoresCard != null && enableResize) {
+            int newSize = count > 0 ? count : 1;
+            mProgramStoresCard.resize(newSize);
+        } else {
+            mProgramStoresCard = new ScriptField_ProgramStore_s(mRS, count > 0 ? count : 1);
+            mScript.bind_programStoresCard(mProgramStoresCard);
+        }
+    }
+
+    private void setProgramStoreCard(int n, ProgramStore programStore) {
+        ScriptField_ProgramStore_s.Item item = mProgramStoresCard.get(n);
+        if (item == null) {
+            item = new ScriptField_ProgramStore_s.Item();
+        }
+        item.programStore = programStore;
+        mProgramStoresCard.set(item, n, false);
+        mScript.invoke_setProgramStoresCard(n, programStore);
+    }
+
+    public void setStoreConfigs(int configs[]) {
+        final int count = configs.length;
+
+        resizeProgramStoresCard(count);
+        for (int i=0; i<count; ++i) {
+            final int config = configs[i];
+
+            final boolean alpha = (config & CarouselController.STORE_CONFIG_ALPHA) != 0;
+            final boolean depthReads = (config & CarouselController.STORE_CONFIG_DEPTH_READS) != 0;
+            final boolean depthWrites =
+                    (config & CarouselController.STORE_CONFIG_DEPTH_WRITES) != 0;
+
+            final boolean dither = true;
+            final ProgramStore.BlendDstFunc dstFunc = alpha ?
+                    ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA :
+                    ProgramStore.BlendDstFunc.ZERO;
+            final ProgramStore.DepthFunc depthFunc = depthReads ?
+                    ProgramStore.DepthFunc.LESS :
+                    ProgramStore.DepthFunc.ALWAYS;
+
+            final ProgramStore ps = new ProgramStore.Builder(mRS)
+                    .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, dstFunc)
+                    .setDitherEnable(dither)
+                    .setDepthFunc(depthFunc)
+                    .setDepthMask(depthWrites)
+                    .create();
+
+            setProgramStoreCard(i, ps);
+        }
+    }
+
+    /**
+     * Sets whether the background texture and default card geometry are to be drawn with respect
+     * to the depth buffer (both reading from it and writing to it).
+     *
+     * This method is a specialization of functionality that can be done with greater flexibility
+     * by setStoreConfigs. Calling setForceBlendCardsWithZ() after calling setStoreConfigs()
+     * results in the values set in setStoreConfigs() being discarded.
+     *
+     * @param enabled true to read from and write to the depth buffer, false to ignore it
+     */
     public void setForceBlendCardsWithZ(boolean enabled) {
-        mScript.set_forceBlendCardsWithZ(enabled);
+        mForceBlendCardsWithZ = enabled;
+        initProgramStore();
     }
 
     public void setDrawRuler(boolean drawRuler) {
