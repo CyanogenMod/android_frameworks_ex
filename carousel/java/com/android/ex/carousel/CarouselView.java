@@ -188,13 +188,13 @@ public abstract class CarouselView extends RSSurfaceView {
      * @return the loaded mesh or null if it cannot be loaded
      */
     public Mesh loadGeometry(int resId) {
-        return mController.loadGeometry(mContext.getResources(), resId);
+        return mController.loadGeometry(resId);
     }
 
     /**
-     * Load A3D file from resource.  If resId == 0, will clear geometry for this item.
+     * Set the geometry for a given item.
      * @param n
-     * @param resId
+     * @param mesh
      */
     public void setGeometryForItem(int n, Mesh mesh) {
         mController.setGeometryForItem(n, mesh);
@@ -408,10 +408,10 @@ public abstract class CarouselView extends RSSurfaceView {
      * simple planar geometry is used, consider enabling depth test with
      * {@link CarouselView#setForceBlendCardsWithZ(boolean)}
      *
-     * @param mesh
+     * @param resId
      */
-    public void setDefaultGeometry(Mesh mesh) {
-        mController.setDefaultGeometry(mesh);
+    public void setDefaultGeometry(int resId) {
+        mController.setDefaultGeometry(resId);
     }
 
     /**
@@ -432,10 +432,10 @@ public abstract class CarouselView extends RSSurfaceView {
      * simple planar geometry is used, consider enabling depth test with
      * {@link CarouselView#setForceBlendCardsWithZ(boolean)}
      *
-     * @param mesh
+     * @param resId
      */
-    public void setLoadingGeometry(Mesh mesh) {
-        mController.setLoadingGeometry(mesh);
+    public void setLoadingGeometry(int resId) {
+        mController.setLoadingGeometry(resId);
     }
 
     /**

@@ -59,8 +59,8 @@ public class CarouselController {
     private Bitmap mBackgroundBitmap;
     private Bitmap mDefaultLineBitmap = Bitmap.createBitmap(
             new int[] {0x00000000, 0xffffffff, 0x00000000}, 0, 3, 3, 1, Bitmap.Config.ARGB_4444);
-    private Mesh mDefaultGeometry;
-    private Mesh mLoadingGeometry;
+    private int mDefaultGeometry;
+    private int mLoadingGeometry;
     private float[] mDefaultCardMatrix;
     private int mCardCount = 0;
     private int mVisibleSlots = 0;
@@ -144,13 +144,11 @@ public class CarouselController {
      * @param resId
      * @return the loaded mesh or null if it cannot be loaded
      */
-    public Mesh loadGeometry(Resources res, int resId) {
-        FileA3D model = FileA3D.createFromResource(mRS, res, resId);
-        FileA3D.IndexEntry entry = model.getIndexEntry(0);
-        if(entry == null || entry.getClassID() != FileA3D.ClassID.MESH) {
-            return null;
+    public Mesh loadGeometry(int resId) {
+        if (mRenderScript != null) {
+          return mRenderScript.loadGeometry(resId);
         }
-        return (Mesh) entry.getObject();
+        return null;
     }
 
     /**
@@ -477,9 +475,10 @@ public class CarouselController {
      *
      * @param mesh
      */
-    public void setDefaultGeometry(Mesh mesh) {
-        mDefaultGeometry = mesh;
+    public void setDefaultGeometry(int resId) {
+        mDefaultGeometry = resId;
         if (mRenderScript != null) {
+            Mesh mesh = mRenderScript.loadGeometry(resId);
             mRenderScript.setDefaultGeometry(mesh);
         }
     }
@@ -505,11 +504,12 @@ public class CarouselController {
      * simple planar geometry is used, consider enabling depth test with
      * {@link CarouselView#setForceBlendCardsWithZ(boolean)}
      *
-     * @param mesh
+     * @param resId
      */
-    public void setLoadingGeometry(Mesh mesh) {
-        mLoadingGeometry = mesh;
+    public void setLoadingGeometry(int resId) {
+        mLoadingGeometry = resId;
         if (mRenderScript != null) {
+            Mesh mesh = mRenderScript.loadGeometry(resId);
             mRenderScript.setLoadingGeometry(mesh);
         }
     }
