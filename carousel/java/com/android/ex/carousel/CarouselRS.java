@@ -453,6 +453,10 @@ public class CarouselRS  {
         mScript.set_rowSpacing(spacing);
     }
 
+    public void setFirstCardTop(boolean first) {
+        mScript.set_firstCardTop(first);
+    }
+
     public void setPrefetchCardCount(int count) {
         mPrefetchCardCount = count;
         mScript.set_prefetchCardCount(count);

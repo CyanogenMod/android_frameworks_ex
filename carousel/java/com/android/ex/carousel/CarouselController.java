@@ -91,6 +91,7 @@ public class CarouselController {
             new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
     private int mDragModel = CarouselRS.DRAG_MODEL_SCREEN_DELTA;
     private int mFillDirection = CarouselRS.FILL_DIRECTION_CCW;
+    private boolean mFirstCardTop = false;
 
     public CarouselController() {
         boolean useDepthBuffer = true;
@@ -110,6 +111,7 @@ public class CarouselController {
         setPrefetchCardCount(mPrefetchCardCount);
         setRowCount(mRowCount);
         setRowSpacing(mRowSpacing);
+        setFirstCardTop(mFirstCardTop);
         setDetailTextureAlignment(mDetailTextureAlignment);
         setForceBlendCardsWithZ(mForceBlendCardsWithZ);
         setDrawRuler(mDrawRuler);
@@ -232,6 +234,16 @@ public class CarouselController {
         mRowSpacing = s;
         if (mRenderScript != null) {
             mRenderScript.setRowSpacing(s);
+        }
+    }
+
+     /**
+     * Sets the position of the first card when rowCount > 1 .
+     */
+    public void setFirstCardTop(boolean f) {
+        mFirstCardTop = f;
+        if (mRenderScript != null) {
+            mRenderScript.setFirstCardTop(f);
         }
     }
 

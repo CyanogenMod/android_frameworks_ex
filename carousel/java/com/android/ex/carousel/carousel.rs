@@ -171,6 +171,7 @@ float detailFadeRate; // rate at which details fade as they move into the distan
 float4 backgroundColor;
 int rowCount;  // number of rows of cards in a given slot, default 1
 float rowSpacing;  // spacing between rows of cards
+bool firstCardTop; // set true for first card on top row when multiple rows used
 
 int dragModel = DRAG_MODEL_SCREEN_DELTA;
 int fillDirection; // the order in which to lay out cards: +1 for CCW (default), -1 for CW
@@ -275,6 +276,7 @@ void init() {
     cardCount = 0;
     rowCount = 1;
     rowSpacing = 0.0f;
+    firstCardTop = false;
     fadeInDuration = 250;
     rezInCardCount = 0.0f; // alpha will ramp to 1.0f over this many cards (0.0f means disabled)
     detailFadeRate = 0.5f; // fade details over this many slot positions.
@@ -552,7 +554,11 @@ static float getVerticalOffsetForCard(int i) {
    }
    const float cardHeight = cardVertices[3].y - cardVertices[0].y;
    const float totalHeight = rowCount * (cardHeight + rowSpacing) - rowSpacing;
-   const float rowOffset = (i % rowCount) * (cardHeight + rowSpacing);
+   if (firstCardTop)
+      i = rowCount - (i % rowCount) - 1;
+   else
+      i = i % rowCount;
+   const float rowOffset = i * (cardHeight + rowSpacing);
    return (cardHeight - totalHeight) / 2 + rowOffset;
 }
 

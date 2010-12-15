@@ -247,6 +247,13 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
+     * Sets the position of the first card when rowCount > 1.
+     */
+    public void setFirstCardTop(boolean f) {
+        mController.setFirstCardTop(f);
+    }
+
+    /**
      * Set the number of detail textures that can be visible at one time.
      *
      * @param n the number of slots
