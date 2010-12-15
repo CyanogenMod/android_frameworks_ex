@@ -19,9 +19,7 @@ package com.android.ex.carousel;
 import com.android.ex.carousel.CarouselRS.CarouselCallback;
 import com.android.ex.carousel.CarouselView.DetailAlignment;
 
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.renderscript.FileA3D;
 import android.renderscript.Float4;
 import android.renderscript.Mesh;
 import android.renderscript.RenderScriptGL;
@@ -91,6 +89,7 @@ public class CarouselController {
             new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
     private int mDragModel = CarouselRS.DRAG_MODEL_SCREEN_DELTA;
     private int mFillDirection = CarouselRS.FILL_DIRECTION_CCW;
+    private boolean mFirstCardTop = false;
 
     public CarouselController() {
         boolean useDepthBuffer = true;
@@ -110,6 +109,7 @@ public class CarouselController {
         setPrefetchCardCount(mPrefetchCardCount);
         setRowCount(mRowCount);
         setRowSpacing(mRowSpacing);
+        setFirstCardTop(mFirstCardTop);
         setDetailTextureAlignment(mDetailTextureAlignment);
         setForceBlendCardsWithZ(mForceBlendCardsWithZ);
         setDrawRuler(mDrawRuler);
@@ -232,6 +232,16 @@ public class CarouselController {
         mRowSpacing = s;
         if (mRenderScript != null) {
             mRenderScript.setRowSpacing(s);
+        }
+    }
+
+     /**
+     * Sets the position of the first card when rowCount > 1 .
+     */
+    public void setFirstCardTop(boolean f) {
+        mFirstCardTop = f;
+        if (mRenderScript != null) {
+            mRenderScript.setFirstCardTop(f);
         }
     }
 
@@ -711,5 +721,40 @@ public class CarouselController {
      */
     public void onTouchStopped(float x, float y, long t) {
         mRenderScript.doStop(x, y, t);
+    }
+
+    /**
+     * Whether to use alpha when drawing a primitive: on for translucent, off for opaque.
+     */
+    public static final int STORE_CONFIG_ALPHA = 1;
+
+    /**
+     * Whether to read from the depth buffer when rendering. Determines with glDepthFunc()
+     * is given GL_LESS or GL_ALWAYS. On for GL_LESS, off for GL_ALWAYS.
+     */
+    public static final int STORE_CONFIG_DEPTH_READS = 2;
+
+    /**
+     * Whether to write to the depth buffer when rendering. Passed to glDepthMask().
+     */
+    public static final int STORE_CONFIG_DEPTH_WRITES = 4;
+
+    /**
+     * Set the StoreConfig parameters that will be used for each mesh primitive.
+     *
+     * Each integer in the array is a bitfield composed of
+     * {@link CarouselController#STORE_CONFIG_ALPHA},
+     * {@link CarouselController#STORE_CONFIG_DEPTH_READS}, and
+     * {@link CarouselController#STORE_CONFIG_DEPTH_WRITES}.
+     *
+     * These parameters MUST correspond to primitives in geometry previously set in
+     * {@link CarouselController#setDefaultGeometry(int)} or
+     * {@link CarouselController#setLoadingGeometry(int)} or
+     * {@link CarouselController#setGeometryForItem(int,Mesh)}.
+     *
+     * @param configs An array, each element of which corresponds to an ordered mesh primitive
+     */
+    public void setStoreConfigs(int configs[]) {
+        mRenderScript.setStoreConfigs(configs);
     }
 }

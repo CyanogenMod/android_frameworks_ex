@@ -64,6 +64,10 @@ typedef struct PerspectiveCamera_s {
     float  far;
 } PerspectiveCamera;
 
+typedef struct ProgramStore_s {
+    rs_program_store programStore;
+} ProgramStore_t;
+
 typedef struct FragmentShaderConstants_s {
     float fadeAmount;
 } FragmentShaderConstants;
@@ -153,11 +157,11 @@ Card_t *cards; // array of cards to draw
 float startAngle; // position of initial card, in radians
 int slotCount; // number of positions where a card can be
 int cardCount; // number of cards in stack
+int programStoresCardCount; // number of program fragment stores
 int visibleSlotCount; // number of visible slots (for culling)
 int visibleDetailCount; // number of visible detail textures to show
 int prefetchCardCount; // how many cards to keep in memory
 int detailTextureAlignment; // How to align detail texture with respect to card
-bool forceBlendCardsWithZ; // Enable depth buffer while blending
 bool drawRuler; // whether to draw a ruler from the card to the detail texture
 float radius; // carousel radius. Cards will be centered on a circle with this radius
 float cardRotation; // rotation of card in XY plane relative to Z=1
@@ -171,13 +175,13 @@ float detailFadeRate; // rate at which details fade as they move into the distan
 float4 backgroundColor;
 int rowCount;  // number of rows of cards in a given slot, default 1
 float rowSpacing;  // spacing between rows of cards
+bool firstCardTop; // set true for first card on top row when multiple rows used
 
 int dragModel = DRAG_MODEL_SCREEN_DELTA;
 int fillDirection; // the order in which to lay out cards: +1 for CCW (default), -1 for CW
-rs_program_store programStoreAlphaZ;
-rs_program_store programStoreAlphaNoZ;
-rs_program_store programStoreNoAlphaZ;
-rs_program_store programStoreNoAlphaNoZ;
+ProgramStore_t *programStoresCard;
+rs_program_store programStoreBackground;
+rs_program_store programStoreDetail;
 rs_program_fragment singleTextureFragmentProgram;
 rs_program_fragment multiTextureFragmentProgram;
 rs_program_vertex vertexProgram;
@@ -223,9 +227,10 @@ static Cylinder carouselCylinder = {
 };
 
 // Because allocations can't have 0 dimensions, we have to track whether or not
-// cards are valid separately.
+// cards and program stores are valid separately.
 // TODO: Remove this dependency once allocations can have a zero dimension.
 static bool cardAllocationValid = false;
+static bool programStoresAllocationValid = false;
 
 // Default geometry when card.geometry is not set.
 static const float3 cardVertices[4] = {
@@ -272,21 +277,29 @@ void init() {
     updateCamera = true;
     backgroundColor = (float4) { 0.0f, 0.0f, 0.0f, 1.0f };
     cardAllocationValid = false;
+    programStoresAllocationValid = false;
     cardCount = 0;
     rowCount = 1;
     rowSpacing = 0.0f;
+    firstCardTop = false;
     fadeInDuration = 250;
     rezInCardCount = 0.0f; // alpha will ramp to 1.0f over this many cards (0.0f means disabled)
     detailFadeRate = 0.5f; // fade details over this many slot positions.
     rsMatrixLoadIdentity(&defaultCardMatrix);
 }
 
-static void updateAllocationVars(Card_t* newcards)
+static void updateAllocationVars()
 {
     // Cards
     rs_allocation cardAlloc;
-    rsSetObject(&cardAlloc, rsGetAllocation(newcards));
+    rsSetObject(&cardAlloc, rsGetAllocation(cards));
     cardCount = (cardAllocationValid && rsIsObject(cardAlloc)) ? rsAllocationGetDimX(cardAlloc) : 0;
+
+    // Program stores
+    rs_allocation psAlloc;
+    rsSetObject(&psAlloc, rsGetAllocation(programStoresCard));
+    programStoresCardCount = (programStoresAllocationValid && rsIsObject(psAlloc) ?
+        rsAllocationGetDimX(psAlloc) : 0);
 }
 
 void setRadius(float rad)
@@ -503,6 +516,12 @@ void setGeometry(int n, rs_mesh geometry)
         cards[n].geometryState = STATE_INVALID;
 }
 
+void setProgramStoresCard(int n, rs_program_store programStore)
+{
+    rsSetObject(&programStoresCard[n].programStore, programStore);
+    programStoresAllocationValid = true;
+}
+
 void setCarouselRotationAngle(float carouselRotationAngle) {
     bias = carouselRotationAngleToRadians(carouselRotationAngle);
 }
@@ -552,7 +571,11 @@ static float getVerticalOffsetForCard(int i) {
    }
    const float cardHeight = cardVertices[3].y - cardVertices[0].y;
    const float totalHeight = rowCount * (cardHeight + rowSpacing) - rowSpacing;
-   const float rowOffset = (i % rowCount) * (cardHeight + rowSpacing);
+   if (firstCardTop)
+      i = rowCount - (i % rowCount) - 1;
+   else
+      i = i % rowCount;
+   const float rowOffset = i * (cardHeight + rowSpacing);
    return (cardHeight - totalHeight) / 2 + rowOffset;
 }
 
@@ -583,6 +606,26 @@ static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
     }
     rsMatrixLoadMultiply(matrix, &cards[i].matrix, matrix);
     return stillAnimating;
+}
+
+/*
+ * Draws the requested mesh, with the appropriate program store in effect.
+ */
+static void drawMesh(rs_mesh mesh)
+{
+    if (programStoresCardCount == 1) {
+        // Draw the entire mesh, with the only available program store
+        rsgBindProgramStore(programStoresCard[0].programStore);
+        rsgDrawMesh(mesh);
+    } else {
+        // Draw each primitive in the mesh with the corresponding program store
+        for (int i=0; i<programStoresCardCount; ++i) {
+            if (programStoresCard[i].programStore.p != 0) {
+                rsgBindProgramStore(programStoresCard[i].programStore);
+                rsgDrawMesh(mesh, i);
+            }
+        }
+    }
 }
 
 /*
@@ -637,13 +680,14 @@ static bool drawCards(int64_t currentTime)
             stillAnimating |= getMatrixForCard(&matrix, i, true);
             rsgProgramVertexLoadModelMatrix(&matrix);
             if (cards[i].geometryState == STATE_LOADED && cards[i].geometry.p != 0) {
-                rsgDrawMesh(cards[i].geometry);
+                drawMesh(cards[i].geometry);
             } else if (cards[i].geometryState == STATE_LOADING && loadingGeometry.p != 0) {
-                rsgDrawMesh(loadingGeometry);
+                drawMesh(loadingGeometry);
             } else if (defaultGeometry.p != 0) {
-                rsgDrawMesh(defaultGeometry);
+                drawMesh(defaultGeometry);
             } else {
                 // Draw place-holder geometry
+                rsgBindProgramStore(programStoresCard[0].programStore);
                 rsgDrawQuad(
                     cardVertices[0].x, cardVertices[0].y, cardVertices[0].z,
                     cardVertices[1].x, cardVertices[1].y, cardVertices[1].z,
@@ -1559,7 +1603,7 @@ int root() {
     // the mask is disabled. We may want to change the following to always draw w/o Z for
     // the background if we can guarantee the depth buffer will get cleared and
     // there's a performance advantage.
-    rsgBindProgramStore(forceBlendCardsWithZ ? programStoreNoAlphaZ : programStoreNoAlphaNoZ);
+    rsgBindProgramStore(programStoreBackground);
     drawBackground();
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
@@ -1577,13 +1621,8 @@ int root() {
     updateCardResources(currentTime);
 
     // Draw cards opaque only if requested, and always draw detail textures with blending.
-    if (forceBlendCardsWithZ) {
-        rsgBindProgramStore(programStoreAlphaZ);
-    } else {
-        rsgBindProgramStore(programStoreAlphaNoZ);
-    }
     stillAnimating |= drawCards(currentTime);
-    rsgBindProgramStore(programStoreAlphaNoZ);
+    rsgBindProgramStore(programStoreDetail);
     stillAnimating |= drawDetails(currentTime);
 
     if (stillAnimating != animating) {
