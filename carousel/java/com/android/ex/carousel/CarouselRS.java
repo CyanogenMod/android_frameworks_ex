@@ -60,7 +60,8 @@ public class CarouselRS  {
 
     private static final String TAG = "CarouselRS";
     private static final int DEFAULT_SLOT_COUNT = 10;
-    private static final boolean MIPMAP = false;
+    private static final Allocation.MipmapControl MIPMAP =
+        Allocation.MipmapControl.MIPMAP_NONE;
     private static final boolean DBG = false;
 
     private RenderScriptGL mRS;
@@ -569,16 +570,15 @@ public class CarouselRS  {
         mCallback = callback;
     }
 
-    private Allocation allocationFromBitmap(Bitmap bitmap, boolean mipmap)
+    private Allocation allocationFromBitmap(Bitmap bitmap, Allocation.MipmapControl mipmap)
     {
         if (bitmap == null) return null;
         Allocation allocation = Allocation.createFromBitmap(mRS, bitmap,
-                elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), mipmap);
-        allocation.uploadToTexture(0);
+                mipmap, Allocation.USAGE_GRAPHICS_TEXTURE);
         return allocation;
     }
 
-    private Allocation allocationFromPool(int n, Bitmap bitmap, boolean mipmap)
+    private Allocation allocationFromPool(int n, Bitmap bitmap, Allocation.MipmapControl mipmap)
     {
         int count = (mVisibleSlots + mPrefetchCardCount) * mRowCount;
         if (mAllocationPool == null || mAllocationPool.length != count) {
@@ -737,8 +737,7 @@ public class CarouselRS  {
         Allocation texture = null;
         if (bitmap != null) {
             texture = Allocation.createFromBitmap(mRS, bitmap,
-                    elementForBitmap(bitmap, Bitmap.Config.RGB_565), MIPMAP);
-            texture.uploadToTexture(0);
+                    MIPMAP, Allocation.USAGE_GRAPHICS_TEXTURE);
         }
         mScript.set_backgroundTexture(texture);
     }
@@ -747,8 +746,7 @@ public class CarouselRS  {
         Allocation texture = null;
         if (bitmap != null) {
             texture = Allocation.createFromBitmap(mRS, bitmap,
-                    elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
-            texture.uploadToTexture(0);
+                    MIPMAP, Allocation.USAGE_GRAPHICS_TEXTURE);
         }
         mScript.set_detailLineTexture(texture);
     }
@@ -757,8 +755,7 @@ public class CarouselRS  {
         Allocation texture = null;
         if (bitmap != null) {
             texture = Allocation.createFromBitmap(mRS, bitmap,
-                    elementForBitmap(bitmap, Bitmap.Config.ARGB_4444), MIPMAP);
-            texture.uploadToTexture(0);
+                    MIPMAP, Allocation.USAGE_GRAPHICS_TEXTURE);
         }
         mScript.set_detailLoadingTexture(texture);
     }
