@@ -487,6 +487,11 @@ public class CarouselRS  {
     }
 
     public void setStoreConfigs(int configs[]) {
+        if (configs == null) {
+            initProgramStore();
+            return;
+        }
+
         final int count = configs.length;
 
         resizeProgramStoresCard(count);
