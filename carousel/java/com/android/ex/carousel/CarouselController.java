@@ -90,6 +90,7 @@ public class CarouselController {
     private int mDragModel = CarouselRS.DRAG_MODEL_SCREEN_DELTA;
     private int mFillDirection = CarouselRS.FILL_DIRECTION_CCW;
     private boolean mFirstCardTop = false;
+    private int[] mStoreConfigs;
 
     public CarouselController() {
         boolean useDepthBuffer = true;
@@ -136,6 +137,7 @@ public class CarouselController {
         setRezInCardCount(mRezInCardCount);
         setFadeInDuration(mFadeInDuration);
         setDetailLoadingBitmap(mDetailLoadingBitmap);
+        setStoreConfigs(mStoreConfigs);
     }
 
     /**
@@ -755,6 +757,9 @@ public class CarouselController {
      * @param configs An array, each element of which corresponds to an ordered mesh primitive
      */
     public void setStoreConfigs(int configs[]) {
-        mRenderScript.setStoreConfigs(configs);
+        mStoreConfigs = configs;
+        if (mRenderScript != null) {
+            mRenderScript.setStoreConfigs(configs);
+        }
     }
 }
