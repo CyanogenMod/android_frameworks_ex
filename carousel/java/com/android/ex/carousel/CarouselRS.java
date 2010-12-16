@@ -602,7 +602,6 @@ public class CarouselRS  {
             if (bitmap.getWidth() == allocation.getType().getX()
                 && bitmap.getHeight() == allocation.getType().getY()) {
                 allocation.copyFrom(bitmap);
-                allocation.uploadToTexture(0);
             } else {
                 Log.v(TAG, "Warning, bitmap has different size. Taking slow path");
                 allocation = allocationFromBitmap(bitmap, mipmap);
