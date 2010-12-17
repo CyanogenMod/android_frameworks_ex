@@ -85,6 +85,7 @@ public class CarouselController {
     private CarouselCallback mCarouselCallback;
     private float mRezInCardCount = 0.0f;
     private long mFadeInDuration = 250L;
+    private long mCardCreationFadeDuration = 0L;
     private Bitmap mDetailLoadingBitmap = Bitmap.createBitmap(
             new int[] {0}, 0, 1, 1, 1, Bitmap.Config.ARGB_4444);
     private int mDragModel = CarouselRS.DRAG_MODEL_SCREEN_DELTA;
@@ -136,6 +137,7 @@ public class CarouselController {
         setLookAt(mEye, mAt, mUp);
         setRezInCardCount(mRezInCardCount);
         setFadeInDuration(mFadeInDuration);
+        setCardCreationFadeDuration(mCardCreationFadeDuration);
         setDetailLoadingBitmap(mDetailLoadingBitmap);
         setStoreConfigs(mStoreConfigs);
     }
@@ -679,12 +681,25 @@ public class CarouselController {
      * until all of the cards have faded in.  Note: using large values will extend the
      * animation until all cards have faded in.
      *
-     * @param t
+     * @param t The time, in milliseconds
      */
     public void setFadeInDuration(long t) {
         mFadeInDuration = t;
         if (mRenderScript != null) {
             mRenderScript.setFadeInDuration(t);
+        }
+    }
+
+    /**
+     * This sets the duration (in ms) that a card takes to fade in when it is initially created,
+     * such as when it is added or when the application starts. The timer starts at the moment
+     * when the card is first created. Replacing a card's contents does not affect the timer.
+     * @param t The time, in milliseconds
+     */
+    public void setCardCreationFadeDuration(long t) {
+        mCardCreationFadeDuration = t;
+        if (mRenderScript != null) {
+            mRenderScript.setCardCreationFadeDuration(t);
         }
     }
 
