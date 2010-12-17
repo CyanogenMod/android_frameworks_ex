@@ -71,7 +71,9 @@ public class CarouselRS  {
     private ScriptField_FragmentShaderConstants_s mFSConst;
     private ScriptField_ProgramStore_s mProgramStoresCard;
     private ProgramFragment mSingleTextureFragmentProgram;
+    private ProgramFragment mSingleTextureBlendingFragmentProgram;
     private ProgramFragment mMultiTextureFragmentProgram;
+    private ProgramFragment mMultiTextureBlendingFragmentProgram;
     private ProgramVertex mVertexProgram;
     private ProgramRaster mRasterProgram;
     private Allocation[] mAllocationPool;
@@ -92,6 +94,14 @@ public class CarouselRS  {
             "gl_FragColor = col; " +
             "}");
 
+    private static final String mSingleTextureBlendingShader = new String(
+            "varying vec2 varTex0;" +
+            "void main() {" +
+            "vec2 t0 = varTex0.xy;" +
+            "vec4 col = texture2D(UNI_Tex0, t0);" +
+            "gl_FragColor = col * UNI_overallAlpha; " +
+            "}");
+
     private static final String mMultiTextureShader = new String(
             "varying vec2 varTex0;" +
             "void main() {" +
@@ -99,6 +109,16 @@ public class CarouselRS  {
             "vec4 col = texture2D(UNI_Tex0, t0);" +
             "vec4 col2 = texture2D(UNI_Tex1, t0);" +
             "gl_FragColor = mix(col, col2, UNI_fadeAmount);}");
+
+    private static final String mMultiTextureBlendingShader = new String(
+            "varying vec2 varTex0;" +
+            "void main() {" +
+            "vec2 t0 = varTex0.xy;" +
+            "vec4 col = texture2D(UNI_Tex0, t0);" +
+            "vec4 col2 = texture2D(UNI_Tex1, t0);" +
+            "gl_FragColor = mix(col, col2, UNI_fadeAmount) * UNI_overallAlpha;" +
+            "}"
+    );
 
     public static interface CarouselCallback {
         /**
@@ -355,10 +375,25 @@ public class CarouselRS  {
         mSingleTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
 
         //
-        // Multi texture program
+        // Single texture program, plus blending
         //
         mFSConst = new ScriptField_FragmentShaderConstants_s(mRS, 1);
         mScript.bind_shaderConstants(mFSConst);
+        ProgramFragment.ShaderBuilder pfbSingleBlend = new ProgramFragment.ShaderBuilder(mRS);
+        // Specify the resource that contains the shader string
+        pfbSingleBlend.setShader(mSingleTextureBlendingShader);
+        // Tell the builder how many textures we have
+        pfbSingleBlend.setTextureCount(1);
+        // Define the constant input layout
+        pfbSingleBlend.addConstant(mFSConst.getAllocation().getType());
+        mSingleTextureBlendingFragmentProgram = pfbSingleBlend.create();
+        // Bind the source of constant data
+        mSingleTextureBlendingFragmentProgram.bindConstants(mFSConst.getAllocation(), 0);
+        mSingleTextureBlendingFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
+
+        //
+        // Multi texture program
+        //
         ProgramFragment.ShaderBuilder pfbMulti = new ProgramFragment.ShaderBuilder(mRS);
         // Specify the resource that contains the shader string
         pfbMulti.setShader(mMultiTextureShader);
@@ -372,9 +407,27 @@ public class CarouselRS  {
         mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
         mMultiTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 1);
 
+        //
+        // Multi texture program, plus blending
+        //
+        ProgramFragment.ShaderBuilder pfbMultiBlend = new ProgramFragment.ShaderBuilder(mRS);
+        // Specify the resource that contains the shader string
+        pfbMultiBlend.setShader(mMultiTextureBlendingShader);
+        // Tell the builder how many textures we have
+        pfbMultiBlend.setTextureCount(2);
+        // Define the constant input layout
+        pfbMultiBlend.addConstant(mFSConst.getAllocation().getType());
+        mMultiTextureBlendingFragmentProgram = pfbMultiBlend.create();
+        // Bind the source of constant data
+        mMultiTextureBlendingFragmentProgram.bindConstants(mFSConst.getAllocation(), 0);
+        mMultiTextureBlendingFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
+        mMultiTextureBlendingFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 1);
+
         mScript.set_linearClamp(Sampler.CLAMP_LINEAR(mRS));
         mScript.set_singleTextureFragmentProgram(mSingleTextureFragmentProgram);
+        mScript.set_singleTextureBlendingFragmentProgram(mSingleTextureBlendingFragmentProgram);
         mScript.set_multiTextureFragmentProgram(mMultiTextureFragmentProgram);
+        mScript.set_multiTextureBlendingFragmentProgram(mMultiTextureBlendingFragmentProgram);
     }
 
     private void initProgramStore() {
@@ -602,7 +655,6 @@ public class CarouselRS  {
             if (bitmap.getWidth() == allocation.getType().getX()
                 && bitmap.getHeight() == allocation.getType().getY()) {
                 allocation.copyFrom(bitmap);
-                allocation.uploadToTexture(0);
             } else {
                 Log.v(TAG, "Warning, bitmap has different size. Taking slow path");
                 allocation = allocationFromBitmap(bitmap, mipmap);
@@ -800,6 +852,10 @@ public class CarouselRS  {
 
     public void setFadeInDuration(long t) {
         mScript.set_fadeInDuration((int)t); // TODO: Remove cast when RS supports exporting longs
+    }
+
+    public void setCardCreationFadeDuration(long t) {
+        mScript.set_cardCreationFadeDuration((int)t);
     }
 
     private Element elementForBitmap(Bitmap bitmap, Bitmap.Config defaultConfig) {

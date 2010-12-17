@@ -34,8 +34,9 @@ typedef struct __attribute__((aligned(4))) Card {
     int geometryState; // whether or not geometry is loaded
     int cardVisible; // not bool because of packing bug?
     int detailVisible; // not bool because of packing bug?
-    int64_t textureTimeStamp; // time when this texture was last updated, in seconds
-    int64_t detailTextureTimeStamp; // time when this texture was last updated, in seconds
+    int64_t textureTimeStamp; // time when this texture was last updated, in ms
+    int64_t detailTextureTimeStamp; // time when this texture was last updated, in ms
+    int64_t geometryTimeStamp; // time when the card itself was last updated, in ms
 } Card_t;
 
 typedef struct Ray_s {
@@ -70,6 +71,7 @@ typedef struct ProgramStore_s {
 
 typedef struct FragmentShaderConstants_s {
     float fadeAmount;
+    float overallAlpha;
 } FragmentShaderConstants;
 
 // Request states. Used for loading 3D object properties from the Java client.
@@ -170,6 +172,7 @@ float swaySensitivity; // how much to rotate cards in relation to the rotation v
 float frictionCoeff; // how much to slow down the carousel over time
 float dragFactor; // a scale factor for how sensitive the carousel is to user dragging
 int fadeInDuration; // amount of time (in ms) for smoothly switching out textures
+int cardCreationFadeDuration; // amount of time (in ms) to fade while initially showing a card
 float rezInCardCount; // this controls how rapidly distant card textures will be rez-ed in
 float detailFadeRate; // rate at which details fade as they move into the distance
 float4 backgroundColor;
@@ -183,7 +186,9 @@ ProgramStore_t *programStoresCard;
 rs_program_store programStoreBackground;
 rs_program_store programStoreDetail;
 rs_program_fragment singleTextureFragmentProgram;
+rs_program_fragment singleTextureBlendingFragmentProgram;
 rs_program_fragment multiTextureFragmentProgram;
+rs_program_fragment multiTextureBlendingFragmentProgram;
 rs_program_vertex vertexProgram;
 rs_program_raster rasterProgram;
 rs_allocation defaultTexture; // shown when no other texture is assigned
@@ -321,6 +326,7 @@ static void initCard(Card_t* card)
     card->detailVisible = false;
     card->textureTimeStamp = 0;
     card->detailTextureTimeStamp = 0;
+    card->geometryTimeStamp = rsUptimeMillis();
 }
 
 void createCards(int start, int total)
@@ -343,10 +349,10 @@ void createCards(int start, int total)
 }
 
 // Computes an alpha value for a card using elapsed time and constant fadeInDuration
-static float getAnimatedAlpha(int64_t startTime, int64_t currentTime)
+static float getAnimatedAlpha(int64_t startTime, int64_t currentTime, int64_t duration)
 {
     double timeElapsed = (double) (currentTime - startTime); // in ms
-    double alpha = (double) timeElapsed / fadeInDuration;
+    double alpha = duration > 0 ? (double) timeElapsed / duration : 1.0;
     return min(1.0f, (float) alpha);
 }
 
@@ -514,6 +520,7 @@ void setGeometry(int n, rs_mesh geometry)
         cards[n].geometryState = STATE_LOADED;
     else
         cards[n].geometryState = STATE_INVALID;
+    cards[n].geometryTimeStamp = rsUptimeMillis();
 }
 
 void setProgramStoresCard(int n, rs_program_store programStore)
@@ -640,8 +647,11 @@ static bool drawCards(int64_t currentTime)
     for (int i = cardCount-1; i >= 0; i--) {
         if (cards[i].cardVisible) {
             // If this card was recently loaded, this will be < 1.0f until the animation completes
-            float animatedAlpha = getAnimatedAlpha(cards[i].textureTimeStamp, currentTime);
-            if (animatedAlpha < 1.0f) {
+            float animatedAlpha = getAnimatedAlpha(cards[i].textureTimeStamp, currentTime,
+                fadeInDuration);
+            float overallAlpha = getAnimatedAlpha(cards[i].geometryTimeStamp, currentTime,
+                cardCreationFadeDuration);
+            if (animatedAlpha < 1.0f || overallAlpha < 1.0f) {
                 stillAnimating = true;
             }
 
@@ -656,6 +666,7 @@ static bool drawCards(int64_t currentTime)
 
             // Set alpha for blending between the textures
             shaderConstants->fadeAmount = min(1.0f, animatedAlpha * positionAlpha);
+            shaderConstants->overallAlpha = overallAlpha;
             rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
 
             // Bind the appropriate shader network.  If there's no alpha blend, then
@@ -664,15 +675,29 @@ static bool drawCards(int64_t currentTime)
             const bool loaded = (state == STATE_LOADED) || (state == STATE_STALE) ||
                 (state == STATE_UPDATING);
             if (shaderConstants->fadeAmount == 1.0f || shaderConstants->fadeAmount < 0.01f) {
-                rsgBindProgramFragment(singleTextureFragmentProgram);
-                rsgBindTexture(singleTextureFragmentProgram, 0,
-                        (loaded && shaderConstants->fadeAmount == 1.0f) ?
-                        cards[i].texture : loadingTexture);
+                if (overallAlpha < 1.0) {
+                    rsgBindProgramFragment(singleTextureBlendingFragmentProgram);
+                    rsgBindTexture(singleTextureBlendingFragmentProgram, 0,
+                            (loaded && shaderConstants->fadeAmount == 1.0f) ?
+                            cards[i].texture : loadingTexture);
+                } else {
+                    rsgBindProgramFragment(singleTextureFragmentProgram);
+                    rsgBindTexture(singleTextureFragmentProgram, 0,
+                            (loaded && shaderConstants->fadeAmount == 1.0f) ?
+                            cards[i].texture : loadingTexture);
+                }
             } else {
-                rsgBindProgramFragment(multiTextureFragmentProgram);
-                rsgBindTexture(multiTextureFragmentProgram, 0, loadingTexture);
-                rsgBindTexture(multiTextureFragmentProgram, 1, loaded ?
-                        cards[i].texture : loadingTexture);
+                if (overallAlpha < 1.0) {
+                    rsgBindProgramFragment(multiTextureBlendingFragmentProgram);
+                    rsgBindTexture(multiTextureBlendingFragmentProgram, 0, loadingTexture);
+                    rsgBindTexture(multiTextureBlendingFragmentProgram, 1, loaded ?
+                            cards[i].texture : loadingTexture);
+                } else {
+                    rsgBindProgramFragment(multiTextureFragmentProgram);
+                    rsgBindTexture(multiTextureFragmentProgram, 0, loadingTexture);
+                    rsgBindTexture(multiTextureFragmentProgram, 1, loaded ?
+                            cards[i].texture : loadingTexture);
+                }
             }
 
             // Draw geometry
@@ -815,7 +840,8 @@ static bool drawDetails(int64_t currentTime)
 
                 // Compute alpha for gradually fading in details. Applied to both line and
                 // detail texture. TODO: use a separate background texture for line.
-                float animatedAlpha = getAnimatedAlpha(cards[i].detailTextureTimeStamp, currentTime);
+                float animatedAlpha = getAnimatedAlpha(cards[i].detailTextureTimeStamp,
+                    currentTime, fadeInDuration);
                 if (animatedAlpha < 1.0f) {
                     stillAnimating = true;
                 }
