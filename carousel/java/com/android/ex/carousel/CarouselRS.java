@@ -20,10 +20,10 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.renderscript.*;
+import static android.renderscript.Element.*;
+import android.renderscript.Program.TextureType;
 import android.renderscript.RenderScript.RSMessageHandler;
 import android.util.Log;
-
-import static android.renderscript.Element.*;
 
 /**
  * This is a support class for Carousel renderscript.  It handles most of the low-level interactions
@@ -346,11 +346,13 @@ public class CarouselRS  {
     }
 
     private void initVertexProgram() {
-        ProgramVertex.Builder pvb = new ProgramVertex.Builder(mRS, null, null);
+        ProgramVertexFixedFunction.Builder pvb = new ProgramVertexFixedFunction.Builder(mRS);
         mVertexProgram = pvb.create();
-        ProgramVertex.MatrixAllocation pva = new ProgramVertex.MatrixAllocation(mRS);
-        mVertexProgram.bindAllocation(pva);
-        pva.setupProjectionNormalized(1, 1);
+        ProgramVertexFixedFunction.Constants pva = new ProgramVertexFixedFunction.Constants(mRS);
+        ((ProgramVertexFixedFunction)mVertexProgram).bindConstants(pva);
+        Matrix4f proj = new Matrix4f();
+        proj.loadProjectionNormalized(1, 1);
+        pva.setProjection(proj);
         mScript.set_vertexProgram(mVertexProgram);
     }
 
@@ -365,11 +367,11 @@ public class CarouselRS  {
         //
         // Single texture program
         //
-        ProgramFragment.ShaderBuilder pfbSingle = new ProgramFragment.ShaderBuilder(mRS);
+        ProgramFragment.Builder pfbSingle = new ProgramFragment.Builder(mRS);
         // Specify the resource that contains the shader string
         pfbSingle.setShader(mSingleTextureShader);
         // Tell the builder how many textures we have
-        pfbSingle.setTextureCount(1);
+        pfbSingle.addTexture(Program.TextureType.TEXTURE_2D);
         mSingleTextureFragmentProgram = pfbSingle.create();
         // Bind the source of constant data
         mSingleTextureFragmentProgram.bindSampler(Sampler.CLAMP_LINEAR(mRS), 0);
@@ -379,11 +381,11 @@ public class CarouselRS  {
         //
         mFSConst = new ScriptField_FragmentShaderConstants_s(mRS, 1);
         mScript.bind_shaderConstants(mFSConst);
-        ProgramFragment.ShaderBuilder pfbSingleBlend = new ProgramFragment.ShaderBuilder(mRS);
+        ProgramFragment.Builder pfbSingleBlend = new ProgramFragment.Builder(mRS);
         // Specify the resource that contains the shader string
         pfbSingleBlend.setShader(mSingleTextureBlendingShader);
         // Tell the builder how many textures we have
-        pfbSingleBlend.setTextureCount(1);
+        pfbSingleBlend.addTexture(Program.TextureType.TEXTURE_2D);
         // Define the constant input layout
         pfbSingleBlend.addConstant(mFSConst.getAllocation().getType());
         mSingleTextureBlendingFragmentProgram = pfbSingleBlend.create();
@@ -394,11 +396,12 @@ public class CarouselRS  {
         //
         // Multi texture program
         //
-        ProgramFragment.ShaderBuilder pfbMulti = new ProgramFragment.ShaderBuilder(mRS);
+        ProgramFragment.Builder pfbMulti = new ProgramFragment.Builder(mRS);
         // Specify the resource that contains the shader string
         pfbMulti.setShader(mMultiTextureShader);
         // Tell the builder how many textures we have
-        pfbMulti.setTextureCount(2);
+        pfbMulti.addTexture(Program.TextureType.TEXTURE_2D);
+        pfbMulti.addTexture(Program.TextureType.TEXTURE_2D);
         // Define the constant input layout
         pfbMulti.addConstant(mFSConst.getAllocation().getType());
         mMultiTextureFragmentProgram = pfbMulti.create();
@@ -410,11 +413,12 @@ public class CarouselRS  {
         //
         // Multi texture program, plus blending
         //
-        ProgramFragment.ShaderBuilder pfbMultiBlend = new ProgramFragment.ShaderBuilder(mRS);
+        ProgramFragment.Builder pfbMultiBlend = new ProgramFragment.Builder(mRS);
         // Specify the resource that contains the shader string
         pfbMultiBlend.setShader(mMultiTextureBlendingShader);
         // Tell the builder how many textures we have
-        pfbMultiBlend.setTextureCount(2);
+        pfbMultiBlend.addTexture(Program.TextureType.TEXTURE_2D);
+        pfbMultiBlend.addTexture(Program.TextureType.TEXTURE_2D);
         // Define the constant input layout
         pfbMultiBlend.addConstant(mFSConst.getAllocation().getType());
         mMultiTextureBlendingFragmentProgram = pfbMultiBlend.create();
@@ -440,27 +444,27 @@ public class CarouselRS  {
         // Background: Alpha disabled, depth optional
         mScript.set_programStoreBackground(new ProgramStore.Builder(mRS)
             .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, ProgramStore.BlendDstFunc.ZERO)
-            .setDitherEnable(dither)
+            .setDitherEnabled(dither)
             .setDepthFunc(depthFunc)
-            .setDepthMask(mForceBlendCardsWithZ)
+            .setDepthMaskEnabled(mForceBlendCardsWithZ)
             .create());
 
         // Card: Alpha enabled, depth optional
         setProgramStoreCard(0, new ProgramStore.Builder(mRS)
             .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
                 ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
-            .setDitherEnable(dither)
+            .setDitherEnabled(dither)
             .setDepthFunc(depthFunc)
-            .setDepthMask(mForceBlendCardsWithZ)
+            .setDepthMaskEnabled(mForceBlendCardsWithZ)
             .create());
 
         // Detail: Alpha enabled, depth disabled
         mScript.set_programStoreDetail(new ProgramStore.Builder(mRS)
             .setBlendFunc(ProgramStore.BlendSrcFunc.ONE,
                 ProgramStore.BlendDstFunc.ONE_MINUS_SRC_ALPHA)
-            .setDitherEnable(dither)
+            .setDitherEnabled(dither)
             .setDepthFunc(ProgramStore.DepthFunc.ALWAYS)
-            .setDepthMask(false)
+            .setDepthMaskEnabled(false)
             .create());
     }
 
@@ -566,9 +570,9 @@ public class CarouselRS  {
 
             final ProgramStore ps = new ProgramStore.Builder(mRS)
                     .setBlendFunc(ProgramStore.BlendSrcFunc.ONE, dstFunc)
-                    .setDitherEnable(dither)
+                    .setDitherEnabled(dither)
                     .setDepthFunc(depthFunc)
-                    .setDepthMask(depthWrites)
+                    .setDepthMaskEnabled(depthWrites)
                     .create();
 
             setProgramStoreCard(i, ps);
