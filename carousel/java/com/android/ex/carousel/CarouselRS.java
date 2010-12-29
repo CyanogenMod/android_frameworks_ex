@@ -473,11 +473,10 @@ public class CarouselRS  {
         // Because RenderScript can't have allocations with 0 dimensions, we always create
         // an allocation of at least one card. This relies on invoke_createCards() to keep
         // track of when the allocation is not valid.
-        if (mCards != null) {
+        if (mCards != null && count > 0) {
             // resize the array
             int oldSize = mCards.getAllocation().getType().getX();
-            int newSize = count > 0 ? count : 1;
-            mCards.resize(newSize);
+            mCards.resize(count);
             mScript.invoke_createCards(oldSize, count);
         } else {
             // create array from scratch
