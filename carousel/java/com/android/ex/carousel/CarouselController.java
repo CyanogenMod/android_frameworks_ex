@@ -156,13 +156,39 @@ public class CarouselController {
     }
 
     /**
-     * Load A3D file from resource.  If resId == 0, will clear geometry for this item.
-     * @param n
-     * @param resId
+     * Set the geometry to show for a given slot.
+     * @param n The card to set the geometry for
+     * @param mesh The geometry for that item
+     * @see {@link #setDefaultGeometry}
      */
     public void setGeometryForItem(int n, Mesh mesh) {
         if (mRenderScript != null) {
             mRenderScript.setGeometry(n, mesh);
+        }
+    }
+
+    /**
+     * Load A3D file from resource. If resId == 0, will clear geometry for this item.
+     * @param n The card to set the geometry for
+     * @param resId The resource ID for the geometry for that item
+     * @see {@link #setDefaultGeometry}
+     */
+    public void setGeometryForItem(int n, int resId) {
+        if (mRenderScript != null) {
+            Mesh mesh = mRenderScript.loadGeometry(resId);
+            mRenderScript.setGeometry(n, mesh);
+        }
+    }
+
+    /**
+     * Set the matrix for the specified card
+     * @param n The card to set the matrix for
+     * @param matrix The matrix to use
+     * @see {@link #setDefaultGeometry}
+     */
+    public void setMatrixForItem(int n, float[] matrix) {
+        if (mRenderScript != null) {
+            mRenderScript.setMatrix(n, matrix);
         }
     }
 

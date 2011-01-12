@@ -201,6 +201,15 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
+     * Set the matrix for a given item.
+     * @param n
+     * @param matrix the requested matrix; null to just use the default
+     */
+    public void setMatrixForItem(int n, float[] matrix) {
+        mController.setMatrixForItem(n, matrix);
+    }
+
+    /**
      * Set the number of slots around the Carousel. Basically equivalent to the poles horses
      * might attach to on a real Carousel.
      *

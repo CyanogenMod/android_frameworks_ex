@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.renderscript.Matrix4f;
 import android.renderscript.Mesh;
 import android.util.Log;
 
@@ -24,6 +25,7 @@ public class CarouselViewHelper implements CarouselCallback {
     private static final int SET_TEXTURE_N = 1;
     private static final int SET_DETAIL_TEXTURE_N = 2;
     private static final int SET_GEOMETRY_N = 3;
+    private static final int SET_MATRIX_N = 4;
 
     // This is an ordered list of base message ids to allow removal of a single item from the
     // list for a particular card. The implementation currently supports up to a million cards.
@@ -41,8 +43,9 @@ public class CarouselViewHelper implements CarouselCallback {
     private Handler mSyncHandler; // Synchronous handler for interacting with UI elements.
 
     public static class TextureParameters {
-        public TextureParameters(Matrix _matrix) { matrix = _matrix; }
-        public Matrix matrix;
+        public TextureParameters() { matrix = new Matrix4f(); }
+        public TextureParameters(Matrix4f _matrix) { matrix = _matrix; }
+        public Matrix4f matrix;
     };
 
     public static class DetailTextureParameters {
@@ -108,6 +111,12 @@ public class CarouselViewHelper implements CarouselCallback {
                 if (bitmap != null) {
                     mSyncHandler.obtainMessage(SET_TEXTURE_N, id, 0, bitmap).sendToTarget();
                 }
+
+                TextureParameters params = getTextureParameters(id);
+                if (params != null) {
+                    mSyncHandler.obtainMessage(SET_MATRIX_N, id, 0,
+                            params.matrix.getArray()).sendToTarget();
+                }
             } else if (msg.what < REQUEST_GEOMETRY_N) {
                 // REQUEST_DETAIL_TEXTURE_N
                 final Bitmap bitmap = getDetailTexture(id);
@@ -149,6 +158,10 @@ public class CarouselViewHelper implements CarouselCallback {
 
                 case SET_GEOMETRY_N:
                     mCarouselView.setGeometryForItem(id, (Mesh) msg.obj);
+                    break;
+
+                case SET_MATRIX_N:
+                    mCarouselView.setMatrixForItem(id, (float[]) msg.obj);
                     break;
             }
         }
