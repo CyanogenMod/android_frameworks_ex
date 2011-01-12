@@ -324,7 +324,7 @@ public class CarouselRS  {
         mScript.set_fillDirection(direction);
     }
 
-    public void setDefaultCardMatrix(float[] matrix) {
+    private Matrix4f matrixFromFloat(float[] matrix) {
         int dimensions;
         if (matrix == null || matrix.length == 0) {
           dimensions = 0;
@@ -342,7 +342,12 @@ public class CarouselRS  {
                 rsMatrix.set(i, j, matrix[i*dimensions + j]);
             }
         }
-        mScript.set_defaultCardMatrix(rsMatrix);
+
+        return rsMatrix;
+    }
+
+    public void setDefaultCardMatrix(float[] matrix) {
+        mScript.set_defaultCardMatrix(matrixFromFloat(matrix));
     }
 
     private void initVertexProgram() {
@@ -667,16 +672,27 @@ public class CarouselRS  {
         return allocation;
     }
 
+    private ScriptField_Card.Item getOrCreateCard(int n) {
+        ScriptField_Card.Item item;
+        try {
+            item = mCards.get(n);
+        }
+        catch (ArrayIndexOutOfBoundsException e) {
+            item = null;
+        }
+        if (item == null) {
+            if (DBG) Log.v(TAG, "getOrCreateItem(): no item at index " + n);
+            item = new ScriptField_Card.Item();
+        }
+        return item;
+    }
+
     public void setTexture(int n, Bitmap bitmap)
     {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
         synchronized(this) {
-            ScriptField_Card.Item item = mCards.get(n);
-            if (item == null) {
-                if (DBG) Log.v(TAG, "setTexture(): no item at index " + n);
-                item = new ScriptField_Card.Item();
-            }
+            ScriptField_Card.Item item = getOrCreateCard(n);
             if (bitmap != null) {
                 item.texture = allocationFromPool(n, bitmap, MIPMAP);
             } else {
@@ -695,11 +711,7 @@ public class CarouselRS  {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
         synchronized(this) {
-            ScriptField_Card.Item item = mCards.get(n);
-            if (item == null) {
-                if (DBG) Log.v(TAG, "setDetailTexture(): no item at index " + n);
-                item = new ScriptField_Card.Item();
-            }
+            ScriptField_Card.Item item = getOrCreateCard(n);
             float width = 0.0f;
             float height = 0.0f;
             if (bitmap != null) {
@@ -770,11 +782,7 @@ public class CarouselRS  {
 
         synchronized(this) {
             final boolean mipmap = false;
-            ScriptField_Card.Item item = mCards.get(n);
-            if (item == null) {
-                if (DBG) Log.v(TAG, "setGeometry(): no item at index " + n);
-                item = new ScriptField_Card.Item();
-            }
+            ScriptField_Card.Item item = getOrCreateCard(n);
             if (geometry != null) {
                 item.geometry = geometry;
             } else {
@@ -786,6 +794,23 @@ public class CarouselRS  {
             }
             mCards.set(item, n, false);
             mScript.invoke_setGeometry(n, item.geometry);
+        }
+    }
+
+    public void setMatrix(int n, float[] matrix) {
+        if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
+
+        synchronized(this) {
+            final boolean mipmap = false;
+            ScriptField_Card.Item item = getOrCreateCard(n);
+            if (matrix != null) {
+                item.matrix = matrixFromFloat(matrix);
+            } else {
+                if (DBG) Log.v(TAG, "unloading matrix " + n);
+                item.matrix = null;
+            }
+            mCards.set(item, n, false);
+            mScript.invoke_setMatrix(n, item.matrix);
         }
     }
 

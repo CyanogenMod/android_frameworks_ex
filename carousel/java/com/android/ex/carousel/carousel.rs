@@ -523,6 +523,11 @@ void setGeometry(int n, rs_mesh geometry)
     cards[n].geometryTimeStamp = rsUptimeMillis();
 }
 
+void setMatrix(int n, rs_matrix4x4 matrix) {
+    if (n < 0 || n >= cardCount) return;
+    cards[n].matrix = matrix;
+}
+
 void setProgramStoresCard(int n, rs_program_store programStore)
 {
     rsSetObject(&programStoresCard[n].programStore, programStore);
@@ -576,7 +581,8 @@ static float getVerticalOffsetForCard(int i) {
        // fast path
        return 0;
    }
-   const float cardHeight = cardVertices[3].y - cardVertices[0].y;
+   const float cardHeight = (cardVertices[3].y - cardVertices[0].y) *
+      rsMatrixGet(&cards[i].matrix, 1, 1);
    const float totalHeight = rowCount * (cardHeight + rowSpacing) - rowSpacing;
    if (firstCardTop)
       i = rowCount - (i % rowCount) - 1;
@@ -591,10 +597,11 @@ static float getVerticalOffsetForCard(int i) {
  * matrix: The output matrix.
  * i: The card we're getting the matrix for.
  * enableSway: Whether to enable swaying. (We want it on for cards, and off for detail textures.)
+ * enableCardMatrix: Whether to also consider the user-specified card matrix
  *
  * returns true if an animation is being applied to the given card
  */
-static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
+static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway, bool enableCardMatrix)
 {
     float theta = cardPosition(i);
     float swayAngle = getSwayAngleForVelocity(velocity, enableSway);
@@ -611,7 +618,10 @@ static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway)
         stillAnimating = getAnimatedScaleForSelected(&scale);
         rsMatrixScale(matrix, scale.x, scale.y, scale.z);
     }
-    rsMatrixLoadMultiply(matrix, &cards[i].matrix, matrix);
+    // TODO(jshuma): Instead of ignoring this matrix for the detail texture, use card bounding box
+    if (enableCardMatrix) {
+        rsMatrixLoadMultiply(matrix, matrix, &cards[i].matrix);
+    }
     return stillAnimating;
 }
 
@@ -702,7 +712,7 @@ static bool drawCards(int64_t currentTime)
 
             // Draw geometry
             rs_matrix4x4 matrix = modelviewMatrix;
-            stillAnimating |= getMatrixForCard(&matrix, i, true);
+            stillAnimating |= getMatrixForCard(&matrix, i, true, true);
             rsgProgramVertexLoadModelMatrix(&matrix);
             if (cards[i].geometryState == STATE_LOADED && cards[i].geometry.p != 0) {
                 drawMesh(cards[i].geometry);
@@ -787,7 +797,7 @@ static bool drawDetails(int64_t currentTime)
 
                 // Compute position in screen space of top corner or bottom corner of card
                 rsMatrixLoad(&model, &modelviewMatrix);
-                stillAnimating |= getMatrixForCard(&model, i, false);
+                stillAnimating |= getMatrixForCard(&model, i, false, false);
                 rs_matrix4x4 matrix;
                 rsMatrixLoadMultiply(&matrix, &projectionMatrix, &model);
 
@@ -1347,7 +1357,7 @@ static int intersectGeometry(Ray* ray, float *bestTime)
 
             // Transform card vertices to world space
             rsMatrixLoadIdentity(&matrix);
-            getMatrixForCard(&matrix, id, true);
+            getMatrixForCard(&matrix, id, true, true);
             for (int vertex = 0; vertex < 4; vertex++) {
                 float4 tmp = rsMatrixMultiply(&matrix, cardVertices[vertex]);
                 if (tmp.w != 0.0f) {
