@@ -913,7 +913,7 @@ public class CarouselRS  {
           return null;
         }
         FileA3D.IndexEntry entry = model.getIndexEntry(0);
-        if(entry == null || entry.getClassID() != FileA3D.ClassID.MESH) {
+        if(entry == null || entry.getEntryType() != FileA3D.EntryType.MESH) {
             return null;
         }
         return (Mesh) entry.getObject();
