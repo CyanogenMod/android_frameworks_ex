@@ -2376,7 +2376,7 @@ public class EditStyledText extends EditText {
             return end;
         }
 
-        private boolean up(TextView widget, Spannable buffer) {
+        protected boolean up(TextView widget, Spannable buffer) {
             if (DBG) {
                 Log.d(LOG_TAG, "--- up:");
             }
@@ -2398,7 +2398,7 @@ public class EditStyledText extends EditText {
             return true;
         }
 
-        private boolean down(TextView widget, Spannable buffer) {
+        protected boolean down(TextView widget, Spannable buffer) {
             if (DBG) {
                 Log.d(LOG_TAG, "--- down:");
             }
@@ -2420,7 +2420,7 @@ public class EditStyledText extends EditText {
             return true;
         }
 
-        private boolean left(TextView widget, Spannable buffer) {
+        protected boolean left(TextView widget, Spannable buffer) {
             if (DBG) {
                 Log.d(LOG_TAG, "--- left:");
             }
@@ -2431,7 +2431,7 @@ public class EditStyledText extends EditText {
             return true;
         }
 
-        private boolean right(TextView widget, Spannable buffer) {
+        protected boolean right(TextView widget, Spannable buffer) {
             if (DBG) {
                 Log.d(LOG_TAG, "--- right:");
             }
