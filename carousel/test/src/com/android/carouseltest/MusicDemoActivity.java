@@ -93,7 +93,7 @@ public class MusicDemoActivity extends Activity {
         mView.setDefaultBitmap(BitmapFactory.decodeResource(res, R.drawable.wait));
         mView.setLoadingBitmap(BitmapFactory.decodeResource(res, R.drawable.blank_album));
         mView.setBackgroundBitmap(BitmapFactory.decodeResource(res, R.drawable.background));
-        mView.setDefaultGeometry(mView.loadGeometry(CD_GEOMETRY));
+        mView.setDefaultGeometry(CD_GEOMETRY);
         mView.setFadeInDuration(250);
         mView.setRezInCardCount(3.0f);
         mView.setForceBlendCardsWithZ(false);
