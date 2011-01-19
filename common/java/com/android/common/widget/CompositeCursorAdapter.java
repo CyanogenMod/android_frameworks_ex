@@ -513,8 +513,8 @@ public abstract class CompositeCursorAdapter extends BaseAdapter {
      * disable notifications before making changes to several partitions at once.
      */
     public void setNotificationsEnabled(boolean flag) {
-        this.mNotificationsEnabled = flag;
-        if (mNotificationNeeded) {
+        mNotificationsEnabled = flag;
+        if (flag && mNotificationNeeded) {
             notifyDataSetChanged();
         }
     }
