@@ -582,7 +582,7 @@ static float getVerticalOffsetForCard(int i) {
        return 0;
    }
    const float cardHeight = (cardVertices[3].y - cardVertices[0].y) *
-      rsMatrixGet(&cards[i].matrix, 1, 1);
+      rsMatrixGet(&defaultCardMatrix, 1, 1);
    const float totalHeight = rowCount * (cardHeight + rowSpacing) - rowSpacing;
    if (firstCardTop)
       i = rowCount - (i % rowCount) - 1;
