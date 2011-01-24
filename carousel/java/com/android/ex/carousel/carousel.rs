@@ -464,6 +464,13 @@ static void loadLookatMatrix(rs_matrix4x4* matrix, float3 eye, float3 center, fl
     rsMatrixTranslate(matrix, -eye.x, -eye.y, -eye.z);
 }
 
+/*
+ * Returns true if a state represents a texture that is loaded enough to draw
+ */
+static bool textureEverLoaded(int state) {
+    return (state == STATE_LOADED) || (state == STATE_STALE) || (state == STATE_UPDATING);
+}
+
 void setTexture(int n, rs_allocation texture)
 {
     if (n < 0 || n >= cardCount) return;
@@ -497,7 +504,8 @@ void invalidateTexture(int n, bool eraseCurrent)
         cards[n].textureState = STATE_INVALID;
         rsClearObject(&cards[n].texture);
     } else {
-        cards[n].textureState = STATE_STALE;
+        cards[n].textureState =
+            textureEverLoaded(cards[n].textureState) ? STATE_STALE : STATE_INVALID;
     }
 }
 
@@ -508,7 +516,8 @@ void invalidateDetailTexture(int n, bool eraseCurrent)
         cards[n].detailTextureState = STATE_INVALID;
         rsClearObject(&cards[n].detailTexture);
     } else {
-        cards[n].detailTextureState = STATE_STALE;
+        cards[n].detailTextureState =
+            textureEverLoaded(cards[n].detailTextureState) ? STATE_STALE : STATE_INVALID;
     }
 }
 
@@ -682,8 +691,7 @@ static bool drawCards(int64_t currentTime)
             // Bind the appropriate shader network.  If there's no alpha blend, then
             // switch to single shader for better performance.
             const int state = cards[i].textureState;
-            const bool loaded = (state == STATE_LOADED) || (state == STATE_STALE) ||
-                (state == STATE_UPDATING);
+            bool loaded = textureEverLoaded(state) && rsIsObject(cards[i].texture);
             if (shaderConstants->fadeAmount == 1.0f || shaderConstants->fadeAmount < 0.01f) {
                 if (overallAlpha < 1.0) {
                     rsgBindProgramFragment(singleTextureBlendingFragmentProgram);
@@ -790,8 +798,7 @@ static bool drawDetails(int64_t currentTime)
     for (int i = cardCount-1; i >= 0; --i) {
         if (cards[i].cardVisible) {
             const int state = cards[i].detailTextureState;
-            const bool isLoaded = (state == STATE_LOADED) || (state == STATE_STALE) ||
-                (state == STATE_UPDATING);
+            const bool isLoaded = textureEverLoaded(state);
             if (isLoaded && cards[i].detailTexture.p != 0) {
                 const float lineWidth = rsAllocationGetDimX(detailLineTexture);
 
