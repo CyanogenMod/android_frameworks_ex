@@ -672,19 +672,37 @@ public class CarouselRS  {
         return allocation;
     }
 
-    private ScriptField_Card.Item getOrCreateCard(int n) {
+    private ScriptField_Card.Item getCard(int n) {
         ScriptField_Card.Item item;
         try {
             item = mCards.get(n);
         }
         catch (ArrayIndexOutOfBoundsException e) {
+            if (DBG) Log.v(TAG, "getCard(): no item at index " + n);
             item = null;
         }
+        return item;
+    }
+
+    private ScriptField_Card.Item getOrCreateCard(int n) {
+        ScriptField_Card.Item item = getCard(n);
         if (item == null) {
-            if (DBG) Log.v(TAG, "getOrCreateItem(): no item at index " + n);
+            if (DBG) Log.v(TAG, "getOrCreateCard(): no item at index " + n + "; creating new");
             item = new ScriptField_Card.Item();
         }
         return item;
+    }
+
+    private void setCard(int n, ScriptField_Card.Item item) {
+        try {
+            mCards.set(item, n, false); // This is primarily used for reference counting.
+        }
+        catch (ArrayIndexOutOfBoundsException e) {
+            // The specified index didn't exist. This can happen when a stale invalidate
+            // request outlived an array resize request. Something might be getting dropped,
+            // but there's not much we can do about this at this point to recover.
+            Log.w(TAG, "setCard(" + n + "): Texture " + n + " doesn't exist");
+        }
     }
 
     public void setTexture(int n, Bitmap bitmap)
@@ -701,7 +719,7 @@ public class CarouselRS  {
                     item.texture = null;
                 }
             }
-            mCards.set(item, n, false); // This is primarily used for reference counting.
+            setCard(n, item);
             mScript.invoke_setTexture(n, item.texture);
         }
     }
@@ -727,7 +745,7 @@ public class CarouselRS  {
                     item.detailTexture = null;
                 }
             }
-            mCards.set(item, n, false); // This is primarily used for reference counting.
+            setCard(n, item);
             mScript.invoke_setDetailTexture(n, offx, offy, loffx, loffy, item.detailTexture);
         }
     }
@@ -737,7 +755,7 @@ public class CarouselRS  {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
         synchronized(this) {
-            ScriptField_Card.Item item = mCards.get(n);
+            ScriptField_Card.Item item = getCard(n);
             if (item == null) {
                 // This card was never created, so there's nothing to invalidate.
                 return;
@@ -749,7 +767,7 @@ public class CarouselRS  {
                 item.texture.destroy();
                 item.texture = null;
             }
-            mCards.set(item, n, false); // This is primarily used for reference counting.
+            setCard(n, item);
             mScript.invoke_invalidateTexture(n, eraseCurrent);
         }
     }
@@ -759,7 +777,7 @@ public class CarouselRS  {
         if (n < 0) throw new IllegalArgumentException("Index cannot be negative");
 
         synchronized(this) {
-            ScriptField_Card.Item item = mCards.get(n);
+            ScriptField_Card.Item item = getCard(n);
             if (item == null) {
                 // This card was never created, so there's nothing to invalidate.
                 return;
@@ -771,7 +789,7 @@ public class CarouselRS  {
                 item.detailTexture.destroy();
                 item.detailTexture = null;
             }
-            mCards.set(item, n, false); // This is primarily used for reference counting.
+            setCard(n, item);
             mScript.invoke_invalidateDetailTexture(n, eraseCurrent);
         }
     }
@@ -792,7 +810,7 @@ public class CarouselRS  {
                     item.geometry = null;
                 }
             }
-            mCards.set(item, n, false);
+            setCard(n, item);
             mScript.invoke_setGeometry(n, item.geometry);
         }
     }
@@ -809,7 +827,7 @@ public class CarouselRS  {
                 if (DBG) Log.v(TAG, "unloading matrix " + n);
                 item.matrix = null;
             }
-            mCards.set(item, n, false);
+            setCard(n, item);
             mScript.invoke_setMatrix(n, item.matrix);
         }
     }
