@@ -142,7 +142,7 @@ static const int DRAG_MODEL_CYLINDER_OUTSIDE = 3; // Drag relative to point on o
 // Constants
 static const int ANIMATION_DELAY_TIME = 100; // hold off scale animation until this time
 static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
-static const float3 SELECTED_SCALE_FACTOR = { 0.1f, 0.1f, 0.1f }; // increase by this %
+static const float3 SELECTED_SCALE_FACTOR = { 0.0f, 0.0f, 0.0f }; // increase by this %
 static const float OVERSCROLL_SLOTS = 1.0f; // amount of allowed overscroll (in slots)
 
 // Debug flags
