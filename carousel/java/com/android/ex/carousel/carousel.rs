@@ -686,7 +686,7 @@ static bool drawCards(int64_t currentTime)
             // Set alpha for blending between the textures
             shaderConstants->fadeAmount = min(1.0f, animatedAlpha * positionAlpha);
             shaderConstants->overallAlpha = overallAlpha;
-            rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
+            rsgAllocationSyncAll(rsGetAllocation(shaderConstants));
 
             // Bind the appropriate shader network.  If there's no alpha blend, then
             // switch to single shader for better performance.
@@ -885,7 +885,7 @@ static bool drawDetails(int64_t currentTime)
 
                 // Set alpha for blending between the textures
                 shaderConstants->fadeAmount = blendedAlpha;
-                rsAllocationMarkDirty(rsGetAllocation(shaderConstants));
+                rsgAllocationSyncAll(rsGetAllocation(shaderConstants));
 
                 // Draw line from the card to the detail texture.
                 // The line is drawn from the top or bottom left of the card
@@ -1614,7 +1614,8 @@ static void renderWithRays()
     const float w = rsgGetWidth();
     const float h = rsgGetHeight();
     const int skip = 8;
-    color(1.0f, 0.0f, 0.0f, 1.0f);
+
+    rsgProgramFragmentConstantColor(singleTextureFragmentProgram, 1.0f, 0.0f, 0.0f, 1.0f);
     for (int j = 0; j < (int) h; j+=skip) {
         float posY = (float) j;
         for (int i = 0; i < (int) w; i+=skip) {
