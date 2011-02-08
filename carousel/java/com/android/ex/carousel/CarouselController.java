@@ -606,6 +606,29 @@ public class CarouselController {
         }
     }
 
+    /**
+     * Triggers a rotation of the carousel. All angles are in card units, see:
+     * {@link CarouselController#setCarouselRotationAngle(float)}) for more details.
+     *
+     * @param endAngle the card unit to which the carousel should rotate to
+     * @param milliseconds the length of the animation
+     * @param interpolationMode three modes are currently supported :
+     * {@link CarouselView.InterpolationMode#LINEAR}
+     * {@link CarouselView.InterpolationMode#DECELERATE_QUADRATIC}
+     * {@link CarouselView.InterpolationMode#ACCELERATE_DECELERATE_CUBIC}
+     * @param maxAnimatedArc the maximum angular distance over which the transition will be
+     * animated.
+     * If the current position is further away, it is set at maxAnimatedArc from endAngle.
+     * This parameter is ignored when <= 0.
+     */
+    public void setCarouselRotationAngle(float endAngle, int milliseconds, int interpolationMode,
+            float maxAnimatedArc) {
+        if (mRenderScript != null) {
+            mRenderScript.setCarouselRotationAngle(endAngle, milliseconds,
+                    interpolationMode, maxAnimatedArc);
+        }
+    }
+
     public void setRadius(float radius) {
         mRadius = radius;
         if (mRenderScript != null) {

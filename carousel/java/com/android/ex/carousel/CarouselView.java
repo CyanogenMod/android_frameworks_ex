@@ -62,6 +62,18 @@ public abstract class CarouselView extends RSSurfaceView {
     public static final int FILL_DIRECTION_CW = CarouselRS.FILL_DIRECTION_CW;
 
     // Note: remember to update carousel.rs when changing the values below
+    public static class InterpolationMode {
+        /** y= x **/
+        public static final int LINEAR = 0;
+        /** The quadratic curve y= 1 - (1 - x)^2 moves quickly towards the target
+         * while decelerating constantly. **/
+        public static final int DECELERATE_QUADRATIC = 1;
+        /** The cubic curve y= (3-2x)*x^2 gradually accelerates at the origin,
+         * and decelerates near the target. **/
+        public static final int ACCELERATE_DECELERATE_CUBIC = 2;
+    }
+
+    // Note: remember to update carousel.rs when changing the values below
     public static class DetailAlignment {
         /** Detail is centered vertically with respect to the card **/
         public static final int CENTER_VERTICAL = 1;

@@ -631,6 +631,12 @@ public class CarouselRS  {
         mScript.invoke_setCarouselRotationAngle(theta);
     }
 
+    public void setCarouselRotationAngle(float endAngle, int milliseconds, int interpolationMode,
+            float maxAnimatedArc) {
+        mScript.invoke_setCarouselRotationAngle2(endAngle, milliseconds, interpolationMode,
+                maxAnimatedArc);
+    }
+
     public void setCallback(CarouselCallback callback)
     {
         mCallback = callback;
