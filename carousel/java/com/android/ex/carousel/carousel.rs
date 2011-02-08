@@ -84,6 +84,13 @@ enum {
     STATE_LOADED // item was delivered
 };
 
+// Interpolation modes ** THIS LIST MUST MATCH THOSE IN CarouselView.java ***
+enum {
+    INTERPOLATION_LINEAR = 0,
+    INTERPOLATION_DECELERATE_QUADRATIC = 1,
+    INTERPOLATION_ACCELERATE_DECELERATE_CUBIC = 2,
+};
+
 // Detail texture alignments ** THIS LIST MUST MATCH THOSE IN CarouselView.java ***
 enum {
     /** Detail is centered vertically with respect to the card **/
@@ -215,6 +222,7 @@ static float touchBias = 0.0f; // bias on first touch
 static float2 touchPosition; // position of first touch, as defined by last call to doStart(x,y)
 static float velocity = 0.0f;  // angular velocity in radians/s
 static bool overscroll = false; // whether we're in the overscroll animation
+static bool autoscrolling = false; // whether we're in the autoscroll animation
 static bool isDragging = false; // true while the user is dragging the carousel
 static float selectionRadius = 50.0f; // movement greater than this will result in no selection
 static bool enableSelection = false; // enabled until the user drags outside of selectionRadius
@@ -266,6 +274,7 @@ static bool __attribute__((overloadable))
 static float deltaTimeInSeconds(int64_t current);
 static bool rayPlaneIntersect(Ray* ray, Plane* plane, float* tout);
 static bool rayCylinderIntersect(Ray* ray, Cylinder* cylinder, float* tout);
+static void stopAutoscroll();
 
 void init() {
     // initializers currently have a problem when the variables are exported, so initialize
@@ -1090,6 +1099,7 @@ void doStart(float x, float y, long eventTime)
     isDragging = true;
     overscroll = false;
     animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
+    stopAutoscroll();
 }
 
 void doStop(float x, float y, long eventTime)
@@ -1172,6 +1182,100 @@ void doMotion(float x, float y, long eventTime)
     velocity = velocityTrackerCount > 0 ?
                 (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
     lastTime = eventTime;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Autoscroll Interpolation
+////////////////////////////////////////////////////////////////////////////////////////////////////
+static int64_t autoscrollStartTime = 0L; //tracks when we actually started interpolating
+static int64_t autoscrollDuration = 0L;  //in milli seconds
+static int autoscrollInterpolationMode = INTERPOLATION_LINEAR;
+
+static float autoscrollStopAngle = 0.0f;
+static float autoscrollStartAngle = 0.0f;
+
+void setCarouselRotationAngle2(
+    float endAngle,
+    int   milliseconds,
+    int   interpolationMode,
+    float maxAnimatedArc)
+{
+    float actualStart = radiansToCarouselRotationAngle(bias);
+
+    if (maxAnimatedArc > 0) {
+        //snap the current position to keep end - start under maxAnimatedArc
+        if (actualStart <= endAngle) {
+            if (actualStart < endAngle - maxAnimatedArc) {
+                actualStart = endAngle - maxAnimatedArc;
+            }
+        }
+        else {
+            if (actualStart > endAngle + maxAnimatedArc) {
+                actualStart = endAngle + maxAnimatedArc;
+            }
+        }
+    }
+
+    animating = true;
+    autoscrolling = true;
+    autoscrollDuration = milliseconds;
+    autoscrollInterpolationMode = interpolationMode;
+    autoscrollStartAngle = carouselRotationAngleToRadians(actualStart);
+    autoscrollStopAngle = carouselRotationAngleToRadians(endAngle);
+
+    //Make sure the start and stop angles are in the allowed range
+    const float highBias = maximumBias();
+    const float lowBias  = minimumBias();
+    autoscrollStartAngle = clamp(autoscrollStartAngle, lowBias, highBias);
+    autoscrollStopAngle  = clamp(autoscrollStopAngle, lowBias, highBias);
+
+    //stop other animation kinds
+    overscroll = false;
+    velocity = 0.0f;
+}
+
+static void stopAutoscroll()
+{
+    autoscrolling = false;
+    autoscrollStartTime = 0L; //reset for next time
+}
+
+// This method computes the position of all the cards by updating bias based on a
+// simple interpolation model.  If the cards are still in motion, returns true.
+static bool doAutoscroll(float currentTime)
+{
+    if (autoscrollDuration == 0L) {
+        return false;
+    }
+
+    if (autoscrollStartTime == 0L) {
+        autoscrollStartTime = currentTime;
+    }
+
+    const int64_t interpolationEndTime = autoscrollStartTime + autoscrollDuration;
+
+    float timePos = (currentTime - autoscrollStartTime) / (float)autoscrollDuration;
+    if (timePos > 1.0f) {
+        timePos = 1.0f;
+    }
+
+    float lambda = timePos; //default to linear
+    if (autoscrollInterpolationMode == INTERPOLATION_DECELERATE_QUADRATIC) {
+        lambda = 1.0f - (1.0f - timePos) * (1.0f - timePos);
+    }
+    else if (autoscrollInterpolationMode == INTERPOLATION_ACCELERATE_DECELERATE_CUBIC) {
+        lambda = timePos * timePos * (3 - 2 * timePos);
+    }
+
+    bias = lambda * autoscrollStopAngle + (1.0 - lambda) * autoscrollStartAngle;
+
+    if (currentTime > interpolationEndTime) {
+        stopAutoscroll();
+        return false;
+    }
+    else {
+        return true;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1424,7 +1528,7 @@ static float easeOut(float x)
     return x;
 }
 
-// Computes the next value for bias using the current animation (physics or overscroll)
+// Computes the next value for bias using the current animation (physics/overscroll/autoscrolling)
 static bool updateNextPosition(int64_t currentTime)
 {
     static const float biasMin = 1e-4f; // close enough if we're within this margin of result
@@ -1457,6 +1561,8 @@ static bool updateNextPosition(int64_t currentTime)
         } else {
             overscroll = false;
         }
+    } else if (autoscrolling) {
+        stillAnimating = doAutoscroll(currentTime);
     } else {
         stillAnimating = doPhysics(dt);
         overscroll = bias > highBias || bias < lowBias;
