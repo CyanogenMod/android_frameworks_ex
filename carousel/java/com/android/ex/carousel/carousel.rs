@@ -151,6 +151,7 @@ static const int ANIMATION_DELAY_TIME = 100; // hold off scale animation until t
 static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
 static const float3 SELECTED_SCALE_FACTOR = { 0.0f, 0.0f, 0.0f }; // increase by this %
 static const float OVERSCROLL_SLOTS = 1.0f; // amount of allowed overscroll (in slots)
+static const int VELOCITY_HISTORY_MAX = 10; // # recent velocity samples used to calculate average
 
 // Debug flags
 const bool debugCamera = false; // dumps ray/camera coordinate stuff
@@ -1010,8 +1011,8 @@ static float2 lastPosition;
 static bool animating = false;
 static float stopVelocity = 0.1f * M_PI / 180.0f; // slower than this: carousel stops
 static float selectionVelocity = 15.0f * M_PI / 180.0f; // faster than this: tap won't select
-static float velocityTracker;
-static int velocityTrackerCount;
+static float velocityHistory[VELOCITY_HISTORY_MAX];
+static int velocityHistoryCount;
 static float mass = 5.0f; // kg
 
 static const float G = 9.80f; // gravity constant, in m/s
@@ -1092,14 +1093,29 @@ void doStart(float x, float y, long eventTime)
     lastAngle = hitAngle(x,y, &lastAngle) ? lastAngle : 0.0f;
     enableSelection = fabs(velocity) < selectionVelocity;
     velocity = 0.0f;
-    velocityTracker = 0.0f;
-    velocityTrackerCount = 0;
+    velocityHistory[0] = 0.0f;
+    velocityHistoryCount = 0;
+
     touchTime = lastTime = eventTime;
     touchBias = bias;
     isDragging = true;
     overscroll = false;
     animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
     stopAutoscroll();
+}
+
+static float computeAverageVelocityFromHistory()
+{
+    if (velocityHistoryCount > 0) {
+        const int count = min(VELOCITY_HISTORY_MAX, velocityHistoryCount);
+        float vsum = 0.0f;
+        for (int i = 0; i < count; i++) {
+            vsum += velocityHistory[i];
+        }
+        return vsum / count;
+    } else {
+        return 0.0f;
+    }
 }
 
 void doStop(float x, float y, long eventTime)
@@ -1125,9 +1141,7 @@ void doStop(float x, float y, long eventTime)
         }
         animating = false;
     } else {
-        // TODO: move velocity tracking to Java
-        velocity = velocityTrackerCount > 0 ?
-                    (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
+        velocity = computeAverageVelocityFromHistory();
         if (fabs(velocity) > stopVelocity) {
             animating = true;
         }
@@ -1176,11 +1190,10 @@ void doMotion(float x, float y, long eventTime)
     float dt = deltaTimeInSeconds(eventTime);
     if (dt > 0.0f) {
         float v = deltaOmega / dt;
-        velocityTracker += v;
-        velocityTrackerCount++;
+        velocityHistory[velocityHistoryCount % VELOCITY_HISTORY_MAX] = v;
+        velocityHistoryCount++;
     }
-    velocity = velocityTrackerCount > 0 ?
-                (velocityTracker / velocityTrackerCount) : 0.0f;  // avg velocity
+    velocity = computeAverageVelocityFromHistory();
     lastTime = eventTime;
 }
 
