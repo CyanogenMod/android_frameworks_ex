@@ -34,6 +34,7 @@ typedef struct __attribute__((aligned(4))) Card {
     int geometryState; // whether or not geometry is loaded
     int cardVisible; // not bool because of packing bug?
     int detailVisible; // not bool because of packing bug?
+    int shouldPrefetch; // not bool because of packing bug?
     int64_t textureTimeStamp; // time when this texture was last updated, in ms
     int64_t detailTextureTimeStamp; // time when this texture was last updated, in ms
     int64_t geometryTimeStamp; // time when the card itself was last updated, in ms
@@ -333,6 +334,7 @@ static void initCard(Card_t* card)
     card->geometryState = STATE_INVALID;
     card->cardVisible = false;
     card->detailVisible = false;
+    card->shouldPrefetch = false;
     card->textureTimeStamp = 0;
     card->detailTextureTimeStamp = 0;
     card->geometryTimeStamp = rsUptimeMillis();
@@ -1583,29 +1585,29 @@ static bool updateNextPosition(int64_t currentTime)
 // Cull cards based on visibility and visibleSlotCount.
 // If visibleSlotCount is > 0, then only show those slots and cull the rest.
 // Otherwise, it should cull based on bounds of geometry.
-static int cullCards()
+static void cullCards()
 {
-    // TODO(jshuma): Instead of fully fetching prefetchCardCount cards, make a distinction between
-    // STATE_LOADED and a new STATE_PRELOADING, which will keep the textures loaded but will not
-    // attempt to actually draw them.
-    const int prefetchCardCountPerSide = prefetchCardCount / 2;
-    const float thetaFirst = slotPosition(-prefetchCardCountPerSide);
-    const float thetaSelected = slotPosition(0);
-    const float thetaHalfAngle = (thetaSelected - thetaFirst) * 0.5f;
-    const float thetaSelectedLow = thetaSelected - thetaHalfAngle;
-    const float thetaSelectedHigh = thetaSelected + thetaHalfAngle;
-    const float thetaLast = slotPosition(visibleSlotCount - 1 + prefetchCardCountPerSide);
+    // Calculate the first and last angles of visible slots.  We include 1
+    // slot on either side of visibleSlotCount to allow cards to slide in / out
+    // at either side, and rely on the view frustrum for accurate clipping.
+    const float visibleFirst = slotPosition(-1);
+    const float visibleLast = slotPosition(visibleSlotCount);
 
-    int count = 0;
+    // We'll load but not draw prefetchCardCountPerSide cards
+    // from either side of the visible slots.
+    const int prefetchCardCountPerSide = prefetchCardCount / 2;
+    const float prefetchFirst = slotPosition(-1 - prefetchCardCountPerSide);
+    const float prefetchLast = slotPosition(visibleSlotCount + prefetchCardCountPerSide);
     for (int i = 0; i < cardCount; i++) {
         if (visibleSlotCount > 0) {
-            // If visibleSlotCount is specified, then only show up to visibleSlotCount cards.
+            // If visibleSlotCount is specified then only show cards between visibleFirst and visibleLast
             float p = cardPosition(i);
-            if (p >= thetaFirst && p < thetaLast || p <= thetaFirst && p > thetaLast) {
-                cards[i].cardVisible = true;
+            if (p >= prefetchFirst && p < prefetchLast || p <= prefetchFirst && p > prefetchLast) {
+                cards[i].shouldPrefetch = true;
+                cards[i].cardVisible = p >= visibleFirst && p < visibleLast || p <= visibleFirst && p > visibleLast;
                 // cards[i].detailVisible will be set at draw time
-                count++;
             } else {
+                cards[i].shouldPrefetch = false;
                 cards[i].cardVisible = false;
                 cards[i].detailVisible = false;
             }
@@ -1614,69 +1616,82 @@ static int cullCards()
             // TODO
             cards[i].cardVisible = true;
             // cards[i].detailVisible will be set at draw time
-            count++;
         }
     }
-    return count;
+}
+
+// Request missing texture/geometry for a single card
+static void requestCardResources(int i) {
+    if (debugTextureLoading) rsDebug("*** Texture stamp: ", (int)cards[i].textureTimeStamp);
+    int data[1];
+    // request texture from client if not loaded
+    if (cards[i].textureState == STATE_INVALID) {
+        data[0] = i;
+        bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
+        if (enqueued) {
+            cards[i].textureState = STATE_LOADING;
+        } else {
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
+        }
+    } else if (cards[i].textureState == STATE_STALE) {
+        data[0] = i;
+        bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
+        if (enqueued) {
+            cards[i].textureState = STATE_UPDATING;
+        } else {
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
+        }
+    }
+    // request detail texture from client if not loaded
+    if (cards[i].detailTextureState == STATE_INVALID) {
+        data[0] = i;
+        bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
+        if (enqueued) {
+            cards[i].detailTextureState = STATE_LOADING;
+        } else {
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
+        }
+    } else if (cards[i].detailTextureState == STATE_STALE) {
+        data[0] = i;
+        bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
+        if (enqueued) {
+            cards[i].detailTextureState = STATE_UPDATING;
+        } else {
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
+        }
+    }
+    // request geometry from client if not loaded
+    if (cards[i].geometryState == STATE_INVALID) {
+        data[0] = i;
+        bool enqueued = rsSendToClient(CMD_REQUEST_GEOMETRY, data, sizeof(data));
+        if (enqueued) {
+            cards[i].geometryState = STATE_LOADING;
+        } else {
+            if (debugGeometryLoading) rsDebug("Couldn't send CMD_REQUEST_GEOMETRY", 0);
+        }
+    }
 }
 
 // Request texture/geometry for items that have come into view
 // or doesn't have a texture yet.
 static void updateCardResources(int64_t currentTime)
 {
+    // First process any visible cards
     for (int i = cardCount-1; i >= 0; --i) {
-        int data[1];
         if (cards[i].cardVisible) {
-            if (debugTextureLoading) rsDebug("*** Texture stamp: ", (int)cards[i].textureTimeStamp);
+            requestCardResources(i);
+        }
+    }
 
-            // request texture from client if not loaded
-            if (cards[i].textureState == STATE_INVALID) {
-                data[0] = i;
-                bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
-                if (enqueued) {
-                    cards[i].textureState = STATE_LOADING;
-                } else {
-                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
-                }
-            } else if (cards[i].textureState == STATE_STALE) {
-                data[0] = i;
-                bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
-                if (enqueued) {
-                    cards[i].textureState = STATE_UPDATING;
-                } else {
-                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
-                }
-            }
-            // request detail texture from client if not loaded
-            if (cards[i].detailTextureState == STATE_INVALID) {
-                data[0] = i;
-                bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
-                if (enqueued) {
-                    cards[i].detailTextureState = STATE_LOADING;
-                } else {
-                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
-                }
-            } else if (cards[i].detailTextureState == STATE_STALE) {
-                data[0] = i;
-                bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
-                if (enqueued) {
-                    cards[i].detailTextureState = STATE_UPDATING;
-                } else {
-                    if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
-                }
-            }
-            // request geometry from client if not loaded
-            if (cards[i].geometryState == STATE_INVALID) {
-                data[0] = i;
-                bool enqueued = rsSendToClient(CMD_REQUEST_GEOMETRY, data, sizeof(data));
-                if (enqueued) {
-                    cards[i].geometryState = STATE_LOADING;
-                } else {
-                    if (debugGeometryLoading) rsDebug("Couldn't send CMD_REQUEST_GEOMETRY", 0);
-                }
-            }
+    // Then the rest
+    for (int i = cardCount-1; i >= 0; --i) {
+        if (cards[i].cardVisible) {
+            // already requested above
+         } else if (cards[i].shouldPrefetch) {
+            requestCardResources(i);
         } else {
             // ask the host to remove the texture
+            int data[1];
             if (cards[i].textureState != STATE_INVALID) {
                 data[0] = i;
                 bool enqueued = rsSendToClient(CMD_INVALIDATE_TEXTURE, data, sizeof(data));
