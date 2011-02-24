@@ -153,6 +153,7 @@ static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selecte
 static const float3 SELECTED_SCALE_FACTOR = { 0.0f, 0.0f, 0.0f }; // increase by this %
 static const float OVERSCROLL_SLOTS = 1.0f; // amount of allowed overscroll (in slots)
 static const int VELOCITY_HISTORY_MAX = 10; // # recent velocity samples used to calculate average
+static const int VISIBLE_SLOT_PADDING = 2;  // # slots to draw on either side of visible slots
 
 // Debug flags
 const bool debugCamera = false; // dumps ray/camera coordinate stuff
@@ -1600,16 +1601,17 @@ static bool updateNextPosition(int64_t currentTime)
 // Otherwise, it should cull based on bounds of geometry.
 static void cullCards()
 {
-    // Calculate the first and last angles of visible slots.  We include 1
-    // slot on either side of visibleSlotCount to allow cards to slide in / out
-    // at either side, and rely on the view frustrum for accurate clipping.
-    const float visibleFirst = slotPosition(-1);
-    const float visibleLast = slotPosition(visibleSlotCount);
+    // Calculate the first and last angles of visible slots.  We include
+    // VISIBLE_SLOT_PADDING slots on either side of visibleSlotCount to allow
+    // cards to slide in / out at either side, and rely on the view frustrum
+    // for accurate clipping.
+    const float visibleFirst = slotPosition(-VISIBLE_SLOT_PADDING);
+    const float visibleLast = slotPosition(visibleSlotCount + VISIBLE_SLOT_PADDING);
 
     // We'll load but not draw prefetchCardCountPerSide cards
     // from either side of the visible slots.
-    const int prefetchCardCountPerSide = prefetchCardCount / 2;
-    const float prefetchFirst = slotPosition(-1 - prefetchCardCountPerSide);
+    const int prefetchCardCountPerSide = max(prefetchCardCount / 2, VISIBLE_SLOT_PADDING);
+    const float prefetchFirst = slotPosition(-prefetchCardCountPerSide);
     const float prefetchLast = slotPosition(visibleSlotCount + prefetchCardCountPerSide);
     for (int i = 0; i < cardCount; i++) {
         if (visibleSlotCount > 0) {
