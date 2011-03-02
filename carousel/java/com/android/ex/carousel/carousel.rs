@@ -148,9 +148,10 @@ static const int DRAG_MODEL_CYLINDER_INSIDE = 2; // Drag relative to point on in
 static const int DRAG_MODEL_CYLINDER_OUTSIDE = 3; // Drag relative to point on outside of cylinder
 
 // Constants
-static const int ANIMATION_DELAY_TIME = 100; // hold off scale animation until this time
-static const int ANIMATION_SCALE_TIME = 200; // Time it takes to animate selected card, in ms
-static const float3 SELECTED_SCALE_FACTOR = { 0.0f, 0.0f, 0.0f }; // increase by this %
+static const int ANIMATION_DELAY_TIME = 125; // hold off scale animation until this time
+static const int ANIMATION_SCALE_UP_TIME = 200; // Time it takes to animate selected card, in ms
+static const int ANIMATION_SCALE_DOWN_TIME = 400; // Time it takes to animate selected card, in ms
+static const float3 SELECTED_SCALE_FACTOR = { 0.1f, 0.1f, 0.1f }; // increase by this %
 static const float OVERSCROLL_SLOTS = 1.0f; // amount of allowed overscroll (in slots)
 static const int VELOCITY_HISTORY_MAX = 10; // # recent velocity samples used to calculate average
 static const int VISIBLE_SLOT_PADDING = 2;  // # slots to draw on either side of visible slots
@@ -220,12 +221,13 @@ static bool updateCamera;    // force a recompute of projection and lookat matri
 static const float FLT_MAX = 1.0e37;
 static int animatedSelection = -1;
 static int currentFirstCard = -1;
-static int64_t touchTime = -1;  // time of first touch (see doStart())
+static int64_t touchTime = -1; // time of first touch (see doStart())
+static int64_t releaseTime = 0L; // when touch was released
 static float touchBias = 0.0f; // bias on first touch
 static float2 touchPosition; // position of first touch, as defined by last call to doStart(x,y)
 static float velocity = 0.0f;  // angular velocity in radians/s
-static bool overscroll = false; // whether we're in the overscroll animation
-static bool autoscrolling = false; // whether we're in the autoscroll animation
+static bool isOverScrolling = false; // whether we're in the overscroll animation
+static bool isAutoScrolling = false; // whether we're in the autoscroll animation
 static bool isDragging = false; // true while the user is dragging the carousel
 static float selectionRadius = 50.0f; // movement greater than this will result in no selection
 static bool enableSelection = false; // enabled until the user drags outside of selectionRadius
@@ -358,7 +360,7 @@ void createCards(int start, int total)
     // this method.
     cardAllocationValid = total > 0;
 
-    updateAllocationVars(cards);
+    updateAllocationVars();
 }
 
 // Computes an alpha value for a card using elapsed time and constant fadeInDuration
@@ -564,16 +566,31 @@ void setCarouselRotationAngle(float carouselRotationAngle) {
 // If card is currently being animated, returns true,  otherwise returns false.
 static bool getAnimatedScaleForSelected(float3* scale)
 {
-    const float3 one = { 1.0f, 1.0f, 1.0f };
-    int64_t dt = rsUptimeMillis() - touchTime;
-    if (dt >= ANIMATION_DELAY_TIME) {
-        float fraction = (float) (dt - ANIMATION_DELAY_TIME) / ANIMATION_SCALE_TIME;
-        fraction = min(fraction, 1.0f);
-        *scale = one + fraction * SELECTED_SCALE_FACTOR;
+    static const float3 one = { 1.0f, 1.0f, 1.0f };
+    static float fraction = 0.0f;
+    bool stillAnimating = false;
+    if (isDragging) {
+        // "scale up" animation
+        int64_t dt = rsUptimeMillis() - touchTime - ANIMATION_DELAY_TIME;
+        if (dt > 0L && enableSelection) {
+            float s = (float) dt / ANIMATION_SCALE_UP_TIME;
+            s = min(s, 1.0f);
+            fraction = max(s, fraction);
+        }
+        stillAnimating = dt < ANIMATION_SCALE_UP_TIME;
     } else {
-        *scale = one;
+        // "scale down" animation
+        int64_t dt = rsUptimeMillis() - releaseTime;
+        if (dt < ANIMATION_SCALE_DOWN_TIME) {
+            float s = 1.0f - ((float) dt / ANIMATION_SCALE_DOWN_TIME);
+            fraction = min(s, fraction);
+            stillAnimating = true;
+        } else {
+            fraction = 0.0f;
+        }
     }
-    return dt < (ANIMATION_DELAY_TIME + ANIMATION_SCALE_TIME); // still animating;
+    *scale = one + fraction * SELECTED_SCALE_FACTOR;
+    return stillAnimating; // still animating;
 }
 
 // The Verhulst logistic function: http://en.wikipedia.org/wiki/Logistic_function
@@ -635,7 +652,7 @@ static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway, bool 
     }
     rsMatrixRotate(matrix, degrees(rotation), 0, 1, 0);
     bool stillAnimating = false;
-    if (i == animatedSelection && enableSelection) {
+    if (i == animatedSelection) {
         float3 scale;
         stillAnimating = getAnimatedScaleForSelected(&scale);
         rsMatrixScale(matrix, scale.x, scale.y, scale.z);
@@ -1099,10 +1116,11 @@ void doStart(float x, float y, long eventTime)
     velocityHistory[0] = 0.0f;
     velocityHistoryCount = 0;
 
+    releaseTime = lastTime; // used to disable scale down animation - any time in the past will do
     touchTime = lastTime = eventTime;
     touchBias = bias;
     isDragging = true;
-    overscroll = false;
+    isOverScrolling = false;
     animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
     stopAutoscroll();
 }
@@ -1123,7 +1141,9 @@ static float computeAverageVelocityFromHistory()
 
 void doStop(float x, float y, long eventTime)
 {
-    updateAllocationVars(cards);
+    updateAllocationVars();
+
+    releaseTime = rsUptimeMillis();
 
     if (enableSelection) {
         int data[3];
@@ -1157,7 +1177,7 @@ void doStop(float x, float y, long eventTime)
 void doLongPress()
 {
     int64_t currentTime = rsUptimeMillis();
-    updateAllocationVars(cards);
+    updateAllocationVars();
     // Selection happens for most recent position detected in doMotion()
     if (enableSelection && animatedSelection != -1) {
         if (debugSelection) rsDebug("doLongPress(), selection = ", animatedSelection);
@@ -1233,7 +1253,7 @@ void setCarouselRotationAngle2(
     }
 
     animating = true;
-    autoscrolling = true;
+    isAutoScrolling = true;
     autoscrollDuration = milliseconds;
     autoscrollInterpolationMode = interpolationMode;
     autoscrollStartAngle = carouselRotationAngleToRadians(actualStart);
@@ -1246,13 +1266,13 @@ void setCarouselRotationAngle2(
     autoscrollStopAngle  = clamp(autoscrollStopAngle, lowBias, highBias);
 
     //stop other animation kinds
-    overscroll = false;
+    isOverScrolling = false;
     velocity = 0.0f;
 }
 
 static void stopAutoscroll()
 {
-    autoscrolling = false;
+    isAutoScrolling = false;
     autoscrollStartTime = 0L; //reset for next time
 }
 
@@ -1559,7 +1579,7 @@ static bool updateNextPosition(int64_t currentTime)
     const float highBias = maximumBias();
     const float lowBias = minimumBias();
     bool stillAnimating = false;
-    if (overscroll) {
+    if (isOverScrolling) {
         if (bias > highBias) {
             bias -= 4.0f * dt * easeOut((bias - highBias) * 2.0f);
             if (fabs(bias - highBias) < biasMin) {
@@ -1575,14 +1595,14 @@ static bool updateNextPosition(int64_t currentTime)
                 stillAnimating = true;
             }
         } else {
-            overscroll = false;
+            isOverScrolling = false;
         }
-    } else if (autoscrolling) {
+    } else if (isAutoScrolling) {
         stillAnimating = doAutoscroll(currentTime);
     } else {
         stillAnimating = doPhysics(dt);
-        overscroll = bias > highBias || bias < lowBias;
-        if (overscroll) {
+        isOverScrolling = bias > highBias || bias < lowBias;
+        if (isOverScrolling) {
             velocity = 0.0f; // prevent bouncing due to v > 0 after overscroll animation.
         }
     }
@@ -1590,7 +1610,7 @@ static bool updateNextPosition(int64_t currentTime)
             highBias + wedgeAngle(OVERSCROLL_SLOTS));
     if (newbias != bias) { // we clamped
         velocity = 0.0f;
-        overscroll = true;
+        isOverScrolling = true;
     }
     bias = newbias;
     return stillAnimating;
@@ -1776,7 +1796,7 @@ int root() {
     rsgBindSampler(multiTextureFragmentProgram, 0, linearClamp);
     rsgBindSampler(multiTextureFragmentProgram, 1, linearClamp);
 
-    updateAllocationVars(cards);
+    updateAllocationVars();
 
     rsgBindProgramFragment(singleTextureFragmentProgram);
     // rsgClearDepth() currently follows the value of glDepthMask(), so it's disabled when
@@ -1788,7 +1808,7 @@ int root() {
 
     updateCameraMatrix(rsgGetWidth(), rsgGetHeight());
 
-    bool stillAnimating = (currentTime - touchTime) <= ANIMATION_SCALE_TIME;
+    bool stillAnimating = (currentTime - touchTime) <= ANIMATION_SCALE_UP_TIME;
 
     if (!isDragging && animating) {
         stillAnimating = updateNextPosition(currentTime);

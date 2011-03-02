@@ -41,4 +41,9 @@ public class MyCarouselView extends CarouselView {
         return new Info(R.raw.carousel);
     }
 
+    @Override
+    public boolean interpretLongPressEvents() {
+        return true;
+    }
+
 }
