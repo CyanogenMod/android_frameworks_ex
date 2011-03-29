@@ -19,7 +19,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := android-common-carousel
-#LOCAL_SDK_VERSION := current
+LOCAL_SDK_VERSION := 12
 LOCAL_SRC_FILES := \
      $(call all-java-files-under, java) \
      $(call all-logtags-files-under, java) \
@@ -29,5 +29,3 @@ include $(BUILD_STATIC_JAVA_LIBRARY)
 
 # Include this library in the build server's output directory
 $(call dist-for-goals, droidcore, $(LOCAL_BUILT_MODULE):android-common-carousel.jar)
-
-
