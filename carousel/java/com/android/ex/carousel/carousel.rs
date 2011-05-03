@@ -311,12 +311,12 @@ static void updateAllocationVars()
 {
     // Cards
     rs_allocation cardAlloc;
-    rsSetObject(&cardAlloc, rsGetAllocation(cards));
+    cardAlloc = rsGetAllocation(cards);
     cardCount = (cardAllocationValid && rsIsObject(cardAlloc)) ? rsAllocationGetDimX(cardAlloc) : 0;
 
     // Program stores
     rs_allocation psAlloc;
-    rsSetObject(&psAlloc, rsGetAllocation(programStoresCard));
+    psAlloc = rsGetAllocation(programStoresCard);
     programStoresCardCount = (programStoresAllocationValid && rsIsObject(psAlloc) ?
         rsAllocationGetDimX(psAlloc) : 0);
 }
@@ -489,7 +489,7 @@ static bool textureEverLoaded(int state) {
 void setTexture(int n, rs_allocation texture)
 {
     if (n < 0 || n >= cardCount) return;
-    rsSetObject(&cards[n].texture, texture);
+    cards[n].texture = texture;
     if (cards[n].textureState != STATE_STALE &&
         cards[n].textureState != STATE_UPDATING) {
         cards[n].textureTimeStamp = rsUptimeMillis();
@@ -500,7 +500,7 @@ void setTexture(int n, rs_allocation texture)
 void setDetailTexture(int n, float offx, float offy, float loffx, float loffy, rs_allocation texture)
 {
     if (n < 0 || n >= cardCount) return;
-    rsSetObject(&cards[n].detailTexture, texture);
+    cards[n].detailTexture = texture;
     if (cards[n].detailTextureState != STATE_STALE &&
         cards[n].detailTextureState != STATE_UPDATING) {
         cards[n].detailTextureTimeStamp = rsUptimeMillis();
@@ -539,7 +539,7 @@ void invalidateDetailTexture(int n, bool eraseCurrent)
 void setGeometry(int n, rs_mesh geometry)
 {
     if (n < 0 || n >= cardCount) return;
-    rsSetObject(&cards[n].geometry, geometry);
+    cards[n].geometry = geometry;
     if (cards[n].geometry.p != 0)
         cards[n].geometryState = STATE_LOADED;
     else
@@ -554,7 +554,7 @@ void setMatrix(int n, rs_matrix4x4 matrix) {
 
 void setProgramStoresCard(int n, rs_program_store programStore)
 {
-    rsSetObject(&programStoresCard[n].programStore, programStore);
+    programStoresCard[n].programStore = programStore;
     programStoresAllocationValid = true;
 }
 
