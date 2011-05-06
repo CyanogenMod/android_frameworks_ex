@@ -20,6 +20,7 @@ import com.android.ex.carousel.CarouselView;
 import com.android.ex.carousel.CarouselViewHelper;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -60,13 +61,18 @@ public class CarouselTestActivity extends Activity {
         }
 
         @Override
-        public void onCardSelected(int id) {
-            Log.v(TAG, "Yay, card " + id + " was selected!");
+        public void onCardSelected(final int id) {
+            postMessage("Selection", "Card " + id + " was selected");
         }
 
         @Override
-        public void onDetailSelected(int id, int x, int y) {
-            Log.v(TAG, "Yay, detail " + id + " was selected at " + x + ", " + y);
+        public void onDetailSelected(final int id, int x, int y) {
+            postMessage("Selection", "Detail for card " + id + " was selected");
+        }
+
+        @Override
+        public void onCardLongPress(int n, int touchPosition[], Rect detailCoordinates) {
+            postMessage("Selection", "Long press on card " + n);
         }
 
         @Override
@@ -118,6 +124,19 @@ public class CarouselTestActivity extends Activity {
             }
         }
     };
+
+    void postMessage(final CharSequence title, final CharSequence msg) {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                new AlertDialog.Builder(CarouselTestActivity.this)
+                    .setTitle(title)
+                    .setMessage(msg)
+                    .setPositiveButton("OK", null)
+                    .create()
+                    .show();
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

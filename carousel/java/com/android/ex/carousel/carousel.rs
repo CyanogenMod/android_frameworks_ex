@@ -1637,9 +1637,11 @@ static void cullCards()
         if (visibleSlotCount > 0) {
             // If visibleSlotCount is specified then only show cards between visibleFirst and visibleLast
             float p = cardPosition(i);
-            if (p >= prefetchFirst && p < prefetchLast || p <= prefetchFirst && p > prefetchLast) {
+            if ((p >= prefetchFirst && p < prefetchLast)
+                    || (p <= prefetchFirst && p > prefetchLast)) {
                 cards[i].shouldPrefetch = true;
-                cards[i].cardVisible = p >= visibleFirst && p < visibleLast || p <= visibleFirst && p > visibleLast;
+                cards[i].cardVisible = (p >= visibleFirst && p < visibleLast)
+                        || p <= visibleFirst && p > visibleLast;
                 // cards[i].detailVisible will be set at draw time
             } else {
                 cards[i].shouldPrefetch = false;
@@ -1658,51 +1660,51 @@ static void cullCards()
 // Request missing texture/geometry for a single card
 static void requestCardResources(int i) {
     if (debugTextureLoading) rsDebug("*** Texture stamp: ", (int)cards[i].textureTimeStamp);
-    int data[1];
+    int data[1] = { i };
+
     // request texture from client if not loaded
     if (cards[i].textureState == STATE_INVALID) {
-        data[0] = i;
+        if (debugTextureLoading) rsDebug("Requesting card because state is STATE_INVALID", i);
         bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
         if (enqueued) {
             cards[i].textureState = STATE_LOADING;
         } else {
-            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", i);
         }
     } else if (cards[i].textureState == STATE_STALE) {
-        data[0] = i;
+        if (debugTextureLoading) rsDebug("Requesting card because state is STATE_STALE", i);
         bool enqueued = rsSendToClient(CMD_REQUEST_TEXTURE, data, sizeof(data));
         if (enqueued) {
             cards[i].textureState = STATE_UPDATING;
         } else {
-            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", 0);
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_TEXTURE", i);
         }
     }
+
     // request detail texture from client if not loaded
     if (cards[i].detailTextureState == STATE_INVALID) {
-        data[0] = i;
         bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
         if (enqueued) {
             cards[i].detailTextureState = STATE_LOADING;
         } else {
-            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", i);
         }
     } else if (cards[i].detailTextureState == STATE_STALE) {
-        data[0] = i;
         bool enqueued = rsSendToClient(CMD_REQUEST_DETAIL_TEXTURE, data, sizeof(data));
         if (enqueued) {
             cards[i].detailTextureState = STATE_UPDATING;
         } else {
-            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", 0);
+            if (debugTextureLoading) rsDebug("Couldn't send CMD_REQUEST_DETAIL_TEXTURE", i);
         }
     }
+
     // request geometry from client if not loaded
     if (cards[i].geometryState == STATE_INVALID) {
-        data[0] = i;
         bool enqueued = rsSendToClient(CMD_REQUEST_GEOMETRY, data, sizeof(data));
         if (enqueued) {
             cards[i].geometryState = STATE_LOADING;
         } else {
-            if (debugGeometryLoading) rsDebug("Couldn't send CMD_REQUEST_GEOMETRY", 0);
+            if (debugGeometryLoading) rsDebug("Couldn't send CMD_REQUEST_GEOMETRY", i);
         }
     }
 }
@@ -1722,7 +1724,7 @@ static void updateCardResources(int64_t currentTime)
     for (int i = cardCount-1; i >= 0; --i) {
         if (cards[i].cardVisible) {
             // already requested above
-         } else if (cards[i].shouldPrefetch) {
+        } else if (cards[i].shouldPrefetch) {
             requestCardResources(i);
         } else {
             // ask the host to remove the texture

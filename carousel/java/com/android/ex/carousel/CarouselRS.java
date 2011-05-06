@@ -652,7 +652,7 @@ public class CarouselRS  {
 
     private Allocation allocationFromPool(int n, Bitmap bitmap, Allocation.MipmapControl mipmap)
     {
-        int count = (mVisibleSlots + mPrefetchCardCount) * mRowCount;
+        int count = (mVisibleSlots + 2*mPrefetchCardCount) * mRowCount;
         if (mAllocationPool == null || mAllocationPool.length != count) {
             Allocation[] tmp = new Allocation[count];
             int oldsize = mAllocationPool == null ? 0 : mAllocationPool.length;
