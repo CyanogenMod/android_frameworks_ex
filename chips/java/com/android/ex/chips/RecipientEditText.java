@@ -38,6 +38,7 @@ import android.widget.TextView;
 
 public class RecipientEditText extends MultiAutoCompleteTextView {
     private static final String TAG = "RecipientEditText";
+    private static final boolean DEBUG = false;
 
     public RecipientEditText(Context context) {
         super(context);
@@ -135,7 +136,9 @@ public class RecipientEditText extends MultiAutoCompleteTextView {
         final String displayName = entry.getDisplayName();
         final String email = entry.getDestination();
         if (TextUtils.isEmpty(displayName) && TextUtils.isEmpty(email)) {
-            Log.w(TAG, "Both a display name and an email are null");
+            if (DEBUG) {
+                Log.w(TAG, "Both a display name and an email are null");
+            }
             return null;
         } else {
             final Rfc822Token token = new Rfc822Token(displayName, email, null);
