@@ -30,6 +30,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
+import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.CommonDataKinds.Photo;
 import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.Directory;
@@ -37,6 +38,7 @@ import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.util.Log;
 import android.util.LruCache;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AutoCompleteTextView;
@@ -76,6 +78,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     /** The number of photos cached in this Adapter. */
     private static final int PHOTO_CACHE_SIZE = 20;
 
+    public static final int QUERY_TYPE_EMAIL = 0;
+    public static final int QUERY_TYPE_PHONE = 1;
+
     /**
      * Model object for a {@link Directory} row.
      */
@@ -103,7 +108,18 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public static final int PHOTO_THUMBNAIL_URI = 3;
     }
 
-    // TODO: PhoneQuery
+    private static class PhoneQuery {
+        public static final String[] PROJECTION = {
+            Contacts.DISPLAY_NAME,       // 0
+            Phone.DATA,                  // 1
+            Phone.CONTACT_ID,            // 2
+            Contacts.PHOTO_THUMBNAIL_URI // 3
+        };
+        public static final int NAME = 0;
+        public static final int NUMBER = 1;
+        public static final int CONTACT_ID = 2;
+        public static final int PHOTO_THUMBNAIL_URI = 3;
+    }
 
     private static class PhotoQuery {
         public static final String[] PROJECTION = {
@@ -145,12 +161,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             final FilterResults results = new FilterResults();
             Cursor cursor = null;
             if (!TextUtils.isEmpty(constraint)) {
-                Uri uri = Email.CONTENT_FILTER_URI.buildUpon()
-                        .appendPath(constraint.toString())
-                        .appendQueryParameter(ContactsContract.LIMIT_PARAM_KEY,
-                                String.valueOf(mPreferredMaxResultCount))
-                        .build();
-                cursor = mContentResolver.query(uri, EmailQuery.PROJECTION, null, null, null);
+                cursor = doQuery(constraint, mPreferredMaxResultCount, null);
                 if (cursor != null) {
                     results.count = cursor.getCount();
                 }
@@ -219,15 +230,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         protected FilterResults performFiltering(CharSequence constraint) {
             final FilterResults results = new FilterResults();
             if (!TextUtils.isEmpty(constraint)) {
-                final Uri uri = Email.CONTENT_FILTER_URI.buildUpon()
-                        .appendPath(constraint.toString())
-                        .appendQueryParameter(ContactsContract.DIRECTORY_PARAM_KEY,
-                                String.valueOf(mParams.directoryId))
-                        .appendQueryParameter(ContactsContract.LIMIT_PARAM_KEY,
-                                String.valueOf(getLimit() + ALLOWANCE_FOR_DUPLICATES))
-                        .build();
-                final Cursor cursor = mContentResolver.query(
-                        uri, EmailQuery.PROJECTION, null, null, null);
+                final Cursor cursor = doQuery(constraint, getLimit(), mParams.directoryId);
                 if (cursor != null) {
                     results.values = cursor;
                 }
@@ -253,6 +256,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     private final Context mContext;
     private final ContentResolver mContentResolver;
+    private final LayoutInflater mInflater;
+    private final int mQueryType;
     private Account mAccount;
     private final int mPreferredMaxResultCount;
     private final Handler mHandler = new Handler();
@@ -284,13 +289,22 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private final Handler mPhotoHandler;
     private final LruCache<Uri, byte[]> mPhotoCacheMap;
 
+    /**
+     * Constructor for email queries.
+     */
     public BaseRecipientAdapter(Context context) {
-        this(context, DEFAULT_PREFERRED_MAX_RESULT_COUNT);
+        this(context, QUERY_TYPE_EMAIL, DEFAULT_PREFERRED_MAX_RESULT_COUNT);
     }
 
-    public BaseRecipientAdapter(Context context, int preferredMaxResultCount) {
+    public BaseRecipientAdapter(Context context, int queryType) {
+        this(context, queryType, DEFAULT_PREFERRED_MAX_RESULT_COUNT);
+    }
+
+    public BaseRecipientAdapter(Context context, int queryType, int preferredMaxResultCount) {
         mContext = context;
         mContentResolver = context.getContentResolver();
+        mInflater = LayoutInflater.from(context);
+        mQueryType = queryType;
         mPreferredMaxResultCount = preferredMaxResultCount;
         mEntryMap = new HashMap<Integer, List<RecipientListEntry>>();
         mNonAggregatedEntries = new ArrayList<RecipientListEntry>();
@@ -461,11 +475,23 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private void putEntriesWithCursor(Cursor cursor, boolean validContactId) {
         cursor.move(-1);
         while (cursor.moveToNext()) {
-            final String displayName = cursor.getString(EmailQuery.NAME);
-            final String destination = cursor.getString(EmailQuery.ADDRESS);
-            // Contact ID can be invalid if the contact isn't locally stored and thus aggregated.
-            final int contactId = cursor.getInt(EmailQuery.CONTACT_ID);
-            final String thumbnailUriString = cursor.getString(EmailQuery.PHOTO_THUMBNAIL_URI);
+            final String displayName;
+            final String destination;
+            final int contactId;
+            final String thumbnailUriString;
+            if (mQueryType == QUERY_TYPE_EMAIL) {
+                displayName = cursor.getString(EmailQuery.NAME);
+                destination = cursor.getString(EmailQuery.ADDRESS);
+                contactId = cursor.getInt(EmailQuery.CONTACT_ID);
+                thumbnailUriString = cursor.getString(EmailQuery.PHOTO_THUMBNAIL_URI);
+            } else if (mQueryType == QUERY_TYPE_PHONE) {
+                displayName = cursor.getString(PhoneQuery.NAME);
+                destination = cursor.getString(PhoneQuery.NUMBER);
+                contactId = cursor.getInt(PhoneQuery.CONTACT_ID);
+                thumbnailUriString = cursor.getString(PhoneQuery.PHOTO_THUMBNAIL_URI);
+            } else {
+                throw new IndexOutOfBoundsException("Unexpected query type: " + mQueryType);
+            }
 
             // Note: At this point each entry doesn't contain have any photo (thus getPhotoBytes()
             // returns null).
@@ -583,6 +609,36 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         });
     }
 
+    private Cursor doQuery(CharSequence constraint, int limit, Long directoryId) {
+        final Cursor cursor;
+        if (mQueryType == QUERY_TYPE_EMAIL) {
+            final Uri.Builder builder = Email.CONTENT_FILTER_URI.buildUpon()
+                    .appendPath(constraint.toString())
+                    .appendQueryParameter(ContactsContract.LIMIT_PARAM_KEY,
+                            String.valueOf(limit + ALLOWANCE_FOR_DUPLICATES));
+            if (directoryId != null) {
+                builder.appendQueryParameter(ContactsContract.DIRECTORY_PARAM_KEY,
+                        String.valueOf(directoryId));
+            }
+            cursor = mContentResolver.query(
+                    builder.build(), EmailQuery.PROJECTION, null, null, null);
+        } else if (mQueryType == QUERY_TYPE_PHONE){
+            final Uri.Builder builder = Phone.CONTENT_FILTER_URI.buildUpon()
+                    .appendPath(constraint.toString())
+                    .appendQueryParameter(ContactsContract.LIMIT_PARAM_KEY,
+                            String.valueOf(limit + ALLOWANCE_FOR_DUPLICATES));
+            if (directoryId != null) {
+                builder.appendQueryParameter(ContactsContract.DIRECTORY_PARAM_KEY,
+                        String.valueOf(directoryId));
+            }
+            cursor = mContentResolver.query(
+                    builder.build(), PhoneQuery.PROJECTION, null, null, null);
+        } else {
+            cursor = null;
+        }
+        return cursor;
+    }
+
     public void close() {
         mEntryMap.clear();
         mNonAggregatedEntries.clear();
@@ -624,11 +680,12 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         final RecipientListEntry entry = mEntries.get(position);
         switch (entry.getEntryType()) {
             case RecipientListEntry.ENTRY_TYPE_SEP_NORMAL: {
-                return convertView != null ? convertView : inflateSeparatorView(parent);
+                return convertView != null ? convertView
+                        : mInflater.inflate(getSeparatorLayout(), parent, false);
             }
             case RecipientListEntry.ENTRY_TYPE_SEP_WITHIN_GROUP: {
                 return convertView != null ? convertView
-                        : inflateSeparatorViewWithinGroup(parent);
+                        : mInflater.inflate(getSeparatorWithinGroupLayout(), parent, false);
             }
             default: {
                 String displayName = entry.getDisplayName();
@@ -639,21 +696,21 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     emailAddress = null;
                 }
 
-                final View itemView = convertView != null ? convertView : inflateItemView(parent);
-                final TextView displayNameView = getDisplayNameView(itemView);
-                final TextView emailAddressView = getDestinationView(itemView);
-                final ImageView imageView = getPhotoView(itemView);
-                final View photoContainerView = getPhotoContainerView(itemView);
+                final View itemView = convertView != null ? convertView
+                        : mInflater.inflate(getItemLayout(), parent, false);
+                final TextView displayNameView =
+                        (TextView)itemView.findViewById(getDisplayNameId());
+                final TextView emailAddressView =
+                        (TextView)itemView.findViewById(getDestinationId());
+                final ImageView imageView = (ImageView)itemView.findViewById(getPhotoId());
                 displayNameView.setText(displayName);
                 if (!TextUtils.isEmpty(emailAddress)) {
                     emailAddressView.setText(emailAddress);
                 }
                 if (entry.isFirstLevel()) {
                     displayNameView.setVisibility(View.VISIBLE);
-                    if (photoContainerView != null) {
-                        photoContainerView.setVisibility(View.VISIBLE);
-                    }
                     if (imageView != null) {
+                        imageView.setVisibility(View.VISIBLE);
                         final byte[] photoBytes = entry.getPhotoBytes();
                         if (photoBytes != null && imageView != null) {
                             final Bitmap photo = BitmapFactory.decodeByteArray(
@@ -665,9 +722,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     }
                 } else {
                     displayNameView.setVisibility(View.GONE);
-                    if (photoContainerView != null) {
-                        photoContainerView.setVisibility(View.GONE);
-                    }
+                    if (imageView != null) imageView.setVisibility(View.GONE);
                 }
                 return itemView;
             }
@@ -675,36 +730,48 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     }
 
     /**
-     * Inflates a View for each item inside auto-complete list. Subclasses must return the View
-     * containing two TextViews (for display name and destination) and one ImageView (for photo).
-     * The photo View should be surrounded by container (like FrameLayout)
-     * @see #getDisplayNameView(View)
-     * @see #getDestinationView(View)
-     * @see #getPhotoView(View)
-     * @see #getPhotoContainerView(View)
+     * Returns a layout id for each item inside auto-complete list.
+     *
+     * Each View must contain two TextViews (for display name and destination) and one ImageView
+     * (for photo). Ids for those should be available via {@link #getDisplayNameId()},
+     * {@link #getDestinationId()}, and {@link #getPhotoId()}.
      */
-    protected abstract View inflateItemView(ViewGroup parent);
-    /** Inflates a View for a separator dividing two person or groups. */
-    protected abstract View inflateSeparatorView(ViewGroup parent);
-    /** Inflates a View for a separator dividing two destinations for a same person or group. */
-    protected abstract View inflateSeparatorViewWithinGroup(ViewGroup parent);
-
-    /** Returns TextView in itemView for showing a display name. */
-    protected abstract TextView getDisplayNameView(View itemView);
+    protected abstract int getItemLayout();
+    /** Returns a layout id for a separator dividing two person or groups. */
+    protected abstract int getSeparatorLayout();
     /**
-     * Returns TextView in itemView for showing a destination (an email address or a phone number).
+     * Returns a layout id for a separator dividing two destinations for a same person or group.
      */
-    protected abstract TextView getDestinationView(View itemView);
-    /** Returns ImageView in itemView for showing photo image for a person. */
-    protected abstract ImageView getPhotoView(View itemView);
-    /**
-     * Returns a View containing ImageView given by {@link #getPhotoView(View)}. Can be null.
-     */
-    protected abstract View getPhotoContainerView(View itemView);
+    protected abstract int getSeparatorWithinGroupLayout();
 
     /**
      * Returns a resource ID representing an image which should be shown when ther's no relevant
      * photo is available.
      */
     protected abstract int getDefaultPhotoResource();
+
+    /**
+     * Returns an id for TextView in an item View for showing a display name. In default
+     * {@link android.R.id#text1} is returned.
+     */
+    protected int getDisplayNameId() {
+        return android.R.id.text1;
+    }
+
+    /**
+     * Returns an id for TextView in an item View for showing a destination
+     * (an email address or a phone number).
+     * In default {@link android.R.id#text2} is returned.
+     */
+    protected int getDestinationId() {
+        return android.R.id.text2;
+    }
+
+    /**
+     * Returns an id for ImageView in an item View for showing photo image for a person. In default
+     * {@link android.R.id#icon} is returned.
+     */
+    protected int getPhotoId() {
+        return android.R.id.icon;
+    }
 }
