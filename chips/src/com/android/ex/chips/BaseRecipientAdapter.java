@@ -55,8 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jp.mowanet.chipexp.R;
-
 /**
  * Adapter for showing a recipient list.
  */
@@ -739,19 +737,19 @@ public class BaseRecipientAdapter extends BaseAdapter implements Filterable {
      * {@link #getDestinationId()}, and {@link #getPhotoId()}.
      */
     protected int getItemLayout() {
-        return R.layout.chips_recipient_dropdown_item;
+        return -1; //R.layout.chips_recipient_dropdown_item;
     }
 
     /** Returns a layout id for a separator dividing two person or groups. */
     protected int getSeparatorLayout() {
-        return R.layout.chips_separator;
+        return -1; //R.layout.chips_separator;
     }
 
     /**
      * Returns a layout id for a separator dividing two destinations for a same person or group.
      */
     protected int getSeparatorWithinGroupLayout() {
-        return R.layout.chips_separator_within_group;   
+        return -1; //R.layout.chips_separator_within_group;
     }
 
     /**
@@ -759,7 +757,7 @@ public class BaseRecipientAdapter extends BaseAdapter implements Filterable {
      * photo is available.
      */
     protected int getDefaultPhotoResource() {
-        return R.drawable.ic_contact_picture;
+        return -1; //R.drawable.ic_contact_picture;
     }
 
     /**
