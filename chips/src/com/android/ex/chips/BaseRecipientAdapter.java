@@ -55,10 +55,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import jp.mowanet.chipexp.R;
+
 /**
  * Adapter for showing a recipient list.
  */
-public abstract class BaseRecipientAdapter extends BaseAdapter implements Filterable {
+public class BaseRecipientAdapter extends BaseAdapter implements Filterable {
     private static final String TAG = "BaseRecipientAdapter";
     private static final boolean DEBUG = false;
 
@@ -736,19 +738,29 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * (for photo). Ids for those should be available via {@link #getDisplayNameId()},
      * {@link #getDestinationId()}, and {@link #getPhotoId()}.
      */
-    protected abstract int getItemLayout();
+    protected int getItemLayout() {
+        return R.layout.chips_recipient_dropdown_item;
+    }
+
     /** Returns a layout id for a separator dividing two person or groups. */
-    protected abstract int getSeparatorLayout();
+    protected int getSeparatorLayout() {
+        return R.layout.chips_separator;
+    }
+
     /**
      * Returns a layout id for a separator dividing two destinations for a same person or group.
      */
-    protected abstract int getSeparatorWithinGroupLayout();
+    protected int getSeparatorWithinGroupLayout() {
+        return R.layout.chips_separator_within_group;   
+    }
 
     /**
      * Returns a resource ID representing an image which should be shown when ther's no relevant
      * photo is available.
      */
-    protected abstract int getDefaultPhotoResource();
+    protected int getDefaultPhotoResource() {
+        return R.drawable.ic_contact_picture;
+    }
 
     /**
      * Returns an id for TextView in an item View for showing a display name. In default

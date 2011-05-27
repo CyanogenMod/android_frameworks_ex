@@ -18,6 +18,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := android-common-chips
 LOCAL_SDK_VERSION := current
 LOCAL_SRC_FILES := \
-     $(call all-java-files-under, java) \
-     $(call all-logtags-files-under, java)
+     $(call all-java-files-under, src) \
+     $(call all-logtags-files-under, src)
 include $(BUILD_STATIC_JAVA_LIBRARY)
