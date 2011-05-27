@@ -58,7 +58,7 @@ import java.util.Set;
 /**
  * Adapter for showing a recipient list.
  */
-public class BaseRecipientAdapter extends BaseAdapter implements Filterable {
+public abstract class BaseRecipientAdapter extends BaseAdapter implements Filterable {
     private static final String TAG = "BaseRecipientAdapter";
     private static final boolean DEBUG = false;
 
@@ -736,29 +736,19 @@ public class BaseRecipientAdapter extends BaseAdapter implements Filterable {
      * (for photo). Ids for those should be available via {@link #getDisplayNameId()},
      * {@link #getDestinationId()}, and {@link #getPhotoId()}.
      */
-    protected int getItemLayout() {
-        return -1; //R.layout.chips_recipient_dropdown_item;
-    }
-
+    protected abstract int getItemLayout();
     /** Returns a layout id for a separator dividing two person or groups. */
-    protected int getSeparatorLayout() {
-        return -1; //R.layout.chips_separator;
-    }
-
+    protected abstract int getSeparatorLayout();
     /**
      * Returns a layout id for a separator dividing two destinations for a same person or group.
      */
-    protected int getSeparatorWithinGroupLayout() {
-        return -1; //R.layout.chips_separator_within_group;
-    }
+    protected abstract int getSeparatorWithinGroupLayout();
 
     /**
      * Returns a resource ID representing an image which should be shown when ther's no relevant
      * photo is available.
      */
-    protected int getDefaultPhotoResource() {
-        return -1; //R.drawable.ic_contact_picture;
-    }
+    protected abstract int getDefaultPhotoResource();
 
     /**
      * Returns an id for TextView in an item View for showing a display name. In default
