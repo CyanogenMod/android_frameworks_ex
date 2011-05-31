@@ -56,6 +56,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private Drawable mChipBackground = null;
 
+    private Drawable mChipDelete = null;
+
     private int mChipPadding;
 
     private Tokenizer mTokenizer;
@@ -68,6 +70,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             setSelection(getText().length());
         }
     };
+
+    private Drawable mChipBackgroundPressed;
+
+    private RecipientChip mSelectedChip;
+
+    private int mChipDeleteWidth;
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -96,27 +104,47 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         // Ellipsize the text so that it takes AT MOST the entire width of the
         // autocomplete text entry area. Make sure to leave space for padding
         // on the sides.
-        CharSequence ellipsizedText = TextUtils.ellipsize(text, paint, calculateAvailableWidth(),
-                TextUtils.TruncateAt.END);
+        CharSequence ellipsizedText = TextUtils.ellipsize(text, paint,
+                calculateAvailableWidth(pressed), TextUtils.TruncateAt.END);
 
         int height = getLineHeight();
         int width = (int) Math.floor(paint.measureText(ellipsizedText, 0, ellipsizedText.length()))
                 + (mChipPadding * 2);
+        if (pressed) {
+            width += mChipDeleteWidth;
+        }
 
         // Create the background of the chip.
         Bitmap tmpBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(tmpBitmap);
-        if (mChipBackground != null) {
-            mChipBackground.setBounds(0, 0, width, height);
-            mChipBackground.draw(canvas);
+        if (pressed) {
+            if (mChipBackgroundPressed != null) {
+                mChipBackgroundPressed.setBounds(0, 0, width, height);
+                mChipBackgroundPressed.draw(canvas);
+
+                // Align the display text with where the user enters text.
+                canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
+                        - layout.getLineDescent(line), paint);
+                mChipDelete.setBounds(width - mChipDeleteWidth, 0, width, height);
+                mChipDelete.draw(canvas);
+            } else {
+                Log.w(TAG,
+                        "Unable to draw a background for the chips as it was never set");
+            }
         } else {
-            Log.w(TAG,
-                    "Unable to draw a background for the chips as it was never set");
+            if (mChipBackground != null) {
+                mChipBackground.setBounds(0, 0, width, height);
+                mChipBackground.draw(canvas);
+
+                // Align the display text with where the user enters text.
+                canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
+                        - layout.getLineDescent(line), paint);
+            } else {
+                Log.w(TAG,
+                        "Unable to draw a background for the chips as it was never set");
+            }
         }
 
-        // Align the display text with where the user enters text.
-        canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
-                - layout.getLineDescent(line), paint);
 
         // Get the location of the widget so we can properly offset
         // the anchor for each chip.
@@ -152,8 +180,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     // Get the max amount of space a chip can take up. The formula takes into
     // account the width of the EditTextView, any view padding, and padding
     // that will be added to the chip.
-    private float calculateAvailableWidth() {
-        return getWidth() - getPaddingLeft() - getPaddingRight() - (mChipPadding * 2);
+    private float calculateAvailableWidth(boolean pressed) {
+        int paddingRight = 0;
+        if (pressed) {
+            paddingRight = mChipDeleteWidth;
+        }
+        return getWidth() - getPaddingLeft() - getPaddingRight() - (mChipPadding * 2)
+                - paddingRight;
     }
 
     /**
@@ -163,8 +196,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      * @param padding Padding around the text in a chip
      * @param offset Offset between the chip and the dropdown of alternates
      */
-    public void setChipDimensions(Drawable chipBackground, float padding) {
+    public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
+            Drawable chipDelete, float padding) {
         mChipBackground = chipBackground;
+        mChipBackgroundPressed = chipBackgroundPressed;
+        mChipDelete = chipDelete;
+        mChipDeleteWidth = chipDelete.getIntrinsicWidth();
         mChipPadding = (int) padding;
     }
 
@@ -246,21 +283,34 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getAction();
         boolean handled = super.onTouchEvent(event);
+        boolean chipWasSelected = false;
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
             Spannable span = getSpannable();
             int offset = getOffsetForPosition(event.getX(), event.getY());
-            int start = offset;
-            int end = span.length();
+            int end = span.nextSpanTransition(offset, span.length(), RecipientChip.class);
+            int start = mTokenizer.findTokenStart(span, end);
             RecipientChip[] chips = span.getSpans(start, end, RecipientChip.class);
             if (chips != null && chips.length > 0) {
                 // Get the first chip that matched.
                 final RecipientChip currentChip = chips[0];
 
                 if (action == MotionEvent.ACTION_UP) {
-                    currentChip.onClick(this);
-                } else if (action == MotionEvent.ACTION_DOWN) {
-
+                    if (mSelectedChip != null && mSelectedChip != currentChip) {
+                        mSelectedChip.unselectChip();
+                        mSelectedChip = currentChip.selectChip();
+                    } else if (mSelectedChip == null) {
+                        mSelectedChip = currentChip.selectChip();
+                    } else {
+                        mSelectedChip.onClick(this, event.getX(), event.getY());
+                    }
                 }
+                chipWasSelected = true;
+            }
+        }
+        if (!chipWasSelected) {
+            if (mSelectedChip != null) {
+                mSelectedChip.unselectChip();
+                mSelectedChip = null;
             }
         }
         return handled;
@@ -277,7 +327,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             chipText.setSpan(constructChipSpan(entry, start, false), 0, entry.getDisplayName()
                     .length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } catch (NullPointerException e) {
-            Log.e(TAG, e.getMessage());
+            Log.e(TAG, e.getMessage(), e);
             return null;
         }
 
@@ -321,12 +371,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         private int mId = -1;
 
+        private RecipientEntry mEntry;
+
+        private boolean mSelected = false;
+
+        private Rect mBounds;
         public RecipientChip(Drawable drawable, RecipientEntry entry, int offset, Rect bounds) {
             super(drawable);
             mDisplay = entry.getDisplayName();
             mValue = entry.getDestination();
             mId = entry.getContactId();
             mOffset = offset;
+            mEntry = entry;
+            mBounds = bounds;
 
             mAnchorView = new View(getContext());
             mAnchorView.setLeft(bounds.left);
@@ -334,6 +391,26 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mAnchorView.setTop(bounds.bottom);
             mAnchorView.setBottom(bounds.bottom);
             mAnchorView.setVisibility(View.GONE);
+        }
+
+        public void unselectChip() {
+            if (getChipStart() == -1 || getChipEnd() == -1) {
+                mSelectedChip = null;
+                return;
+            }
+            clearComposingText();
+            RecipientChip newChipSpan = null;
+            try {
+                newChipSpan = constructChipSpan(mEntry, mOffset, false);
+            } catch (NullPointerException e) {
+                Log.e(TAG, e.getMessage(), e);
+                return;
+            }
+            replace(newChipSpan);
+            if (mPopup != null && mPopup.isShowing()) {
+                mPopup.dismiss();
+            }
+            return;
         }
 
         public void onKeyDown(int keyCode, KeyEvent event) {
@@ -362,8 +439,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             Spannable spannable = getSpannable();
             int spanStart = getChipStart();
             int spanEnd = getChipEnd();
+
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
             spannable.removeSpan(this);
+            spannable.setSpan(null, spanStart, spanEnd, 0);
             getText().delete(spanStart, spanEnd);
         }
 
@@ -382,7 +461,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             try {
                 newChipSpan = constructChipSpan(entry, mOffset, false);
             } catch (NullPointerException e) {
-                Log.e(TAG, e.getMessage());
+                Log.e(TAG, e.getMessage(), e);
                 return;
             }
             replace(newChipSpan);
@@ -390,6 +469,55 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 mPopup.dismiss();
             }
             onChipChanged();
+        }
+
+        public RecipientChip selectChip() {
+            clearComposingText();
+            RecipientChip newChipSpan = null;
+            if (isCompletedContact()) {
+                try {
+                    newChipSpan = constructChipSpan(mEntry, mOffset, true);
+                    newChipSpan.setSelected(true);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    return newChipSpan;
+                }
+                replace(newChipSpan);
+                if (mPopup != null && mPopup.isShowing()) {
+                    mPopup.dismiss();
+                }
+                mSelected = true;
+                // Make sure we call edit on the new chip span.
+                newChipSpan.showAlternates();
+            } else {
+                CharSequence text = getValue();
+                removeChip();
+                Editable editable = getText();
+                setSelection(editable.length());
+                editable.append(text);
+            }
+            return newChipSpan;
+        }
+
+        private void showAlternates() {
+            mPopup = new ListPopupWindow(RecipientEditTextView.this.getContext());
+
+            if (!mPopup.isShowing()) {
+                mAnchorView.setLeft(mLeft);
+                mAnchorView.setRight(mLeft);
+                mPopup.setAnchorView(mAnchorView);
+                BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
+                adapter.getFilter().filter(getValue(), this);
+                mPopup.setAdapter(adapter);
+                // TODO: get width from dimen.xml.
+                mPopup.setWidth(getWidth());
+                mPopup.setOnItemClickListener(this);
+                mPopup.setOnDismissListener(this);
+            }
+        }
+
+        private void setSelected(boolean selected) {
+            mSelected = selected;
         }
 
         public CharSequence getDisplay() {
@@ -400,28 +528,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             return mValue;
         }
 
-        public void onClick(View widget) {
-            if (isCompletedContact()) {
-                mPopup = new ListPopupWindow(widget.getContext());
+        private boolean isInDelete(float x, float y) {
+            // Figure out the bounds of this chip and whether or not
+            // the user clicked in the X portion.
+            return x > (mBounds.right - mChipDeleteWidth) && x < mBounds.right;
+        }
 
-                if (!mPopup.isShowing()) {
-                    mAnchorView.setLeft(mLeft);
-                    mAnchorView.setRight(mLeft);
-                    mPopup.setAnchorView(mAnchorView);
-                    BaseRecipientAdapter adapter = (BaseRecipientAdapter)getAdapter();
-                    adapter.getFilter().filter(getValue(), this);
-                    mPopup.setAdapter(adapter);
-                    // TODO: get width from dimen.xml.
-                    mPopup.setWidth(getWidth());
-                    mPopup.setOnItemClickListener(this);
-                    mPopup.setOnDismissListener(this);
+        public void onClick(View widget, float x, float y) {
+            if (mSelected) {
+                if (isInDelete(x, y)) {
+                    removeChip();
+                    return;
                 }
-            } else {
-                CharSequence text = getValue();
-                removeChip();
-                Editable editable = getText();
-                setSelection(editable.length());
-                editable.append(text);
             }
         }
 
