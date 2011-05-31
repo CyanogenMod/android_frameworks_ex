@@ -58,8 +58,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private int mChipPadding;
 
-    private int mChipPopupOffset;
-
     private Tokenizer mTokenizer;
 
     private final Handler mHandler;
@@ -77,17 +75,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         setOnItemClickListener(this);
     }
 
-    public RecipientChip constructChipSpan(CharSequence text, int offset, boolean pressed)
+    public RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
         throws NullPointerException {
         if (mChipBackground == null) {
             throw new NullPointerException
                 ("Unable to render any chips as setChipDimensions was not called.");
         }
-
+        String text = contact.getDisplayName();
         Layout layout = getLayout();
         int line = layout.getLineForOffset(offset);
         int lineTop = layout.getLineTop(line);
-        int lineBottom = layout.getLineBottom(line);
 
         TextPaint paint = getPaint();
         float defaultSize = paint.getTextSize();
@@ -128,13 +125,28 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         // Pass the full text, un-ellipsized, to the chip.
         Drawable result = new BitmapDrawable(getResources(), tmpBitmap);
         result.setBounds(0, 0, width, height);
-        Rect bounds = new Rect(xy[0] + offset, xy[1] + lineTop, xy[0] + width, xy[1] + lineBottom);
-        RecipientChip recipientChip = new RecipientChip(result, text, text, -1, offset, bounds);
+        Rect bounds = new Rect(xy[0] + offset, xy[1] + lineTop, xy[0] + width,
+                calculateLineBottom(xy[1], line));
+        RecipientChip recipientChip = new RecipientChip(result, contact, offset, bounds);
 
         // Return text to the original size.
         paint.setTextSize(defaultSize);
 
         return recipientChip;
+    }
+
+    // The bottom of the line the chip will be located on is calculated by 4 factors:
+    // 1) which line the chip appears on
+    // 2) the height of a line in the autocomplete view
+    // 3) padding built into the edit text view will move the bottom position
+    // 4) the position of the autocomplete view on the screen, taking into account
+    // that any top padding will move this down visually
+    private int calculateLineBottom(int yOffset, int line) {
+        int bottomPadding = 0;
+        if (line == getLineCount() - 1) {
+            bottomPadding += getPaddingBottom();
+        }
+        return ((line + 1) * getLineHeight()) + (yOffset + getPaddingTop()) + bottomPadding;
     }
 
     // Get the max amount of space a chip can take up. The formula takes into
@@ -151,10 +163,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      * @param padding Padding around the text in a chip
      * @param offset Offset between the chip and the dropdown of alternates
      */
-    public void setChipDimensions(Drawable chipBackground, float padding, float offset) {
+    public void setChipDimensions(Drawable chipBackground, float padding) {
         mChipBackground = chipBackground;
         mChipPadding = (int) padding;
-        mChipPopupOffset = (int) offset;
     }
 
     @Override
@@ -190,9 +201,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                         clearComposingText();
 
                         Editable editable = getText();
-
+                        RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
                         QwertyKeyListener.markAsReplaced(editable, start, end, "");
-                        editable.replace(start, end, createChip(text));
+                        editable.replace(start, end, createChip(entry));
                         dismissDropDown();
                     }
                 }
@@ -257,15 +268,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         return super.onTouchEvent(event);
     }
 
-    private CharSequence createChip(String text) {
+    private CharSequence createChip(RecipientEntry entry) {
         // We want to override the tokenizer behavior with our own ending
         // token, space.
-        SpannableString chipText = new SpannableString(mTokenizer.terminateToken(text));
+        SpannableString chipText = new SpannableString(mTokenizer.terminateToken(entry
+                .getDisplayName()));
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(getText(), end);
         try {
-            chipText.setSpan(constructChipSpan(text, start, false), 0, text.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            chipText.setSpan(constructChipSpan(entry, start, false), 0, entry.getDisplayName()
+                    .length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } catch (NullPointerException e) {
             Log.e(TAG, e.getMessage());
             return null;
@@ -280,14 +292,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     }
 
     private void submitItemAtPosition(int position) {
-        RecipientListEntry entry = (RecipientListEntry) getAdapter().getItem(position);
+        RecipientEntry entry = (RecipientEntry) getAdapter().getItem(position);
         clearComposingText();
 
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(getText(), end);
 
         Editable editable = getText();
-        editable.replace(start, end, createChip(entry.getDisplayName()));
+        editable.replace(start, end, createChip(entry));
         QwertyKeyListener.markAsReplaced(editable, start, end, "");
     }
 
@@ -310,20 +322,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         private int mId = -1;
 
-        public RecipientChip(Drawable drawable, CharSequence text, CharSequence value, int id,
-                int offset, Rect bounds) {
+        public RecipientChip(Drawable drawable, RecipientEntry entry, int offset, Rect bounds) {
             super(drawable);
-            mDisplay = text;
-            mValue = value;
+            mDisplay = entry.getDisplayName();
+            mValue = entry.getDestination();
+            mId = entry.getContactId();
             mOffset = offset;
+
             mAnchorView = new View(getContext());
             mAnchorView.setLeft(bounds.left);
             mAnchorView.setRight(bounds.left);
-            mAnchorView.setTop(bounds.bottom + mChipPopupOffset);
-            mAnchorView.setBottom(bounds.bottom + mChipPopupOffset);
+            mAnchorView.setTop(bounds.bottom);
+            mAnchorView.setBottom(bounds.bottom);
             mAnchorView.setVisibility(View.GONE);
-
-            mId = id;
         }
 
         public void onKeyDown(int keyCode, KeyEvent event) {
@@ -371,7 +382,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
             RecipientChip newChipSpan = null;
             try {
-                newChipSpan = constructChipSpan(text, mOffset, false);
+                newChipSpan = constructChipSpan(RecipientEntry.constructFakeEntry(text),
+                        mOffset, false);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage());
                 return;
@@ -392,18 +404,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         public void onClick(View widget) {
-            mPopup = new ListPopupWindow(widget.getContext());
+            if (isCompletedContact()) {
+                mPopup = new ListPopupWindow(widget.getContext());
 
-            if (!mPopup.isShowing()) {
-                mAnchorView.setLeft(mLeft);
-                mAnchorView.setRight(mLeft);
-                mPopup.setAnchorView(mAnchorView);
-                mPopup.setAdapter(getAdapter());
-                // TODO: get width from dimen.xml.
-                mPopup.setWidth(200);
-                mPopup.setOnItemClickListener(this);
-                mPopup.setOnDismissListener(this);
-                mPopup.show();
+                if (!mPopup.isShowing()) {
+                    mAnchorView.setLeft(mLeft);
+                    mAnchorView.setRight(mLeft);
+                    mPopup.setAnchorView(mAnchorView);
+                    mPopup.setAdapter(getAdapter());
+                    // TODO: get width from dimen.xml.
+                    mPopup.setWidth(getWidth());
+                    mPopup.setOnItemClickListener(this);
+                    mPopup.setOnDismissListener(this);
+                    mPopup.show();
+                }
+            } else {
+                // TODO: move the cursor to the end of the view. Add the text
+                // that was in this span to the end of the view as well.
             }
         }
 
@@ -418,7 +435,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         public void onItemClick(AdapterView<?> adapterView, View view, int position, long rowId) {
             mPopup.dismiss();
             clearComposingText();
-            RecipientListEntry entry = (RecipientListEntry) adapterView.getItemAtPosition(position);
+            RecipientEntry entry = (RecipientEntry) adapterView.getItemAtPosition(position);
             replaceChip(entry.getDisplayName());
         }
 

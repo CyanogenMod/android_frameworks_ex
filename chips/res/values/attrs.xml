@@ -16,6 +16,5 @@
 
 <resources>
     <add-resource type="dimen" name="chip_padding"></add-resource>
-    <add-resource type="dimen" name="chip_popup_offset"></add-resource>
     <add-resource type="color" name="default_chip_background"></add-resource>
 </resources>

@@ -21,7 +21,7 @@ import android.net.Uri;
 /**
  * Represents one entry inside recipient auto-complete list.
  */
-public class RecipientListEntry {
+public class RecipientEntry {
 
     public static final int ENTRY_TYPE_PERSON = 0;
     public static final int ENTRY_TYPE_SEP_NORMAL = 1;
@@ -30,11 +30,11 @@ public class RecipientListEntry {
     public static final int ENTRY_TYPE_SIZE = 3;
 
     /** Separator entry dividing two persons or groups. */
-    public static final RecipientListEntry SEP_NORMAL =
-            new RecipientListEntry(ENTRY_TYPE_SEP_NORMAL);
+    public static final RecipientEntry SEP_NORMAL =
+            new RecipientEntry(ENTRY_TYPE_SEP_NORMAL);
     /** Separator entry dividing two entries inside a person or a group. */
-    public static final RecipientListEntry SEP_WITHIN_GROUP =
-            new RecipientListEntry(ENTRY_TYPE_SEP_WITHIN_GROUP);
+    public static final RecipientEntry SEP_WITHIN_GROUP =
+            new RecipientEntry(ENTRY_TYPE_SEP_WITHIN_GROUP);
 
     private final int mEntryType;
 
@@ -57,7 +57,7 @@ public class RecipientListEntry {
      */
     private byte[] mPhotoBytes;
 
-    private RecipientListEntry(int entryType) {
+    private RecipientEntry(int entryType) {
         mEntryType = entryType;
         mDisplayName = null;
         mDestination = null;
@@ -67,7 +67,7 @@ public class RecipientListEntry {
         mIsDivider = true;
     }
 
-    private RecipientListEntry(
+    private RecipientEntry(
             int entryType, String displayName, String destination, int contactId) {
         mEntryType = entryType;
         mIsFirstLevel = false;
@@ -79,7 +79,7 @@ public class RecipientListEntry {
         mIsDivider = false;
     }
 
-    private RecipientListEntry(
+    private RecipientEntry(
             int entryType, String displayName, String destination, int contactId,
             Uri photoThumbnailUri) {
         mEntryType = entryType;
@@ -92,22 +92,32 @@ public class RecipientListEntry {
         mIsDivider = false;
     }
 
-    public static RecipientListEntry constructTopLevelEntry(
+    /**
+     * Construct a RecipientEntry from just an address that has been entered.
+     * This address has not been resolved to a contact and therefore does not
+     * have a contact id or photo.
+     */
+    public static RecipientEntry constructFakeEntry(String address) {
+        return new RecipientEntry(
+                ENTRY_TYPE_PERSON, address, address, -1, null);
+    }
+
+    public static RecipientEntry constructTopLevelEntry(
             String displayName, String destination, int contactId, Uri photoThumbnailUri) {
-        return new RecipientListEntry(
+        return new RecipientEntry(
                 ENTRY_TYPE_PERSON, displayName, destination, contactId, photoThumbnailUri);
     }
 
-    public static RecipientListEntry constructTopLevelEntry(
+    public static RecipientEntry constructTopLevelEntry(
             String displayName, String destination, int contactId, String thumbnailUriAsString) {
-        return new RecipientListEntry(
+        return new RecipientEntry(
                 ENTRY_TYPE_PERSON, displayName, destination, contactId,
                 (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null));
     }
 
-    public static RecipientListEntry constructSecondLevelEntry(
+    public static RecipientEntry constructSecondLevelEntry(
             String displayName, String destination, int contactId) {
-        return new RecipientListEntry(ENTRY_TYPE_PERSON, displayName, destination, contactId);
+        return new RecipientEntry(ENTRY_TYPE_PERSON, displayName, destination, contactId);
     }
 
     public int getEntryType() {

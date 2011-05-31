@@ -16,5 +16,4 @@
 
 <resources>
     <dimen name="chip_padding">10dip</dimen>
-    <dimen name="chip_popup_offset">11dip</dimen>
 </resources>

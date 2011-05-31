@@ -196,7 +196,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
         @Override
         public CharSequence convertResultToString(Object resultValue) {
-            final RecipientListEntry entry = (RecipientListEntry)resultValue;
+            final RecipientEntry entry = (RecipientEntry)resultValue;
             final String displayName = entry.getDisplayName();
             final String emailAddress = entry.getDestination();
             if (TextUtils.isEmpty(displayName) || TextUtils.equals(displayName, emailAddress)) {
@@ -274,9 +274,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * mEntries are less than mPreferredMaxResultCount, contacts in
      * mNonAggregatedEntries are also used.
      */
-    private final LinkedHashMap<Integer, List<RecipientListEntry>> mEntryMap;
-    private final List<RecipientListEntry> mNonAggregatedEntries;
-    private final List<RecipientListEntry> mEntries;
+    private final LinkedHashMap<Integer, List<RecipientEntry>> mEntryMap;
+    private final List<RecipientEntry> mNonAggregatedEntries;
+    private final List<RecipientEntry> mEntries;
     private final Set<String> mExistingDestinations;
 
     /**
@@ -306,9 +306,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mInflater = LayoutInflater.from(context);
         mQueryType = queryType;
         mPreferredMaxResultCount = preferredMaxResultCount;
-        mEntryMap = new LinkedHashMap<Integer, List<RecipientListEntry>>();
-        mNonAggregatedEntries = new ArrayList<RecipientListEntry>();
-        mEntries = new ArrayList<RecipientListEntry>();
+        mEntryMap = new LinkedHashMap<Integer, List<RecipientEntry>>();
+        mNonAggregatedEntries = new ArrayList<RecipientEntry>();
+        mEntries = new ArrayList<RecipientEntry>();
         mExistingDestinations = new HashSet<String>();
         mPhotoHandlerThread = new HandlerThread("photo_handler");
         mPhotoHandlerThread.start();
@@ -502,16 +502,16 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             mExistingDestinations.add(destination);
 
             if (!validContactId) {
-                mNonAggregatedEntries.add(RecipientListEntry.constructTopLevelEntry(
+                mNonAggregatedEntries.add(RecipientEntry.constructTopLevelEntry(
                         displayName, destination, contactId, thumbnailUriString));
             } else if (mEntryMap.containsKey(contactId)) {
                 // We already have a section for the person.
-                final List<RecipientListEntry> entryList = mEntryMap.get(contactId);
-                entryList.add(RecipientListEntry.constructSecondLevelEntry(
+                final List<RecipientEntry> entryList = mEntryMap.get(contactId);
+                entryList.add(RecipientEntry.constructSecondLevelEntry(
                         displayName, destination, contactId));
             } else {
-                final List<RecipientListEntry> entryList = new ArrayList<RecipientListEntry>();
-                entryList.add(RecipientListEntry.constructTopLevelEntry(
+                final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
+                entryList.add(RecipientEntry.constructTopLevelEntry(
                         displayName, destination, contactId, thumbnailUriString));
                 mEntryMap.put(contactId, entryList);
             }
@@ -527,32 +527,32 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private void constructEntryList() {
         mEntries.clear();
         int validEntryCount = 0;
-        for (Map.Entry<Integer, List<RecipientListEntry>> mapEntry : mEntryMap.entrySet()) {
-            final List<RecipientListEntry> entryList = mapEntry.getValue();
+        for (Map.Entry<Integer, List<RecipientEntry>> mapEntry : mEntryMap.entrySet()) {
+            final List<RecipientEntry> entryList = mapEntry.getValue();
             final int size = entryList.size();
             for (int i = 0; i < size; i++) {
-                RecipientListEntry entry = entryList.get(i);
+                RecipientEntry entry = entryList.get(i);
                 mEntries.add(entry);
                 tryFetchPhoto(entry);
                 validEntryCount++;
                 if (i < size - 1) {
-                    mEntries.add(RecipientListEntry.SEP_WITHIN_GROUP);
+                    mEntries.add(RecipientEntry.SEP_WITHIN_GROUP);
                 }
             }
-            mEntries.add(RecipientListEntry.SEP_NORMAL);
+            mEntries.add(RecipientEntry.SEP_NORMAL);
             if (validEntryCount > mPreferredMaxResultCount) {
                 break;
             }
         }
         if (validEntryCount <= mPreferredMaxResultCount) {
-            for (RecipientListEntry entry : mNonAggregatedEntries) {
+            for (RecipientEntry entry : mNonAggregatedEntries) {
                 if (validEntryCount > mPreferredMaxResultCount) {
                     break;
                 }
                 mEntries.add(entry);
                 tryFetchPhoto(entry);
 
-                mEntries.add(RecipientListEntry.SEP_NORMAL);
+                mEntries.add(RecipientEntry.SEP_NORMAL);
                 validEntryCount++;
             }
         }
@@ -564,7 +564,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         notifyDataSetChanged();
     }
 
-    private void tryFetchPhoto(final RecipientListEntry entry) {
+    private void tryFetchPhoto(final RecipientEntry entry) {
         final Uri photoThumbnailUri = entry.getPhotoThumbnailUri();
         if (photoThumbnailUri != null) {
             final byte[] photoBytes = mPhotoCacheMap.get(photoThumbnailUri);
@@ -581,7 +581,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         }
     }
 
-    private void fetchPhotoAsync(final RecipientListEntry entry, final Uri photoThumbnailUri) {
+    private void fetchPhotoAsync(final RecipientEntry entry, final Uri photoThumbnailUri) {
         mPhotoHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -667,7 +667,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     @Override
     public int getViewTypeCount() {
-        return RecipientListEntry.ENTRY_TYPE_SIZE;
+        return RecipientEntry.ENTRY_TYPE_SIZE;
     }
 
     @Override
@@ -677,13 +677,13 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        final RecipientListEntry entry = mEntries.get(position);
+        final RecipientEntry entry = mEntries.get(position);
         switch (entry.getEntryType()) {
-            case RecipientListEntry.ENTRY_TYPE_SEP_NORMAL: {
+            case RecipientEntry.ENTRY_TYPE_SEP_NORMAL: {
                 return convertView != null ? convertView
                         : mInflater.inflate(getSeparatorLayout(), parent, false);
             }
-            case RecipientListEntry.ENTRY_TYPE_SEP_WITHIN_GROUP: {
+            case RecipientEntry.ENTRY_TYPE_SEP_WITHIN_GROUP: {
                 return convertView != null ? convertView
                         : mInflater.inflate(getSeparatorWithinGroupLayout(), parent, false);
             }
