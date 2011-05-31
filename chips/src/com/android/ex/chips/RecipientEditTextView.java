@@ -26,7 +26,6 @@ import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.text.Editable;
 import android.text.Layout;
-import android.text.Selection;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -41,6 +40,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Filter.FilterListener;
 import android.widget.PopupWindow.OnDismissListener;
 import android.widget.ListPopupWindow;
 import android.widget.MultiAutoCompleteTextView;
@@ -245,6 +245,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getAction();
+        boolean handled = super.onTouchEvent(event);
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
             Spannable span = getSpannable();
             int offset = getOffsetForPosition(event.getX(), event.getY());
@@ -258,14 +259,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 if (action == MotionEvent.ACTION_UP) {
                     currentChip.onClick(this);
                 } else if (action == MotionEvent.ACTION_DOWN) {
-                    Selection.setSelection(getSpannable(), currentChip.getChipStart(), currentChip
-                            .getChipEnd());
+
                 }
-                return true;
             }
         }
-
-        return super.onTouchEvent(event);
+        return handled;
     }
 
     private CharSequence createChip(RecipientEntry entry) {
@@ -307,7 +305,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      * RecipientChip defines an ImageSpan that contains information relevant to
      * a particular recipient.
      */
-    public class RecipientChip extends ImageSpan implements OnItemClickListener, OnDismissListener {
+    public class RecipientChip extends ImageSpan implements OnItemClickListener, OnDismissListener,
+            FilterListener {
         private final CharSequence mDisplay;
 
         private final CharSequence mValue;
@@ -365,8 +364,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             int spanEnd = getChipEnd();
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
             spannable.removeSpan(this);
-            spannable.setSpan(null, spanStart, spanEnd, 0);
-            onChipChanged();
+            getText().delete(spanStart, spanEnd);
         }
 
         public int getChipStart() {
@@ -377,13 +375,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             return getSpannable().getSpanEnd(this);
         }
 
-        public void replaceChip(String text) {
+        public void replaceChip(RecipientEntry entry) {
             clearComposingText();
 
             RecipientChip newChipSpan = null;
             try {
-                newChipSpan = constructChipSpan(RecipientEntry.constructFakeEntry(text),
-                        mOffset, false);
+                newChipSpan = constructChipSpan(entry, mOffset, false);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage());
                 return;
@@ -411,16 +408,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     mAnchorView.setLeft(mLeft);
                     mAnchorView.setRight(mLeft);
                     mPopup.setAnchorView(mAnchorView);
-                    mPopup.setAdapter(getAdapter());
+                    BaseRecipientAdapter adapter = (BaseRecipientAdapter)getAdapter();
+                    adapter.getFilter().filter(getValue(), this);
+                    mPopup.setAdapter(adapter);
                     // TODO: get width from dimen.xml.
                     mPopup.setWidth(getWidth());
                     mPopup.setOnItemClickListener(this);
                     mPopup.setOnDismissListener(this);
-                    mPopup.show();
                 }
             } else {
-                // TODO: move the cursor to the end of the view. Add the text
-                // that was in this span to the end of the view as well.
+                CharSequence text = getValue();
+                removeChip();
+                Editable editable = getText();
+                setSelection(editable.length());
+                editable.append(text);
             }
         }
 
@@ -435,14 +436,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         public void onItemClick(AdapterView<?> adapterView, View view, int position, long rowId) {
             mPopup.dismiss();
             clearComposingText();
-            RecipientEntry entry = (RecipientEntry) adapterView.getItemAtPosition(position);
-            replaceChip(entry.getDisplayName());
+            replaceChip((RecipientEntry) adapterView.getItemAtPosition(position));
         }
 
         // When the popup dialog is dismissed, return the cursor to the end.
         @Override
         public void onDismiss() {
             mHandler.post(mDelayedSelectionMode);
+        }
+
+        @Override
+        public void onFilterComplete(int count) {
+            if (count > 0 && mPopup != null) {
+                mPopup.show();
+            }
         }
     }
 }
