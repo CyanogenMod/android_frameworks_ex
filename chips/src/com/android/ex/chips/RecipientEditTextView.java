@@ -45,6 +45,8 @@ import android.widget.PopupWindow.OnDismissListener;
 import android.widget.ListPopupWindow;
 import android.widget.MultiAutoCompleteTextView;
 
+import java.util.ArrayList;
+
 /**
  * RecipientEditTextView is an auto complete text view for use with applications
  * that use the new Chips UI for addressing a message to recipients.
@@ -77,10 +79,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private int mChipDeleteWidth;
 
+    private ArrayList<RecipientChip> mRecipients;
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mHandler = new Handler();
         setOnItemClickListener(this);
+        mRecipients = new ArrayList<RecipientChip>();
     }
 
     public RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
@@ -284,6 +289,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         int action = event.getAction();
         boolean handled = super.onTouchEvent(event);
         boolean chipWasSelected = false;
+
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
             Spannable span = getSpannable();
             int offset = getOffsetForPosition(event.getX(), event.getY());
@@ -351,6 +357,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         QwertyKeyListener.markAsReplaced(editable, start, end, "");
     }
 
+    public Editable getRecipients() {
+        StringBuilder plainText = new StringBuilder();
+        int size = mRecipients.size();
+        for (int i = 0; i < size; i++) {
+            plainText.append(mRecipients.get(i).getValue());
+                if (i != size-1) {
+                    plainText.append(',');
+                }
+        }
+        return Editable.Factory.getInstance().newEditable(plainText);
+    }
+
     /**
      * RecipientChip defines an ImageSpan that contains information relevant to
      * a particular recipient.
@@ -391,6 +409,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mAnchorView.setTop(bounds.bottom);
             mAnchorView.setBottom(bounds.bottom);
             mAnchorView.setVisibility(View.GONE);
+            mRecipients.add(this);
         }
 
         public void unselectChip() {
@@ -432,6 +451,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             int spanEnd = getChipEnd();
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
             spannable.removeSpan(this);
+            mRecipients.remove(this);
             spannable.setSpan(newChip, spanStart, spanEnd, 0);
         }
 
@@ -442,6 +462,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
             spannable.removeSpan(this);
+            mRecipients.remove(this);
             spannable.setSpan(null, spanStart, spanEnd, 0);
             getText().delete(spanStart, spanEnd);
         }
