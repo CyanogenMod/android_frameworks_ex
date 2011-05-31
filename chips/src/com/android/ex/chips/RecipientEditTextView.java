@@ -41,9 +41,14 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Filter.FilterListener;
-import android.widget.PopupWindow.OnDismissListener;
 import android.widget.ListPopupWindow;
 import android.widget.MultiAutoCompleteTextView;
+import android.widget.PopupWindow.OnDismissListener;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import java.util.ArrayList;
 
@@ -369,6 +374,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         return Editable.Factory.getInstance().newEditable(plainText);
     }
 
+    /** Returns a collection of contact Id for each chip inside this View. */
+    /* package */ Collection<Integer> getContactIds() {
+        final Set<Integer> result = new HashSet<Integer>();
+        for (RecipientChip chip : mRecipients) {
+            result.add(chip.getContactId());
+        }
+        return result;
+    }
+
+    /** Returns a collection of data Id for each chip inside this View. May be null. */
+    /* package */ Collection<Integer> getDataIds() {
+        final Set<Integer> result = new HashSet<Integer>();
+        for (RecipientChip chip : mRecipients) {
+            result.add(chip.getDataId());
+        }
+        return result;
+    }
+
     /**
      * RecipientChip defines an ImageSpan that contains information relevant to
      * a particular recipient.
@@ -387,7 +410,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         private int mLeft;
 
-        private int mId = -1;
+        private final int mContactId;
+
+        private final int mDataId;
 
         private RecipientEntry mEntry;
 
@@ -398,7 +423,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             super(drawable);
             mDisplay = entry.getDisplayName();
             mValue = entry.getDestination();
-            mId = entry.getContactId();
+            mContactId = entry.getContactId();
+            mDataId = entry.getDataId();
             mOffset = offset;
             mEntry = entry;
             mBounds = bounds;
@@ -442,7 +468,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         public boolean isCompletedContact() {
-            return mId != -1;
+            return mContactId != -1;
         }
 
         private void replace(RecipientChip newChip) {
@@ -589,6 +615,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             if (count > 0 && mPopup != null) {
                 mPopup.show();
             }
+        }
+
+        public int getContactId() {
+            return mContactId;
+        }
+
+        public int getDataId() {
+            return mDataId;
         }
     }
 }

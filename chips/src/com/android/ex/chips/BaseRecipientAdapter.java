@@ -75,6 +75,11 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      */
     private static final int ALLOWANCE_FOR_DUPLICATES = 5;
 
+    // This is ContactsContract.PRIMARY_ACCOUNT_NAME. Available from ICS as hidden
+    private static final String PRIMARY_ACCOUNT_NAME = "name_for_primary_account";
+    // This is ContactsContract.PRIMARY_ACCOUNT_TYPE. Available from ICS as hidden
+    private static final String PRIMARY_ACCOUNT_TYPE = "type_for_primary_account";
+
     /** The number of photos cached in this Adapter. */
     private static final int PHOTO_CACHE_SIZE = 20;
 
@@ -99,13 +104,15 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             Contacts.DISPLAY_NAME,       // 0
             Email.DATA,                  // 1
             Email.CONTACT_ID,            // 2
-            Contacts.PHOTO_THUMBNAIL_URI // 3
+            Email._ID,                   // 3
+            Contacts.PHOTO_THUMBNAIL_URI // 4
         };
 
         public static final int NAME = 0;
         public static final int ADDRESS = 1;
         public static final int CONTACT_ID = 2;
-        public static final int PHOTO_THUMBNAIL_URI = 3;
+        public static final int DATA_ID = 3;
+        public static final int PHOTO_THUMBNAIL_URI = 4;
     }
 
     private static class PhoneQuery {
@@ -113,11 +120,13 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             Contacts.DISPLAY_NAME,       // 0
             Phone.DATA,                  // 1
             Phone.CONTACT_ID,            // 2
-            Contacts.PHOTO_THUMBNAIL_URI // 3
+            Phone._ID,                   // 3
+            Contacts.PHOTO_THUMBNAIL_URI // 4
         };
         public static final int NAME = 0;
         public static final int NUMBER = 1;
         public static final int CONTACT_ID = 2;
+        public static final int DATA_ID = 3;
         public static final int PHOTO_THUMBNAIL_URI = 3;
     }
 
@@ -478,16 +487,19 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             final String displayName;
             final String destination;
             final int contactId;
+            final int dataId;
             final String thumbnailUriString;
             if (mQueryType == QUERY_TYPE_EMAIL) {
                 displayName = cursor.getString(EmailQuery.NAME);
                 destination = cursor.getString(EmailQuery.ADDRESS);
                 contactId = cursor.getInt(EmailQuery.CONTACT_ID);
+                dataId = cursor.getInt(EmailQuery.DATA_ID);
                 thumbnailUriString = cursor.getString(EmailQuery.PHOTO_THUMBNAIL_URI);
             } else if (mQueryType == QUERY_TYPE_PHONE) {
                 displayName = cursor.getString(PhoneQuery.NAME);
                 destination = cursor.getString(PhoneQuery.NUMBER);
                 contactId = cursor.getInt(PhoneQuery.CONTACT_ID);
+                dataId = cursor.getInt(PhoneQuery.DATA_ID);
                 thumbnailUriString = cursor.getString(PhoneQuery.PHOTO_THUMBNAIL_URI);
             } else {
                 throw new IndexOutOfBoundsException("Unexpected query type: " + mQueryType);
@@ -503,16 +515,16 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
             if (!validContactId) {
                 mNonAggregatedEntries.add(RecipientEntry.constructTopLevelEntry(
-                        displayName, destination, contactId, thumbnailUriString));
+                        displayName, destination, contactId, dataId, thumbnailUriString));
             } else if (mEntryMap.containsKey(contactId)) {
                 // We already have a section for the person.
                 final List<RecipientEntry> entryList = mEntryMap.get(contactId);
                 entryList.add(RecipientEntry.constructSecondLevelEntry(
-                        displayName, destination, contactId));
+                        displayName, destination, contactId, dataId));
             } else {
                 final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
                 entryList.add(RecipientEntry.constructTopLevelEntry(
-                        displayName, destination, contactId, thumbnailUriString));
+                        displayName, destination, contactId, dataId, thumbnailUriString));
                 mEntryMap.put(contactId, entryList);
             }
         }
@@ -620,6 +632,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 builder.appendQueryParameter(ContactsContract.DIRECTORY_PARAM_KEY,
                         String.valueOf(directoryId));
             }
+            if (mAccount != null) {
+                builder.appendQueryParameter(PRIMARY_ACCOUNT_NAME, mAccount.name);
+                builder.appendQueryParameter(PRIMARY_ACCOUNT_TYPE, mAccount.type);
+            }
             cursor = mContentResolver.query(
                     builder.build(), EmailQuery.PROJECTION, null, null, null);
         } else if (mQueryType == QUERY_TYPE_PHONE){
@@ -630,6 +646,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             if (directoryId != null) {
                 builder.appendQueryParameter(ContactsContract.DIRECTORY_PARAM_KEY,
                         String.valueOf(directoryId));
+            }
+            if (mAccount != null) {
+                builder.appendQueryParameter(PRIMARY_ACCOUNT_NAME, mAccount.name);
+                builder.appendQueryParameter(PRIMARY_ACCOUNT_TYPE, mAccount.type);
             }
             cursor = mContentResolver.query(
                     builder.build(), PhoneQuery.PROJECTION, null, null, null);
