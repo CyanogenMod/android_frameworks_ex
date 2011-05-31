@@ -49,8 +49,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -274,7 +274,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * mEntries are less than mPreferredMaxResultCount, contacts in
      * mNonAggregatedEntries are also used.
      */
-    private final HashMap<Integer, List<RecipientListEntry>> mEntryMap;
+    private final LinkedHashMap<Integer, List<RecipientListEntry>> mEntryMap;
     private final List<RecipientListEntry> mNonAggregatedEntries;
     private final List<RecipientListEntry> mEntries;
     private final Set<String> mExistingDestinations;
@@ -306,7 +306,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mInflater = LayoutInflater.from(context);
         mQueryType = queryType;
         mPreferredMaxResultCount = preferredMaxResultCount;
-        mEntryMap = new HashMap<Integer, List<RecipientListEntry>>();
+        mEntryMap = new LinkedHashMap<Integer, List<RecipientListEntry>>();
         mNonAggregatedEntries = new ArrayList<RecipientListEntry>();
         mEntries = new ArrayList<RecipientListEntry>();
         mExistingDestinations = new HashSet<String>();
