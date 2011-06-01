@@ -99,7 +99,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public DirectoryFilter filter;
     }
 
-    protected static class EmailQuery {
+    /* package */ static class EmailQuery {
         public static final String[] PROJECTION = {
             Contacts.DISPLAY_NAME,       // 0
             Email.DATA,                  // 1

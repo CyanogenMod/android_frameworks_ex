@@ -54,7 +54,7 @@ import java.util.ArrayList;
  * RecipientEditTextView is an auto complete text view for use with applications
  * that use the new Chips UI for addressing a message to recipients.
  */
-public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
+/* package */ class RecipientEditTextViewInner extends MultiAutoCompleteTextView
     implements OnItemClickListener {
 
     private static final String TAG = "RecipientEditTextView";
@@ -309,6 +309,13 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
         super.performFiltering(text, keyCode);
     }
 
+    private void clearSelectedChip() {
+        if (mSelectedChip != null) {
+            mSelectedChip.unselectChip();
+            mSelectedChip = null;
+        }
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getAction();
@@ -323,7 +330,7 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
             if (currentChip != null) {
                 if (action == MotionEvent.ACTION_UP) {
                     if (mSelectedChip != null && mSelectedChip != currentChip) {
-                        mSelectedChip.unselectChip();
+                        clearSelectedChip();
                         mSelectedChip = currentChip.selectChip();
                     } else if (mSelectedChip == null) {
                         mSelectedChip = currentChip.selectChip();
@@ -335,10 +342,7 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
             }
         }
         if (action == MotionEvent.ACTION_UP && !chipWasSelected) {
-            if (mSelectedChip != null) {
-                mSelectedChip.unselectChip();
-                mSelectedChip = null;
-            }
+            clearSelectedChip();
         }
         return handled;
     }
