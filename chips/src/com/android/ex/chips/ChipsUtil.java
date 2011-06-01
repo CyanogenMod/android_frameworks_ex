@@ -17,13 +17,10 @@
 package com.android.ex.chips;
 
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
-import android.net.Uri;
 import android.os.Build;
 import android.provider.ContactsContract;
-import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.Data;
 import android.text.TextUtils;
 import android.widget.MultiAutoCompleteTextView;
@@ -44,15 +41,15 @@ public class ChipsUtil {
 
     public static boolean tryUpdateRecencyInfo(MultiAutoCompleteTextView... views) {
         for (MultiAutoCompleteTextView view : views) {
-            if (view instanceof RecipientEditTextView) {
-                updateRecencyInfo((RecipientEditTextView)view);
+            if (view instanceof RecipientEditTextViewInner) {
+                updateRecencyInfo((RecipientEditTextViewInner)view);
             }
         }
         return true;
     }
 
     // TODO: check this works
-    public static void updateRecencyInfo(RecipientEditTextView view) {
+    public static void updateRecencyInfo(RecipientEditTextViewInner view) {
         final Context context = view.getContext();
         final ContentResolver resolver = context.getContentResolver();
         final long currentTimeMillis = System.currentTimeMillis();
