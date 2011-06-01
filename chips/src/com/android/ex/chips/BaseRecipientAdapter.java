@@ -283,7 +283,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * mEntries are less than mPreferredMaxResultCount, contacts in
      * mNonAggregatedEntries are also used.
      */
-    private final LinkedHashMap<Integer, List<RecipientEntry>> mEntryMap;
+    private final LinkedHashMap<Long, List<RecipientEntry>> mEntryMap;
     private final List<RecipientEntry> mNonAggregatedEntries;
     private final List<RecipientEntry> mEntries;
     private final Set<String> mExistingDestinations;
@@ -315,7 +315,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mInflater = LayoutInflater.from(context);
         mQueryType = queryType;
         mPreferredMaxResultCount = preferredMaxResultCount;
-        mEntryMap = new LinkedHashMap<Integer, List<RecipientEntry>>();
+        mEntryMap = new LinkedHashMap<Long, List<RecipientEntry>>();
         mNonAggregatedEntries = new ArrayList<RecipientEntry>();
         mEntries = new ArrayList<RecipientEntry>();
         mExistingDestinations = new HashSet<String>();
@@ -486,20 +486,20 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         while (cursor.moveToNext()) {
             final String displayName;
             final String destination;
-            final int contactId;
-            final int dataId;
+            final long contactId;
+            final long dataId;
             final String thumbnailUriString;
             if (mQueryType == QUERY_TYPE_EMAIL) {
                 displayName = cursor.getString(EmailQuery.NAME);
                 destination = cursor.getString(EmailQuery.ADDRESS);
-                contactId = cursor.getInt(EmailQuery.CONTACT_ID);
-                dataId = cursor.getInt(EmailQuery.DATA_ID);
+                contactId = cursor.getLong(EmailQuery.CONTACT_ID);
+                dataId = cursor.getLong(EmailQuery.DATA_ID);
                 thumbnailUriString = cursor.getString(EmailQuery.PHOTO_THUMBNAIL_URI);
             } else if (mQueryType == QUERY_TYPE_PHONE) {
                 displayName = cursor.getString(PhoneQuery.NAME);
                 destination = cursor.getString(PhoneQuery.NUMBER);
-                contactId = cursor.getInt(PhoneQuery.CONTACT_ID);
-                dataId = cursor.getInt(PhoneQuery.DATA_ID);
+                contactId = cursor.getLong(PhoneQuery.CONTACT_ID);
+                dataId = cursor.getLong(PhoneQuery.DATA_ID);
                 thumbnailUriString = cursor.getString(PhoneQuery.PHOTO_THUMBNAIL_URI);
             } else {
                 throw new IndexOutOfBoundsException("Unexpected query type: " + mQueryType);
@@ -539,7 +539,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private void constructEntryList() {
         mEntries.clear();
         int validEntryCount = 0;
-        for (Map.Entry<Integer, List<RecipientEntry>> mapEntry : mEntryMap.entrySet()) {
+        for (Map.Entry<Long, List<RecipientEntry>> mapEntry : mEntryMap.entrySet()) {
             final List<RecipientEntry> entryList = mapEntry.getValue();
             final int size = entryList.size();
             for (int i = 0; i < size; i++) {

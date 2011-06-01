@@ -47,9 +47,9 @@ public class RecipientEntry {
     /** Destination for this contact entry. Would be an email address or a phone number. */
     private final String mDestination;
     /** ID for the person */
-    private final int mContactId;
+    private final long mContactId;
     /** ID for the destination */
-    private final int mDataId;
+    private final long mDataId;
     private final boolean mIsDivider;
 
     private final Uri mPhotoThumbnailUri;
@@ -73,7 +73,7 @@ public class RecipientEntry {
 
 
     private RecipientEntry(
-            int entryType, String displayName, String destination, int contactId, int dataId) {
+            int entryType, String displayName, String destination, long contactId, long dataId) {
         mEntryType = entryType;
         mIsFirstLevel = false;
         mDisplayName = displayName;
@@ -86,7 +86,7 @@ public class RecipientEntry {
     }
 
     private RecipientEntry(
-            int entryType, String displayName, String destination, int contactId, int dataId,
+            int entryType, String displayName, String destination, long contactId, long dataId,
             Uri photoThumbnailUri) {
         mEntryType = entryType;
         mIsFirstLevel = true;
@@ -109,14 +109,14 @@ public class RecipientEntry {
     }
 
     public static RecipientEntry constructTopLevelEntry(
-            String displayName, String destination, int contactId, int dataId,
+            String displayName, String destination, long contactId, long dataId,
             Uri photoThumbnailUri) {
         return new RecipientEntry(
                 ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId, photoThumbnailUri);
     }
 
     public static RecipientEntry constructTopLevelEntry(
-            String displayName, String destination, int contactId, int dataId,
+            String displayName, String destination, long contactId, long dataId,
             String thumbnailUriAsString) {
         return new RecipientEntry(
                 ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId,
@@ -124,7 +124,7 @@ public class RecipientEntry {
     }
 
     public static RecipientEntry constructSecondLevelEntry(
-            String displayName, String destination, int contactId, int dataId) {
+            String displayName, String destination, long contactId, long dataId) {
         return new RecipientEntry(
                 ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId);
     }
@@ -141,11 +141,11 @@ public class RecipientEntry {
         return mDestination;
     }
 
-    public int getContactId() {
+    public long getContactId() {
         return mContactId;
     }
 
-    public int getDataId() {
+    public long getDataId() {
         return mDataId;
     }
 

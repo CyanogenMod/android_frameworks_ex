@@ -375,8 +375,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     }
 
     /** Returns a collection of contact Id for each chip inside this View. */
-    /* package */ Collection<Integer> getContactIds() {
-        final Set<Integer> result = new HashSet<Integer>();
+    /* package */ Collection<Long> getContactIds() {
+        final Set<Long> result = new HashSet<Long>();
         for (RecipientChip chip : mRecipients) {
             result.add(chip.getContactId());
         }
@@ -384,8 +384,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     }
 
     /** Returns a collection of data Id for each chip inside this View. May be null. */
-    /* package */ Collection<Integer> getDataIds() {
-        final Set<Integer> result = new HashSet<Integer>();
+    /* package */ Collection<Long> getDataIds() {
+        final Set<Long> result = new HashSet<Long>();
         for (RecipientChip chip : mRecipients) {
             result.add(chip.getDataId());
         }
@@ -410,9 +410,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         private int mLeft;
 
-        private final int mContactId;
+        private final long mContactId;
 
-        private final int mDataId;
+        private final long mDataId;
 
         private RecipientEntry mEntry;
 
@@ -617,11 +617,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             }
         }
 
-        public int getContactId() {
+        public long getContactId() {
             return mContactId;
         }
 
-        public int getDataId() {
+        public long getDataId() {
             return mDataId;
         }
     }
