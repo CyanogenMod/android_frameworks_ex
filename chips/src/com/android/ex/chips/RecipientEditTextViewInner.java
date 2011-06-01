@@ -352,6 +352,23 @@ import java.util.ArrayList;
     // what comes before the finger.
     private int putOffsetInRange(int o) {
         int offset = o;
+        Editable text = getText();
+        int length = text.length();
+        // Remove whitespace from end to find "real end"
+        int realLength = length;
+        for (int i = length - 1; i >= 0; i--) {
+            if (text.charAt(i) == ' ') {
+                realLength--;
+            } else {
+                break;
+            }
+        }
+
+        // If the offset is beyond where there was any visible text,
+        // then leave it should not be pulled into the range of a chip.
+        if (offset > realLength) {
+            return offset;
+        }
         while (offset >= 0 && findChip(offset) == null) {
             // Keep walking backward!
             offset--;
