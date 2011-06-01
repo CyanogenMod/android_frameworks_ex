@@ -266,15 +266,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        int start = getSelectionStart();
-        int end = getSelectionEnd();
-        Spannable span = getSpannable();
 
-        RecipientChip[] chips = span.getSpans(start, end, RecipientChip.class);
-        if (chips != null) {
-            for (RecipientChip chip : chips) {
-                chip.onKeyDown(keyCode, event);
-            }
+        if (mSelectedChip != null) {
+            mSelectedChip.onKeyDown(keyCode, event);
         }
 
         if (keyCode == KeyEvent.KEYCODE_ENTER && event.hasNoModifiers()) {
@@ -296,15 +290,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         boolean chipWasSelected = false;
 
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
-            Spannable span = getSpannable();
-            int offset = getOffsetForPosition(event.getX(), event.getY());
-            int end = span.nextSpanTransition(offset, span.length(), RecipientChip.class);
-            int start = mTokenizer.findTokenStart(span, end);
-            RecipientChip[] chips = span.getSpans(start, end, RecipientChip.class);
-            if (chips != null && chips.length > 0) {
-                // Get the first chip that matched.
-                final RecipientChip currentChip = chips[0];
-
+            float x = event.getX();
+            float y = event.getY();
+            int offset = putOffsetInRange(getOffsetForPosition(x, y));
+            RecipientChip currentChip = findChip(offset);
+            if (currentChip != null) {
                 if (action == MotionEvent.ACTION_UP) {
                     if (mSelectedChip != null && mSelectedChip != currentChip) {
                         mSelectedChip.unselectChip();
@@ -312,19 +302,43 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     } else if (mSelectedChip == null) {
                         mSelectedChip = currentChip.selectChip();
                     } else {
-                        mSelectedChip.onClick(this, event.getX(), event.getY());
+                        mSelectedChip.onClick(this, offset, x, y);
                     }
                 }
                 chipWasSelected = true;
             }
         }
-        if (!chipWasSelected) {
+        if (action == MotionEvent.ACTION_UP && !chipWasSelected) {
             if (mSelectedChip != null) {
                 mSelectedChip.unselectChip();
                 mSelectedChip = null;
             }
         }
         return handled;
+    }
+
+    // TODO: This algorithm will need a lot of tweaking after more people have used
+    // the chips ui. This attempts to be "forgiving" to fat finger touches by favoring
+    // what comes before the finger.
+    private int putOffsetInRange(int o) {
+        int offset = o;
+        while (offset >= 0 && findChip(offset) == null) {
+            // Keep walking backward!
+            offset--;
+        }
+        return offset;
+    }
+
+    private RecipientChip findChip(int offset) {
+        RecipientChip[] chips = getSpannable().getSpans(0, offset, RecipientChip.class);
+        // Find the chip that contains this offset.
+        for (int i = 0; i < chips.length; i++) {
+            RecipientChip chip = chips[i];
+            if (chip.matchesChip(offset)) {
+                return chip;
+            }
+        }
+        return null;
     }
 
     private CharSequence createChip(RecipientEntry entry) {
@@ -485,7 +499,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             Spannable spannable = getSpannable();
             int spanStart = getChipStart();
             int spanEnd = getChipEnd();
-
+            if (this == mSelectedChip) {
+                mSelectedChip = null;
+            }
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
             spannable.removeSpan(this);
             mRecipients.remove(this);
@@ -575,15 +591,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             return mValue;
         }
 
-        private boolean isInDelete(float x, float y) {
+        private boolean isInDelete(int offset, float x, float y) {
             // Figure out the bounds of this chip and whether or not
             // the user clicked in the X portion.
-            return x > (mBounds.right - mChipDeleteWidth) && x < mBounds.right;
+            return mSelected
+                    && (offset >= getChipEnd()
+                            || (x > (mBounds.right - mChipDeleteWidth) && x < mBounds.right));
         }
 
-        public void onClick(View widget, float x, float y) {
+        public boolean matchesChip(int offset) {
+            int start = getChipStart();
+            int end = getChipEnd();
+            return (offset >= start && offset <= end);
+        }
+
+        public void onClick(View widget, int offset, float x, float y) {
             if (mSelected) {
-                if (isInDelete(x, y)) {
+                if (isInDelete(offset, x, y)) {
                     removeChip();
                     return;
                 }
@@ -593,6 +617,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         @Override
         public void draw(Canvas canvas, CharSequence text, int start, int end, float x, int top,
                 int y, int bottom, Paint paint) {
+            // Shift the bounds of this span to where it is actually drawn on the screeen.
             mLeft = (int) x;
             super.draw(canvas, text, start, end, x, top, y, bottom, paint);
         }
