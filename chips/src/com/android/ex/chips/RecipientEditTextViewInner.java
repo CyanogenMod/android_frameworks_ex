@@ -314,6 +314,7 @@ import java.util.ArrayList;
             mSelectedChip.unselectChip();
             mSelectedChip = null;
         }
+        setCursorVisible(true);
     }
 
     @Override
@@ -332,8 +333,10 @@ import java.util.ArrayList;
                     if (mSelectedChip != null && mSelectedChip != currentChip) {
                         clearSelectedChip();
                         mSelectedChip = currentChip.selectChip();
+                        setCursorVisible(false);
                     } else if (mSelectedChip == null) {
                         mSelectedChip = currentChip.selectChip();
+                        setCursorVisible(false);
                     } else {
                         mSelectedChip.onClick(this, offset, x, y);
                     }
@@ -503,7 +506,9 @@ import java.util.ArrayList;
 
         public void unselectChip() {
             if (getChipStart() == -1 || getChipEnd() == -1) {
-                mSelectedChip = null;
+                if (mSelectedChip == this) {
+                    mSelectedChip = null;
+                }
                 return;
             }
             clearComposingText();
@@ -548,20 +553,20 @@ import java.util.ArrayList;
             Spannable spannable = getSpannable();
             int spanStart = getChipStart();
             int spanEnd = getChipEnd();
-            if (this == mSelectedChip) {
-                mSelectedChip = null;
-            }
             Editable text = getText();
             int toDelete = spanEnd;
             // Always remove trailing spaces when removing a chip.
             while (toDelete < text.length() - 1 && text.charAt(toDelete) == ' ') {
                 toDelete++;
             }
-            QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
+            QwertyKeyListener.markAsReplaced(getText(), spanStart, toDelete, "");
             spannable.removeSpan(this);
-            mRecipients.remove(this);
-            spannable.setSpan(null, spanStart, spanEnd, 0);
             text.delete(spanStart, toDelete);
+            mRecipients.remove(this);
+            if (this == mSelectedChip) {
+                mSelectedChip = null;
+                clearSelectedChip();
+            }
         }
 
         public int getChipStart() {
