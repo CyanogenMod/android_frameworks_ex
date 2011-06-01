@@ -551,11 +551,17 @@ import java.util.ArrayList;
             if (this == mSelectedChip) {
                 mSelectedChip = null;
             }
+            Editable text = getText();
+            int toDelete = spanEnd;
+            // Always remove trailing spaces when removing a chip.
+            while (toDelete < text.length() - 1 && text.charAt(toDelete) == ' ') {
+                toDelete++;
+            }
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
             spannable.removeSpan(this);
             mRecipients.remove(this);
             spannable.setSpan(null, spanStart, spanEnd, 0);
-            getText().delete(spanStart, spanEnd);
+            text.delete(spanStart, toDelete);
         }
 
         public int getChipStart() {
