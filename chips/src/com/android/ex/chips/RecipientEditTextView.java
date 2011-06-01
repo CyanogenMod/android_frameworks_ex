@@ -57,9 +57,9 @@ public class RecipientEditTextView extends FrameLayout {
     }
 
     public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
-            Drawable chipDelete, float padding) {
+            Drawable chipDelete, int alternatesLayout, int alternatesSelected, float padding) {
         mEditTextViewInner.setChipDimensions(chipBackground, chipBackgroundPressed, chipDelete,
-                padding);
+                alternatesLayout, alternatesSelected, padding);
     }
 
     public void setTokenizer(MultiAutoCompleteTextView.Tokenizer tokenizer) {

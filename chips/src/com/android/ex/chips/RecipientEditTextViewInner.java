@@ -40,14 +40,12 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.Filter.FilterListener;
 import android.widget.ListPopupWindow;
 import android.widget.MultiAutoCompleteTextView;
 import android.widget.PopupWindow.OnDismissListener;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import java.util.ArrayList;
@@ -85,6 +83,10 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
     private int mChipDeleteWidth;
 
     private ArrayList<RecipientChip> mRecipients;
+
+    private int mAlternatesLayout;
+
+    private int mAlternatesSelectedLayout;
 
     public RecipientEditTextViewInner(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -207,12 +209,14 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
      * @param offset Offset between the chip and the dropdown of alternates
      */
     public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
-            Drawable chipDelete, float padding) {
+            Drawable chipDelete, int alternatesLayout, int alternatesSelectedLayout, float padding) {
         mChipBackground = chipBackground;
         mChipBackgroundPressed = chipBackgroundPressed;
         mChipDelete = chipDelete;
         mChipDeleteWidth = chipDelete.getIntrinsicWidth();
         mChipPadding = (int) padding;
+        mAlternatesLayout = alternatesLayout;
+        mAlternatesSelectedLayout = alternatesSelectedLayout;
     }
 
     @Override
@@ -410,8 +414,7 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
      * RecipientChip defines an ImageSpan that contains information relevant to
      * a particular recipient.
      */
-    public class RecipientChip extends ImageSpan implements OnItemClickListener, OnDismissListener,
-            FilterListener {
+    public class RecipientChip extends ImageSpan implements OnItemClickListener, OnDismissListener {
         private final CharSequence mDisplay;
 
         private final CharSequence mValue;
@@ -432,7 +435,10 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
 
         private boolean mSelected = false;
 
+        private RecipientAlternatesAdapter mAlternatesAdapter;
+
         private Rect mBounds;
+
         public RecipientChip(Drawable drawable, RecipientEntry entry, int offset, Rect bounds) {
             super(drawable);
             mDisplay = entry.getDisplayName();
@@ -566,16 +572,18 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
             mPopup = new ListPopupWindow(RecipientEditTextViewInner.this.getContext());
 
             if (!mPopup.isShowing()) {
+                mAlternatesAdapter = new RecipientAlternatesAdapter(
+                        RecipientEditTextViewInner.this.getContext(),
+                        mEntry.getContactId(), mEntry.getDataId(),
+                        mAlternatesLayout, mAlternatesSelectedLayout);
                 mAnchorView.setLeft(mLeft);
                 mAnchorView.setRight(mLeft);
                 mPopup.setAnchorView(mAnchorView);
-                BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
-                adapter.getFilter().filter(getValue(), this);
-                mPopup.setAdapter(adapter);
-                // TODO: get width from dimen.xml.
+                mPopup.setAdapter(mAlternatesAdapter);
                 mPopup.setWidth(getWidth());
                 mPopup.setOnItemClickListener(this);
                 mPopup.setOnDismissListener(this);
+                mPopup.show();
             }
         }
 
@@ -626,20 +634,13 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
         public void onItemClick(AdapterView<?> adapterView, View view, int position, long rowId) {
             mPopup.dismiss();
             clearComposingText();
-            replaceChip((RecipientEntry) adapterView.getItemAtPosition(position));
+            replaceChip(mAlternatesAdapter.getRecipientEntry(position));
         }
 
         // When the popup dialog is dismissed, return the cursor to the end.
         @Override
         public void onDismiss() {
             mHandler.post(mDelayedSelectionMode);
-        }
-
-        @Override
-        public void onFilterComplete(int count) {
-            if (count > 0 && mPopup != null) {
-                mPopup.show();
-            }
         }
 
         public long getContactId() {
