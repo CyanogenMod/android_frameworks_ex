@@ -286,6 +286,28 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
         return (Spannable) getText();
     }
 
+    /**
+     * Instead of filtering on the entire contents of the edit box,
+     * this subclass method filters on the range from
+     * {@link Tokenizer#findTokenStart} to {@link #getSelectionEnd}
+     * if the length of that range meets or exceeds {@link #getThreshold}
+     * and makes sure that the range is not already a Chip.
+     */
+    @Override
+    protected void performFiltering(CharSequence text, int keyCode) {
+        if (enoughToFilter()) {
+            int end = getSelectionEnd();
+            int start = mTokenizer.findTokenStart(text, end);
+            // If this is a RecipientChip, don't filter
+            // on its contents.
+            Spannable span = getSpannable();
+            RecipientChip[] chips = span.getSpans(start, end, RecipientChip.class);
+            if (chips != null && chips.length > 0) {
+                return;
+            }
+        }
+        super.performFiltering(text, keyCode);
+    }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -603,7 +625,7 @@ public class RecipientEditTextViewInner extends MultiAutoCompleteTextView
             // Figure out the bounds of this chip and whether or not
             // the user clicked in the X portion.
             return mSelected
-                    && (offset >= getChipEnd()
+                    && (offset == getChipEnd()
                             || (x > (mBounds.right - mChipDeleteWidth) && x < mBounds.right));
         }
 
