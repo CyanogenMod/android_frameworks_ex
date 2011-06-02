@@ -149,14 +149,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 calculateAvailableWidth(pressed), TextUtils.TruncateAt.END);
 
         int height = getLineHeight();
-        int width = (int) Math.floor(paint.measureText(ellipsizedText, 0, ellipsizedText.length()))
-                + (mChipPadding * 2);
-        if (pressed) {
-            // Allow the delete icon to overtake the visible recipient name.
-            // This works since when the user has entered selected mode, they
-            // will also see a popup with the recipient name.
-            width += mChipDeleteWidth/2;
-        }
+        // Make sure there is a minimum chip width so the user can ALWAYS
+        // tap a chip without difficulty.
+        int width = Math.max(mChipDeleteWidth * 2, (int) Math.floor(paint.measureText(
+                ellipsizedText, 0, ellipsizedText.length()))
+                + (mChipPadding * 2));
 
         // Create the background of the chip.
         Bitmap tmpBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
@@ -695,7 +692,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             if (mSelected) {
                 if (isInDelete(offset, x, y)) {
                     removeChip();
-                    return;
+                } else {
+                    clearSelectedChip();
                 }
             }
         }
