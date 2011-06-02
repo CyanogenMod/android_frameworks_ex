@@ -385,16 +385,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             }
         }
 
-        // If the offset is beyond where there was any visible text,
-        // then leave it should not be pulled into the range of a chip.
-        if (offset > realLength) {
+        // If the offset is beyond or at the end of the text,
+        // leave it alone.
+        if (offset >= realLength) {
             return offset;
         }
-        while (offset >= 0 && findChip(offset) == null) {
+        Editable editable = getText();
+        while (offset >= 0 && (findText(editable, offset) == -1 && findChip(offset) == null)) {
             // Keep walking backward!
             offset--;
         }
         return offset;
+    }
+
+    private int findText(Editable text, int offset) {
+        if (text.charAt(offset) != ' ') {
+            return offset;
+        }
+        return -1;
     }
 
     private RecipientChip findChip(int offset) {
