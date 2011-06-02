@@ -35,9 +35,13 @@ import android.text.method.QwertyKeyListener;
 import android.text.style.ImageSpan;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ActionMode.Callback;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListPopupWindow;
@@ -55,7 +59,7 @@ import java.util.ArrayList;
  * that use the new Chips UI for addressing a message to recipients.
  */
 public class RecipientEditTextView extends MultiAutoCompleteTextView
-    implements OnItemClickListener {
+    implements OnItemClickListener, Callback {
 
     private static final String TAG = "RecipientEditTextView";
 
@@ -93,6 +97,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         mHandler = new Handler();
         setOnItemClickListener(this);
         mRecipients = new ArrayList<RecipientChip>();
+        setCustomSelectionActionModeCallback(this);
+    }
+
+    @Override
+    public void onSelectionChanged(int start, int end) {
+        // When selection changes, see if it is inside the chips area.
+        // If so, move the cursor back after the chips again.
+        if (mRecipients != null && mRecipients.size() > 0) {
+            Spannable span = getSpannable();
+            RecipientChip[] chips = span.getSpans(start, getText().length(), RecipientChip.class);
+            if (chips != null && chips.length > 0) {
+                // Grab the last chip and set the cursor to after it.
+                setSelection(chips[chips.length - 1].getChipEnd() + 1);
+            }
+        } else {
+            super.onSelectionChanged(start, end);
+        }
     }
 
     public RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
@@ -693,6 +714,26 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         public long getDataId() {
             return mDataId;
         }
+    }
+
+    @Override
+    public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+        return false;
+    }
+
+    @Override
+    public void onDestroyActionMode(ActionMode mode) {
+    }
+
+    @Override
+    public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+        return false;
+    }
+
+    // Prevent selection of chips.
+    @Override
+    public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+        return false;
     }
 }
 
