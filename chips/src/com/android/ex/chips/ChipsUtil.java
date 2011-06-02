@@ -41,15 +41,15 @@ public class ChipsUtil {
 
     public static boolean tryUpdateRecencyInfo(MultiAutoCompleteTextView... views) {
         for (MultiAutoCompleteTextView view : views) {
-            if (view instanceof RecipientEditTextViewInner) {
-                updateRecencyInfo((RecipientEditTextViewInner)view);
+            if (view instanceof RecipientEditTextView) {
+                updateRecencyInfo((RecipientEditTextView)view);
             }
         }
         return true;
     }
 
     // TODO: check this works
-    public static void updateRecencyInfo(RecipientEditTextViewInner view) {
+    public static void updateRecencyInfo(RecipientEditTextView view) {
         final Context context = view.getContext();
         final ContentResolver resolver = context.getContentResolver();
         final long currentTimeMillis = System.currentTimeMillis();
