@@ -23,7 +23,6 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.Handler;
 import android.text.Editable;
 import android.text.Layout;
 import android.text.Spannable;
@@ -31,6 +30,7 @@ import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.text.method.QwertyKeyListener;
 import android.text.style.ImageSpan;
 import android.util.AttributeSet;
@@ -46,7 +46,6 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListPopupWindow;
 import android.widget.MultiAutoCompleteTextView;
-import android.widget.PopupWindow.OnDismissListener;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -71,15 +70,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private Tokenizer mTokenizer;
 
-    private final Handler mHandler;
-
-    private Runnable mDelayedSelectionMode = new Runnable() {
-        @Override
-        public void run() {
-            setSelection(getText().length());
-        }
-    };
-
     private Drawable mChipBackgroundPressed;
 
     private RecipientChip mSelectedChip;
@@ -94,10 +84,28 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        mHandler = new Handler();
-        setOnItemClickListener(this);
         mRecipients = new ArrayList<RecipientChip>();
+        setOnItemClickListener(this);
         setCustomSelectionActionModeCallback(this);
+        // When the user starts typing, make sure we unselect any selected
+        // chips.
+        addTextChangedListener(new TextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                // Do nothing.
+            }
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Do nothing.
+            }
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                if (mSelectedChip != null) {
+                    clearSelectedChip();
+                    setSelection(getText().length());
+                }
+            }
+        });
     }
 
     @Override
@@ -144,7 +152,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         int width = (int) Math.floor(paint.measureText(ellipsizedText, 0, ellipsizedText.length()))
                 + (mChipPadding * 2);
         if (pressed) {
-            width += mChipDeleteWidth;
+            // Allow the delete icon to overtake the visible recipient name.
+            // This works since when the user has entered selected mode, they
+            // will also see a popup with the recipient name.
+            width += mChipDeleteWidth/2;
         }
 
         // Create the background of the chip.
@@ -283,15 +294,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         return super.onKeyUp(keyCode, event);
     }
 
-    public void onChipChanged() {
-        // Must be posted so that the previous span
-        // is correctly replaced with the previous selection points.
-        mHandler.post(mDelayedSelectionMode);
-    }
-
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-
         if (mSelectedChip != null) {
             mSelectedChip.onKeyDown(keyCode, event);
         }
@@ -391,7 +395,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             return offset;
         }
         Editable editable = getText();
-        while (offset >= 0 && (findText(editable, offset) == -1 && findChip(offset) == null)) {
+        while (offset >= 0 && findText(editable, offset) == -1 && findChip(offset) == null) {
             // Keep walking backward!
             offset--;
         }
@@ -406,7 +410,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     }
 
     private RecipientChip findChip(int offset) {
-        RecipientChip[] chips = getSpannable().getSpans(0, offset, RecipientChip.class);
+        RecipientChip[] chips = getSpannable().getSpans(0, getText().length(), RecipientChip.class);
         // Find the chip that contains this offset.
         for (int i = 0; i < chips.length; i++) {
             RecipientChip chip = chips[i];
@@ -480,7 +484,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      * RecipientChip defines an ImageSpan that contains information relevant to
      * a particular recipient.
      */
-    public class RecipientChip extends ImageSpan implements OnItemClickListener, OnDismissListener {
+    public class RecipientChip extends ImageSpan implements OnItemClickListener {
         private final CharSequence mDisplay;
 
         private final CharSequence mValue;
@@ -609,7 +613,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             if (mPopup != null && mPopup.isShowing()) {
                 mPopup.dismiss();
             }
-            onChipChanged();
         }
 
         public RecipientChip selectChip() {
@@ -654,7 +657,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 mPopup.setAdapter(mAlternatesAdapter);
                 mPopup.setWidth(getWidth());
                 mPopup.setOnItemClickListener(this);
-                mPopup.setOnDismissListener(this);
                 mPopup.show();
             }
         }
@@ -707,12 +709,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mPopup.dismiss();
             clearComposingText();
             replaceChip(mAlternatesAdapter.getRecipientEntry(position));
-        }
-
-        // When the popup dialog is dismissed, return the cursor to the end.
-        @Override
-        public void onDismiss() {
-            mHandler.post(mDelayedSelectionMode);
         }
 
         public long getContactId() {
