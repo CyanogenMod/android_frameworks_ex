@@ -581,7 +581,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             Editable text = getText();
             int toDelete = spanEnd;
             // Always remove trailing spaces when removing a chip.
-            while (toDelete < text.length() - 1 && text.charAt(toDelete) == ' ') {
+            while (toDelete >= 0 && toDelete < text.length() - 1 && text.charAt(toDelete) == ' ') {
                 toDelete++;
             }
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");

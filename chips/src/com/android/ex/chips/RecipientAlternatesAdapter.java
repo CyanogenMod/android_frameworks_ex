@@ -25,6 +25,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CursorAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 public class RecipientAlternatesAdapter extends CursorAdapter {
@@ -65,19 +66,36 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        Cursor c = getCursor();
-        c.moveToPosition(position);
+        Cursor cursor = getCursor();
+        cursor.moveToPosition(position);
         if (convertView == null) {
-            convertView = newView(c.getLong(EmailQuery.DATA_ID) == mCurrentId);
+            convertView = newView(cursor.getLong(EmailQuery.DATA_ID) == mCurrentId);
         }
-
-        bindView(convertView, convertView.getContext(), getCursor());
+        bindView(convertView, convertView.getContext(), cursor);
         return convertView;
     }
 
+    // TODO: this is VERY similar to the BaseRecipientAdapter. Can we combine
+    // somehow?
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
-        TextView destination = (TextView) view.findViewById(android.R.id.text1);
+        int position = cursor.getPosition();
+
+        TextView display = (TextView) view.findViewById(android.R.id.text1);
+        ImageView imageView = (ImageView) view.findViewById(android.R.id.icon);
+        RecipientEntry entry = getRecipientEntry(position);
+        if (position == 0) {
+            display.setText(cursor.getString(EmailQuery.NAME));
+            display.setVisibility(View.VISIBLE);
+            // TODO: see if this needs to be done outside the main thread
+            // as it may be too slow to get immediately.
+            imageView.setImageURI(entry.getPhotoThumbnailUri());
+            imageView.setVisibility(View.VISIBLE);
+        } else {
+            display.setVisibility(View.GONE);
+            imageView.setVisibility(View.GONE);
+        }
+        TextView destination = (TextView) view.findViewById(android.R.id.text2);
         destination.setText(cursor.getString(EmailQuery.ADDRESS));
     }
 
