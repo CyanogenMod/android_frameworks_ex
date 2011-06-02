@@ -339,6 +339,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mSelectedChip.unselectChip();
             mSelectedChip = null;
         }
+        setCursorVisible(true);
     }
 
     @Override
@@ -357,8 +358,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     if (mSelectedChip != null && mSelectedChip != currentChip) {
                         clearSelectedChip();
                         mSelectedChip = currentChip.selectChip();
+                        setCursorVisible(false);
                     } else if (mSelectedChip == null) {
                         mSelectedChip = currentChip.selectChip();
+                        setCursorVisible(false);
                     } else {
                         mSelectedChip.onClick(this, offset, x, y);
                     }
@@ -575,9 +578,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             Spannable spannable = getSpannable();
             int spanStart = getChipStart();
             int spanEnd = getChipEnd();
-            if (this == mSelectedChip) {
-                mSelectedChip = null;
-            }
             Editable text = getText();
             int toDelete = spanEnd;
             // Always remove trailing spaces when removing a chip.
@@ -589,6 +589,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mRecipients.remove(this);
             spannable.setSpan(null, spanStart, spanEnd, 0);
             text.delete(spanStart, toDelete);
+            if (this == mSelectedChip) {
+                mSelectedChip = null;
+                clearSelectedChip();
+            }
         }
 
         public int getChipStart() {
