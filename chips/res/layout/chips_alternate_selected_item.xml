@@ -58,4 +58,11 @@
                   android:singleLine="true"
                   android:ellipsize="end" />
     </LinearLayout>
+    <ImageView
+        android:id="@android:id/icon"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="4dip"
+        android:src="@drawable/chip_checkmark"
+        android:gravity="right" />
 </LinearLayout>
