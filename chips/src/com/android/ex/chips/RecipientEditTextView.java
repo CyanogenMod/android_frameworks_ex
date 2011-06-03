@@ -132,9 +132,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     @Override
     public void onFocusChanged(boolean hasFocus, int direction, Rect previous) {
         if (!hasFocus) {
-            clearSelectedChip();
-            // TODO: commit the default when focus changes. Need an API change
-            // to be able to still get the popup suggestions when focus is lost.
+            if (mSelectedChip != null) {
+                clearSelectedChip();
+            } else {
+                commitDefault();
+            }
         } else {
             setCursorVisible(true);
             Editable text = getText();
@@ -341,7 +343,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     // If the popup is showing, the default is the first item in the popup
     // suggestions list. Otherwise, it is whatever the user had typed in.
     private boolean commitDefault() {
-        if (isPopupShowing()) {
+        if (enoughToFilter() && getAdapter().getCount() > 0) {
             // choose the first entry.
             submitItemAtPosition(0);
             dismissDropDown();
