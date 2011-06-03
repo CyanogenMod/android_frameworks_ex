@@ -18,9 +18,12 @@ package com.android.ex.chips;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.text.Editable;
@@ -82,6 +85,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private int mAlternatesSelectedLayout;
 
+    private Bitmap mDefaultContactPhoto;
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mRecipients = new ArrayList<RecipientChip>();
@@ -138,13 +143,96 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         super.onFocusChanged(hasFocus, direction, previous);
     }
 
-    public RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
-        throws NullPointerException {
-        if (mChipBackground == null) {
-            throw new NullPointerException
-                ("Unable to render any chips as setChipDimensions was not called.");
+    private CharSequence ellipsizeText(CharSequence text, TextPaint paint, float maxWidth) {
+        return TextUtils.ellipsize(text, paint, maxWidth, TextUtils.TruncateAt.END);
+    }
+
+    private Bitmap createSelectedChip(RecipientEntry contact, TextPaint paint, Layout layout,
+            int height, int line) {
+        // Ellipsize the text so that it takes AT MOST the entire width of the
+        // autocomplete text entry area. Make sure to leave space for padding
+        // on the sides.
+        int deleteWidth = height;
+        CharSequence ellipsizedText = ellipsizeText(contact.getDisplayName(), paint,
+                calculateAvailableWidth(true) - deleteWidth);
+
+        // Make sure there is a minimum chip width so the user can ALWAYS
+        // tap a chip without difficulty.
+        int width = Math.max(deleteWidth * 2, (int) Math.floor(paint.measureText(ellipsizedText, 0,
+                ellipsizedText.length()))
+                + (mChipPadding * 2) + deleteWidth);
+
+        // Create the background of the chip.
+        Bitmap tmpBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(tmpBitmap);
+        if (mChipBackgroundPressed != null) {
+            mChipBackgroundPressed.setBounds(0, 0, width, height);
+            mChipBackgroundPressed.draw(canvas);
+
+            // Align the display text with where the user enters text.
+            canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
+                    - layout.getLineDescent(line), paint);
+            // Make the delete a square.
+            mChipDelete.setBounds(width - deleteWidth, 0, width, height);
+            mChipDelete.draw(canvas);
+        } else {
+            Log.w(TAG, "Unable to draw a background for the chips as it was never set");
         }
-        String text = contact.getDisplayName();
+        return tmpBitmap;
+    }
+
+    private Bitmap createUnselectedChip(RecipientEntry contact, TextPaint paint, Layout layout,
+            int height, int line) {
+        // Ellipsize the text so that it takes AT MOST the entire width of the
+        // autocomplete text entry area. Make sure to leave space for padding
+        // on the sides.
+        int iconWidth = height;
+        CharSequence ellipsizedText = ellipsizeText(contact.getDisplayName(), paint,
+                calculateAvailableWidth(false) - iconWidth);
+        // Make sure there is a minimum chip width so the user can ALWAYS
+        // tap a chip without difficulty.
+        int width = Math.max(iconWidth * 2, (int) Math.floor(paint.measureText(ellipsizedText, 0,
+                ellipsizedText.length()))
+                + (mChipPadding * 2) + iconWidth);
+
+        // Create the background of the chip.
+        Bitmap tmpBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(tmpBitmap);
+        if (mChipBackground != null) {
+            mChipBackground.setBounds(0, 0, width, height);
+            mChipBackground.draw(canvas);
+
+            byte[] photoBytes = contact.getPhotoBytes();
+            Bitmap photo;
+            if (photoBytes != null) {
+                // TODO: cache this in the recipient entry?
+                photo = BitmapFactory.decodeByteArray(photoBytes, 0, photoBytes.length);
+            } else {
+                // TODO: can the scaled down default photo be cached?
+                photo = mDefaultContactPhoto;
+            }
+            // Draw the photo on the left side.
+            Matrix matrix = new Matrix();
+            RectF src = new RectF(0, 0, photo.getWidth(), photo.getHeight());
+            RectF dst = new RectF(0, 0, iconWidth, height);
+            matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
+            canvas.drawBitmap(photo, matrix, paint);
+
+            // Align the display text with where the user enters text.
+            canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding + iconWidth,
+                    height - layout.getLineDescent(line), paint);
+        } else {
+            Log.w(TAG, "Unable to draw a background for the chips as it was never set");
+        }
+        return tmpBitmap;
+    }
+
+    public RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
+            throws NullPointerException {
+        if (mChipBackground == null) {
+            throw new NullPointerException(
+                    "Unable to render any chips as setChipDimensions was not called.");
+        }
         Layout layout = getLayout();
         int line = layout.getLineForOffset(offset);
         int lineTop = layout.getLineTop(line);
@@ -152,54 +240,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         TextPaint paint = getPaint();
         float defaultSize = paint.getTextSize();
 
-        // Reduce the size of the text slightly so that we can get the "look" of
-        // padding.
-        paint.setTextSize((float) (paint.getTextSize() * .9));
-
-        // Ellipsize the text so that it takes AT MOST the entire width of the
-        // autocomplete text entry area. Make sure to leave space for padding
-        // on the sides.
-        CharSequence ellipsizedText = TextUtils.ellipsize(text, paint,
-                calculateAvailableWidth(pressed), TextUtils.TruncateAt.END);
-
-        int height = getLineHeight();
-        // Make sure there is a minimum chip width so the user can ALWAYS
-        // tap a chip without difficulty.
-        int width = Math.max(mChipDeleteWidth * 2, (int) Math.floor(paint.measureText(
-                ellipsizedText, 0, ellipsizedText.length()))
-                + (mChipPadding * 2));
-
-        // Create the background of the chip.
-        Bitmap tmpBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(tmpBitmap);
+        Bitmap tmpBitmap;
         if (pressed) {
-            if (mChipBackgroundPressed != null) {
-                mChipBackgroundPressed.setBounds(0, 0, width, height);
-                mChipBackgroundPressed.draw(canvas);
+            tmpBitmap = createSelectedChip(contact, paint, layout, getLineHeight(), line);
 
-                // Align the display text with where the user enters text.
-                canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
-                        - layout.getLineDescent(line), paint);
-                mChipDelete.setBounds(width - mChipDeleteWidth, 0, width, height);
-                mChipDelete.draw(canvas);
-            } else {
-                Log.w(TAG,
-                        "Unable to draw a background for the chips as it was never set");
-            }
         } else {
-            if (mChipBackground != null) {
-                mChipBackground.setBounds(0, 0, width, height);
-                mChipBackground.draw(canvas);
-
-                // Align the display text with where the user enters text.
-                canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
-                        - layout.getLineDescent(line), paint);
-            } else {
-                Log.w(TAG,
-                        "Unable to draw a background for the chips as it was never set");
-            }
+            tmpBitmap = createUnselectedChip(contact, paint, layout, getLineHeight(), line);
         }
-
 
         // Get the location of the widget so we can properly offset
         // the anchor for each chip.
@@ -207,8 +254,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         getLocationOnScreen(xy);
         // Pass the full text, un-ellipsized, to the chip.
         Drawable result = new BitmapDrawable(getResources(), tmpBitmap);
-        result.setBounds(0, 0, width, height);
-        Rect bounds = new Rect(xy[0] + offset, xy[1] + lineTop, xy[0] + width,
+        result.setBounds(0, 0, tmpBitmap.getWidth(), tmpBitmap.getHeight());
+        Rect bounds = new Rect(xy[0] + offset, xy[1] + lineTop, xy[0] + tmpBitmap.getWidth(),
                 calculateLineBottom(xy[1], line));
         RecipientChip recipientChip = new RecipientChip(result, contact, offset, bounds);
 
@@ -236,30 +283,30 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     // account the width of the EditTextView, any view padding, and padding
     // that will be added to the chip.
     private float calculateAvailableWidth(boolean pressed) {
-        int paddingRight = 0;
-        if (pressed) {
-            paddingRight = mChipDeleteWidth;
-        }
-        return getWidth() - getPaddingLeft() - getPaddingRight() - (mChipPadding * 2)
-                - paddingRight;
+        return getWidth() - getPaddingLeft() - getPaddingRight() - (mChipPadding * 2);
     }
 
     /**
      * Set all chip dimensions and resources. This has to be done from the application
      * as this is a static library.
      * @param chipBackground drawable
+     * @param chipBackgroundPressed
+     * @param chipDelete
+     * @param defaultContact
+     * @param alternatesLayout
+     * @param alternatesSelectedLayout
      * @param padding Padding around the text in a chip
-     * @param offset Offset between the chip and the dropdown of alternates
      */
     public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
-            Drawable chipDelete, int alternatesLayout, int alternatesSelectedLayout, float padding) {
+            Drawable chipDelete, Bitmap defaultContact, int alternatesLayout,
+            int alternatesSelectedLayout, float padding) {
         mChipBackground = chipBackground;
         mChipBackgroundPressed = chipBackgroundPressed;
         mChipDelete = chipDelete;
-        mChipDeleteWidth = chipDelete.getIntrinsicWidth();
         mChipPadding = (int) padding;
         mAlternatesLayout = alternatesLayout;
         mAlternatesSelectedLayout = alternatesSelectedLayout;
+        mDefaultContactPhoto = defaultContact;
     }
 
     @Override
