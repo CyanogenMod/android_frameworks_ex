@@ -85,6 +85,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mRecipients = new ArrayList<RecipientChip>();
+        setSuggestionsEnabled(false);
         setOnItemClickListener(this);
         setCustomSelectionActionModeCallback(this);
         // When the user starts typing, make sure we unselect any selected
@@ -119,9 +120,22 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 // Grab the last chip and set the cursor to after it.
                 setSelection(chips[chips.length - 1].getChipEnd() + 1);
             }
-        } else {
-            super.onSelectionChanged(start, end);
         }
+        super.onSelectionChanged(start, end);
+    }
+
+    @Override
+    public void onFocusChanged(boolean hasFocus, int direction, Rect previous) {
+        if (!hasFocus) {
+            clearSelectedChip();
+            // TODO: commit the default when focus changes. Need an API change
+            // to be able to still get the popup suggestions when focus is lost.
+        } else {
+            setCursorVisible(true);
+            Editable text = getText();
+            setSelection(text != null && text.length() > 0 ? text.length() : 0);
+        }
+        super.onFocusChanged(hasFocus, direction, previous);
     }
 
     public RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
@@ -269,26 +283,36 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_TAB:
                 if (event.hasNoModifiers()) {
-                    if (isPopupShowing()) {
-                        // choose the first entry.
-                        submitItemAtPosition(0);
-                        dismissDropDown();
+                    if (commitDefault()) {
                         return true;
-                    } else {
-                        int end = getSelectionEnd();
-                        int start = mTokenizer.findTokenStart(getText(), end);
-                        String text = getText().toString().substring(start, end);
-                        clearComposingText();
-
-                        Editable editable = getText();
-                        RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
-                        QwertyKeyListener.markAsReplaced(editable, start, end, "");
-                        editable.replace(start, end, createChip(entry));
-                        dismissDropDown();
                     }
                 }
         }
         return super.onKeyUp(keyCode, event);
+    }
+
+    // If the popup is showing, the default is the first item in the popup
+    // suggestions list. Otherwise, it is whatever the user had typed in.
+    private boolean commitDefault() {
+        if (isPopupShowing()) {
+            // choose the first entry.
+            submitItemAtPosition(0);
+            dismissDropDown();
+            return true;
+        } else {
+            int end = getSelectionEnd();
+            int start = mTokenizer.findTokenStart(getText(), end);
+            String text = getText().toString().substring(start, end);
+            clearComposingText();
+            if (text != null && text.length() > 0) {
+                Editable editable = getText();
+                RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
+                QwertyKeyListener.markAsReplaced(editable, start, end, "");
+                editable.replace(start, end, createChip(entry));
+                dismissDropDown();
+            }
+            return false;
+        }
     }
 
     @Override
@@ -341,8 +365,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int action = event.getAction();
+        if (!isFocused()) {
+            // Ignore any chip taps until this view is focused.
+            return super.onTouchEvent(event);
+        }
+
         boolean handled = super.onTouchEvent(event);
+        int action = event.getAction();
         boolean chipWasSelected = false;
 
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
@@ -355,10 +384,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     if (mSelectedChip != null && mSelectedChip != currentChip) {
                         clearSelectedChip();
                         mSelectedChip = currentChip.selectChip();
-                        setCursorVisible(false);
                     } else if (mSelectedChip == null) {
                         mSelectedChip = currentChip.selectChip();
-                        setCursorVisible(false);
                     } else {
                         mSelectedChip.onClick(this, offset, x, y);
                     }
@@ -634,12 +661,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 mSelected = true;
                 // Make sure we call edit on the new chip span.
                 newChipSpan.showAlternates();
+                setCursorVisible(false);
             } else {
                 CharSequence text = getValue();
                 removeChip();
                 Editable editable = getText();
-                setSelection(editable.length());
                 editable.append(text);
+                setCursorVisible(true);
+                setSelection(editable.length());
             }
             return newChipSpan;
         }
