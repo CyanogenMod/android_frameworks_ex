@@ -13,9 +13,7 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
-<resources>
-    <add-resource type="dimen" name="chip_padding"></add-resource>
-    <add-resource type="color" name="default_chip_background"></add-resource>
-    <add-resource type="string" name="more_string"></add-resource>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- Text displayed when the recipientedittextview is not focused. Displays the total number of recipients since the field is shrunk to just display a portion -->
+    <string name="more_string">\u002B <xliff:g id="count">%1$s</xliff:g> more</string>
 </resources>
