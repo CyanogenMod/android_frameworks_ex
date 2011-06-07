@@ -125,10 +125,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             }
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                if (mSelectedChip != null) {
-                    clearSelectedChip();
-                    setSelection(getText().length());
-                }
+                // TODO: find a better way to unfocus a chip when a user starts typing.
             }
         });
     }
@@ -139,10 +136,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         // If so, move the cursor back after the chips again.
         if (mRecipients != null && mRecipients.size() > 0) {
             Spannable span = getSpannable();
-            RecipientChip[] chips = span.getSpans(start, getText().length(), RecipientChip.class);
+            int textLength = getText().length();
+            RecipientChip[] chips = span.getSpans(start, textLength, RecipientChip.class);
             if (chips != null && chips.length > 0) {
                 // Grab the last chip and set the cursor to after it.
-                setSelection(chips[chips.length - 1].getChipEnd() + 1);
+                setSelection(Math.min(chips[chips.length - 1].getChipEnd() + 1, textLength));
             }
         }
         super.onSelectionChanged(start, end);
