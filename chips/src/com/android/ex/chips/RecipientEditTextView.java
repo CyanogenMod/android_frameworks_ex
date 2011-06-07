@@ -226,21 +226,27 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mChipBackground.setBounds(0, 0, width, height);
             mChipBackground.draw(canvas);
 
-            byte[] photoBytes = contact.getPhotoBytes();
-            Bitmap photo;
-            if (photoBytes != null) {
-                // TODO: cache this in the recipient entry?
-                photo = BitmapFactory.decodeByteArray(photoBytes, 0, photoBytes.length);
+            // Don't draw photos for recipients that have been typed in.
+            if (contact.getContactId() != -1) {
+                byte[] photoBytes = contact.getPhotoBytes();
+                Bitmap photo;
+                if (photoBytes != null) {
+                    // TODO: cache this in the recipient entry?
+                    photo = BitmapFactory.decodeByteArray(photoBytes, 0, photoBytes.length);
+                } else {
+                    // TODO: can the scaled down default photo be cached?
+                    photo = mDefaultContactPhoto;
+                }
+                // Draw the photo on the left side.
+                Matrix matrix = new Matrix();
+                RectF src = new RectF(0, 0, photo.getWidth(), photo.getHeight());
+                RectF dst = new RectF(0, 0, iconWidth, height);
+                matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
+                canvas.drawBitmap(photo, matrix, paint);
             } else {
-                // TODO: can the scaled down default photo be cached?
-                photo = mDefaultContactPhoto;
+                // Don't leave any space for the icon. It isn't being drawn.
+                iconWidth = 0;
             }
-            // Draw the photo on the left side.
-            Matrix matrix = new Matrix();
-            RectF src = new RectF(0, 0, photo.getWidth(), photo.getHeight());
-            RectF dst = new RectF(0, 0, iconWidth, height);
-            matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
-            canvas.drawBitmap(photo, matrix, paint);
 
             // Align the display text with where the user enters text.
             canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding + iconWidth,
@@ -575,6 +581,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private void submitItemAtPosition(int position) {
         RecipientEntry entry = (RecipientEntry) getAdapter().getItem(position);
+        // If the display name and the address are the same, then make this
+        // a fake recipient that is editable.
+        if (TextUtils.equals(entry.getDisplayName(), entry.getDestination())) {
+            entry = RecipientEntry.constructFakeEntry(entry.getDestination());
+        }
         clearComposingText();
 
         int end = getSelectionEnd();
@@ -659,10 +670,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         int totalReplaceEnd = 0;
         for (int i = numRecipients - overage; i < chips.length; i++) {
             mRemovedSpans.add(chips[i]);
+            if (i == numRecipients - overage) {
+                totalReplaceStart = chips[i].getChipStart();
+            }
+            if (i == chips.length - 1) {
+                totalReplaceEnd = chips[i].getChipEnd();
+            }
+            chips[i].setPreviousChipStart(chips[i].getChipStart());
+            chips[i].setPreviousChipEnd(chips[i].getChipEnd());
             spannable.removeSpan(chips[i]);
         }
-        totalReplaceEnd = chips[chips.length - 1].getChipEnd();
-        totalReplaceStart = chips[numRecipients - overage].getChipStart();
+
         for (int i = chips.length - 1; i >= numRecipients - overage; i--) {
             mRecipients.remove(i);
         }
@@ -686,8 +704,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 Editable editable = getText();
                 SpannableString associatedText;
                 for (RecipientChip chip : mRemovedSpans) {
-                    int chipStart = chip.getChipStart();
-                    int chipEnd = chip.getChipEnd();
+                    int chipStart = chip.getPreviousChipStart();
+                    int chipEnd = chip.getPreviousChipEnd();
                     associatedText = new SpannableString(editable.subSequence(chipStart, chipEnd));
                     associatedText.setSpan(chip, 0, associatedText.length(),
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -753,6 +771,22 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mEnd = offset + mValue.length() + 1;
         }
 
+        public int getPreviousChipStart() {
+            return mStart;
+        }
+
+        public int getPreviousChipEnd() {
+            return mEnd;
+        }
+
+        public void setPreviousChipStart(int start) {
+            mStart = start;
+        }
+
+        public void setPreviousChipEnd(int end) {
+            mEnd = end;
+        }
+
         public void unselectChip() {
             if (getChipStart() == -1 || getChipEnd() == -1) {
                 mSelectedChip = null;
@@ -790,39 +824,49 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             Spannable spannable = getSpannable();
             int spanStart = getChipStart();
             int spanEnd = getChipEnd();
-            QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
-            spannable.removeSpan(this);
-            mRecipients.remove(this);
-            spannable.setSpan(newChip, spanStart, spanEnd, 0);
-        }
-
-        public void removeChip() {
-            Spannable spannable = getSpannable();
-            int spanStart = getChipStart();
-            int spanEnd = getChipEnd();
-            Editable text = getText();
-            int toDelete = spanEnd;
-            // Always remove trailing spaces when removing a chip.
-            while (toDelete >= 0 && toDelete < text.length() - 1 && text.charAt(toDelete) == ' ') {
-                toDelete++;
+            boolean wasSelected = this == mSelectedChip;
+            if (wasSelected) {
+                mSelectedChip = null;
             }
             QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
             spannable.removeSpan(this);
             mRecipients.remove(this);
-            spannable.setSpan(null, spanStart, spanEnd, 0);
-            text.delete(spanStart, toDelete);
-            if (this == mSelectedChip) {
+            spannable.setSpan(newChip, spanStart, spanEnd, 0);
+            if (wasSelected) {
+                clearSelectedChip();
+                mSelectedChip = newChip;
+            }
+        }
+
+        public void removeChip() {
+            Spannable spannable = getSpannable();
+            int spanStart = spannable.getSpanStart(this);
+            int spanEnd = spannable.getSpanEnd(this);
+            Editable text = getText();
+            int toDelete = spanEnd;
+            boolean wasSelected = this == mSelectedChip;
+            // Clear that there is a selected chip before updating any text.
+            if (wasSelected) {
                 mSelectedChip = null;
+            }
+            // Always remove trailing spaces when removing a chip.
+            while (toDelete >= 0 && toDelete < text.length() - 1 && text.charAt(toDelete) == ' ') {
+                toDelete++;
+            }
+            spannable.removeSpan(this);
+            mRecipients.remove(this);
+            text.delete(spanStart, toDelete);
+            if (wasSelected) {
                 clearSelectedChip();
             }
         }
 
         public int getChipStart() {
-            return mStart;
+            return getSpannable().getSpanStart(this);
         }
 
         public int getChipEnd() {
-            return mEnd;
+            return getSpannable().getSpanEnd(this);
         }
 
         public void replaceChip(RecipientEntry entry) {
