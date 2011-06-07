@@ -16,6 +16,8 @@
 
 <resources>
     <add-resource type="dimen" name="chip_padding"></add-resource>
+    <add-resource type="dimen" name="chip_height"></add-resource>
+    <add-resource type="dimen" name="chip_text_size"></add-resource>
     <add-resource type="color" name="default_chip_background"></add-resource>
     <add-resource type="string" name="more_string"></add-resource>
 </resources>

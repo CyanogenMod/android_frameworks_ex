@@ -15,5 +15,7 @@
 -->
 
 <resources>
-    <dimen name="chip_padding">4dip</dimen>
+    <dimen name="chip_padding">8dip</dimen>
+    <dimen name="chip_height">34dip</dimen>
+    <dimen name="chip_text_size">14sp</dimen>
 </resources>
