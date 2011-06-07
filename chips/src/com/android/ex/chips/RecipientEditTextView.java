@@ -349,6 +349,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     }
 
     @Override
+    public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            clearSelectedChip();
+        }
+        return super.onKeyPreIme(keyCode, event);
+    }
+
+    @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_ENTER:
@@ -359,6 +367,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                         return true;
                     }
                 }
+                break;
         }
         return super.onKeyUp(keyCode, event);
     }
