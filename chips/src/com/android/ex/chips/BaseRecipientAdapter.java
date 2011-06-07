@@ -726,6 +726,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 displayNameView.setText(displayName);
                 if (!TextUtils.isEmpty(emailAddress)) {
                     emailAddressView.setText(emailAddress);
+                } else {
+                    emailAddressView.setText(null);
                 }
                 if (entry.isFirstLevel()) {
                     displayNameView.setVisibility(View.VISIBLE);
