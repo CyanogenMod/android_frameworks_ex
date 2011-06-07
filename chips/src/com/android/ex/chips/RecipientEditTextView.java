@@ -235,9 +235,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             // Don't draw photos for recipients that have been typed in.
             if (contact.getContactId() != -1) {
                 byte[] photoBytes = contact.getPhotoBytes();
+                // There may not be a photo yet if anything but the first contact address
+                // was selected.
+                if (photoBytes == null && contact.getPhotoThumbnailUri() != null) {
+                    // TODO: cache this in the recipient entry?
+                    ((BaseRecipientAdapter) getAdapter()).fetchPhoto(contact, contact
+                            .getPhotoThumbnailUri());
+                    photoBytes = contact.getPhotoBytes();
+                }
+
                 Bitmap photo;
                 if (photoBytes != null) {
-                    // TODO: cache this in the recipient entry?
                     photo = BitmapFactory.decodeByteArray(photoBytes, 0, photoBytes.length);
                 } else {
                     // TODO: can the scaled down default photo be cached?
@@ -256,7 +264,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
             // Align the display text with where the user enters text.
             canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding + iconWidth,
-                    height - Math.abs(height - mChipFontSize)/2, paint);
+                    height - Math.abs(height - mChipFontSize) / 2, paint);
         } else {
             Log.w(TAG, "Unable to draw a background for the chips as it was never set");
         }
@@ -413,8 +421,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             } else {
                 String text = editable.toString().substring(start, end);
                 clearComposingText();
-                if (text != null && text.length() > 0
-                        && (text.length() != 1 && text.charAt(0) != ' ')) {
+                if (text != null && text.length() > 0 && !text.equals(" ")) {
                     RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
                     QwertyKeyListener.markAsReplaced(editable, start, end, "");
                     editable.replace(start, end, createChip(entry));
@@ -841,7 +848,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             spannable.setSpan(newChip, spanStart, spanEnd, 0);
             if (wasSelected) {
                 clearSelectedChip();
-                mSelectedChip = newChip;
             }
         }
 

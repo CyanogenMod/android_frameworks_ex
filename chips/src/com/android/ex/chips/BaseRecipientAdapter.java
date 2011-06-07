@@ -520,7 +520,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 // We already have a section for the person.
                 final List<RecipientEntry> entryList = mEntryMap.get(contactId);
                 entryList.add(RecipientEntry.constructSecondLevelEntry(
-                        displayName, destination, contactId, dataId));
+                        displayName, destination, contactId, dataId, thumbnailUriString));
             } else {
                 final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
                 entryList.add(RecipientEntry.constructTopLevelEntry(
@@ -619,6 +619,27 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 }
             }
         });
+    }
+
+    protected void fetchPhoto(final RecipientEntry entry, final Uri photoThumbnailUri) {
+        byte[] photoBytes = mPhotoCacheMap.get(photoThumbnailUri);
+        if (photoBytes != null) {
+            entry.setPhotoBytes(photoBytes);
+            return;
+        }
+        final Cursor photoCursor = mContentResolver.query(photoThumbnailUri, PhotoQuery.PROJECTION,
+                null, null, null);
+        if (photoCursor != null) {
+            try {
+                if (photoCursor.moveToFirst()) {
+                    photoBytes = photoCursor.getBlob(PhotoQuery.PHOTO);
+                    entry.setPhotoBytes(photoBytes);
+                    mPhotoCacheMap.put(photoThumbnailUri, photoBytes);
+                }
+            } finally {
+                photoCursor.close();
+            }
+        }
     }
 
     private Cursor doQuery(CharSequence constraint, int limit, Long directoryId) {

@@ -71,25 +71,11 @@ public class RecipientEntry {
         mIsDivider = true;
     }
 
-
-    private RecipientEntry(
-            int entryType, String displayName, String destination, long contactId, long dataId) {
-        mEntryType = entryType;
-        mIsFirstLevel = false;
-        mDisplayName = displayName;
-        mDestination = destination;
-        mContactId = contactId;
-        mDataId = dataId;
-        mPhotoThumbnailUri = null;
-        mPhotoBytes = null;
-        mIsDivider = false;
-    }
-
     private RecipientEntry(
             int entryType, String displayName, String destination, long contactId, long dataId,
-            Uri photoThumbnailUri) {
+            Uri photoThumbnailUri, boolean isFirstLevel) {
         mEntryType = entryType;
-        mIsFirstLevel = true;
+        mIsFirstLevel = isFirstLevel;
         mDisplayName = displayName;
         mDestination = destination;
         mContactId = contactId;
@@ -105,14 +91,14 @@ public class RecipientEntry {
      * have a contact id or photo.
      */
     public static RecipientEntry constructFakeEntry(String address) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, address, address, -1, -1, null);
+        return new RecipientEntry(ENTRY_TYPE_PERSON, address, address, -1, -1, null, true);
     }
 
     public static RecipientEntry constructTopLevelEntry(
             String displayName, String destination, long contactId, long dataId,
             Uri photoThumbnailUri) {
-        return new RecipientEntry(
-                ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId, photoThumbnailUri);
+        return new RecipientEntry(ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId,
+                photoThumbnailUri, true);
     }
 
     public static RecipientEntry constructTopLevelEntry(
@@ -120,13 +106,15 @@ public class RecipientEntry {
             String thumbnailUriAsString) {
         return new RecipientEntry(
                 ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId,
-                (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null));
+                (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), true);
     }
 
     public static RecipientEntry constructSecondLevelEntry(
-            String displayName, String destination, long contactId, long dataId) {
+            String displayName, String destination, long contactId, long dataId,
+            String thumbnailUriAsString) {
         return new RecipientEntry(
-                ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId);
+                ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId,
+                (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), false);
     }
 
     public int getEntryType() {
