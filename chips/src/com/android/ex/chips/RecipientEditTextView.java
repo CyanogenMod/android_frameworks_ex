@@ -103,12 +103,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private float mChipFontSize;
 
-    private ListPopupWindow mAlternatesPopup;
-
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         mRecipients = new ArrayList<RecipientChip>();
-        mAlternatesPopup = new ListPopupWindow(context);
         setSuggestionsEnabled(false);
         setOnItemClickListener(this);
         setCustomSelectionActionModeCallback(this);
@@ -424,7 +421,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 if (text != null && text.length() > 0 && !text.equals(" ")) {
                     RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
                     QwertyKeyListener.markAsReplaced(editable, start, end, "");
-                    editable.replace(start, end, createChip(entry));
+                    editable.replace(start, end, createChip(entry, false));
                     dismissDropDown();
                 }
                 return false;
@@ -566,21 +563,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         return null;
     }
 
-    private CharSequence createChip(RecipientEntry entry) {
+    private CharSequence createChip(RecipientEntry entry, boolean pressed) {
         CharSequence displayText = mTokenizer.terminateToken(entry.getDestination());
         // Always leave a blank space at the end of a chip.
-        int textLength = displayText.length();
-        if (displayText.charAt(textLength - 1) == ' ') {
-            textLength--;
-        } else {
-            displayText = displayText.toString().concat(" ");
-            textLength = displayText.length();
-        }
+        int textLength = displayText.length()-1;
         SpannableString chipText = new SpannableString(displayText);
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(getText(), end);
         try {
-            chipText.setSpan(constructChipSpan(entry, start, false), 0, textLength,
+            chipText.setSpan(constructChipSpan(entry, start, pressed), 0, textLength,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } catch (NullPointerException e) {
             Log.e(TAG, e.getMessage(), e);
@@ -609,7 +600,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         Editable editable = getText();
         QwertyKeyListener.markAsReplaced(editable, start, end, "");
-        editable.replace(start, end, createChip(entry));
+        editable.replace(start, end, createChip(entry, false));
     }
 
     /** Returns a collection of contact Id for each chip inside this View. */
@@ -763,6 +754,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         private int mStart = -1;
         private int mEnd = -1;
 
+        private ListPopupWindow mAlternatesPopup;
         public RecipientChip(Drawable drawable, RecipientEntry entry, int offset, Rect bounds) {
             super(drawable);
             mDisplay = entry.getDisplayName();
@@ -802,23 +794,55 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         public void unselectChip() {
-            if (getChipStart() == -1 || getChipEnd() == -1) {
-                mSelectedChip = null;
-                return;
+            int start = getChipStart();
+            int end = getChipEnd();
+            getSpannable().removeSpan(this);
+            mRecipients.remove(this);
+            Editable editable = getText();
+            QwertyKeyListener.markAsReplaced(editable, start, end, "");
+            editable.replace(start, end, createChip(mEntry, false));
+            clearSelectedChip();
+            mSelectedChip = null;
+            setCursorVisible(true);
+            setSelection(editable.length());
+        }
+
+        public RecipientChip selectChip() {
+            if (mEntry.getContactId() != -1) {
+                int start = getChipStart();
+                int end = getChipEnd();
+                getSpannable().removeSpan(this);
+                mRecipients.remove(this);
+                RecipientChip newChip;
+                CharSequence displayText = mTokenizer.terminateToken(mEntry.getDestination());
+                // Always leave a blank space at the end of a chip.
+                int textLength = displayText.length()-1;
+                SpannableString chipText = new SpannableString(displayText);
+                try {
+                    newChip = constructChipSpan(mEntry, start, true);
+                    chipText.setSpan(newChip, 0, textLength,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                } catch (NullPointerException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    return null;
+                }
+                Editable editable = getText();
+                QwertyKeyListener.markAsReplaced(editable, start, end, "");
+                editable.replace(start, end, chipText);
+                setCursorVisible(false);
+                newChip.setSelected(true);
+                newChip.showAlternates();
+                setCursorVisible(false);
+                return newChip;
+            } else {
+                CharSequence text = getValue();
+                Editable editable = getText();
+                removeChip();
+                editable.append(text);
+                setCursorVisible(true);
+                setSelection(editable.length());
+                return null;
             }
-            clearComposingText();
-            RecipientChip newChipSpan = null;
-            try {
-                newChipSpan = constructChipSpan(mEntry, mOffset, false);
-            } catch (NullPointerException e) {
-                Log.e(TAG, e.getMessage(), e);
-                return;
-            }
-            replace(newChipSpan);
-            if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
-                mAlternatesPopup.dismiss();
-            }
-            return;
         }
 
         public void onKeyDown(int keyCode, KeyEvent event) {
@@ -832,23 +856,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         public boolean isCompletedContact() {
             return mContactId != -1;
-        }
-
-        private void replace(RecipientChip newChip) {
-            Spannable spannable = getSpannable();
-            int spanStart = getChipStart();
-            int spanEnd = getChipEnd();
-            boolean wasSelected = this == mSelectedChip;
-            if (wasSelected) {
-                mSelectedChip = null;
-            }
-            QwertyKeyListener.markAsReplaced(getText(), spanStart, spanEnd, "");
-            spannable.removeSpan(this);
-            mRecipients.remove(this);
-            spannable.setSpan(newChip, spanStart, spanEnd, 0);
-            if (wasSelected) {
-                clearSelectedChip();
-            }
         }
 
         public void removeChip() {
@@ -883,53 +890,30 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         public void replaceChip(RecipientEntry entry) {
-            clearComposingText();
-
-            RecipientChip newChipSpan = null;
-            try {
-                newChipSpan = constructChipSpan(entry, mOffset, false);
-            } catch (NullPointerException e) {
-                Log.e(TAG, e.getMessage(), e);
-                return;
+            boolean wasSelected = this == mSelectedChip;
+            if (wasSelected) {
+                mSelectedChip = null;
             }
-            replace(newChipSpan);
-            if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
-                mAlternatesPopup.dismiss();
-            }
-        }
-
-        public RecipientChip selectChip() {
-            clearComposingText();
-            RecipientChip newChipSpan = null;
-            if (isCompletedContact()) {
-                try {
-                    newChipSpan = constructChipSpan(mEntry, mOffset, true);
-                    newChipSpan.setSelected(true);
-                } catch (NullPointerException e) {
-                    Log.e(TAG, e.getMessage(), e);
-                    return newChipSpan;
-                }
-                replace(newChipSpan);
-                if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
-                    mAlternatesPopup.dismiss();
-                }
-                mSelected = true;
-                // Make sure we call edit on the new chip span.
-                newChipSpan.showAlternates();
-                setCursorVisible(false);
+            int start = getSpannable().getSpanStart(this);
+            int end = getSpannable().getSpanEnd(this);
+            getSpannable().removeSpan(this);
+            mRecipients.remove(this);
+            Editable editable = getText();
+            CharSequence chipText = createChip(entry, false);
+            if (start == -1 || end == -1) {
+                Log.e(TAG, "The chip to replace does not exist but should.");
+                editable.insert(0, chipText);
             } else {
-                CharSequence text = getValue();
-                removeChip();
-                Editable editable = getText();
-                editable.append(text);
-                setCursorVisible(true);
-                setSelection(editable.length());
+                editable.replace(start, end, chipText);
             }
-            return newChipSpan;
+            setCursorVisible(true);
+            if (wasSelected) {
+                clearSelectedChip();
+            }
         }
 
         private void showAlternates() {
-          //  mAlternatesPopup = new ListPopupWindow(getContext());
+            mAlternatesPopup = new ListPopupWindow(getContext());
 
             if (!mAlternatesPopup.isShowing()) {
                 mAlternatesAdapter = new RecipientAlternatesAdapter(
@@ -1006,4 +990,3 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
     }
 }
-
