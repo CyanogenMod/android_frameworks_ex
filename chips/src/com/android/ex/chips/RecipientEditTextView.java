@@ -603,9 +603,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     /** Returns a collection of contact Id for each chip inside this View. */
     /* package */ Collection<Long> getContactIds() {
         final Set<Long> result = new HashSet<Long>();
-        RecipientChip [] chips = getRecipients();
-        for (RecipientChip chip : chips) {
-            result.add(chip.getContactId());
+        RecipientChip[] chips = getRecipients();
+        if (chips != null) {
+            for (RecipientChip chip : chips) {
+                result.add(chip.getContactId());
+            }
         }
         return result;
     }
@@ -618,8 +620,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     /* package */ Collection<Long> getDataIds() {
         final Set<Long> result = new HashSet<Long>();
         RecipientChip [] chips = getRecipients();
-        for (RecipientChip chip : chips) {
-            result.add(chip.getDataId());
+        if (chips != null) {
+            for (RecipientChip chip : chips) {
+                result.add(chip.getDataId());
+            }
         }
         return result;
     }
