@@ -106,6 +106,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private Validator mValidator;
 
+    private Drawable mInvalidChipBackground;
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setSuggestionsEnabled(false);
@@ -210,6 +212,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         return tmpBitmap;
     }
 
+
+    /**
+     * Get the background drawable for a RecipientChip.
+     */
+    public Drawable getChipBackground(RecipientEntry contact) {
+        return mValidator != null && mValidator.isValid(contact.getDestination()) ?
+                mChipBackground : mInvalidChipBackground;
+    }
+
     private Bitmap createUnselectedChip(RecipientEntry contact, TextPaint paint, Layout layout) {
         // Ellipsize the text so that it takes AT MOST the entire width of the
         // autocomplete text entry area. Make sure to leave space for padding
@@ -227,9 +238,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         // Create the background of the chip.
         Bitmap tmpBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(tmpBitmap);
-        if (mChipBackground != null) {
-            mChipBackground.setBounds(0, 0, width, height);
-            mChipBackground.draw(canvas);
+        Drawable background = getChipBackground(contact);
+        if (background != null) {
+            background.setBounds(0, 0, width, height);
+            background.draw(canvas);
 
             // Don't draw photos for recipients that have been typed in.
             if (contact.getContactId() != INVALID_CONTACT) {
@@ -279,7 +291,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         Layout layout = getLayout();
         int line = layout.getLineForOffset(offset);
         int lineTop = layout.getLineTop(line);
-        boolean isValid = mValidator != null && mValidator.isValid(contact.getDestination());
         TextPaint paint = getPaint();
         float defaultSize = paint.getTextSize();
 
@@ -288,11 +299,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             tmpBitmap = createSelectedChip(contact, paint, layout);
 
         } else {
-            if (!isValid) {
-                
-            } else {
-                tmpBitmap = createUnselectedChip(contact, paint, layout);
-            }
+            tmpBitmap = createUnselectedChip(contact, paint, layout);
         }
 
         // Get the location of the widget so we can properly offset
@@ -305,7 +312,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         Rect bounds = new Rect(xy[0] + offset, xy[1] + lineTop, xy[0] + tmpBitmap.getWidth(),
                 calculateLineBottom(xy[1], line, tmpBitmap.getHeight()));
         RecipientChip recipientChip = new RecipientChip(result, contact, offset, bounds);
-        recipientChip.setIsValid(isValid);
+        recipientChip
+                .setIsValid(mValidator != null && mValidator.isValid(contact.getDestination()));
         // Return text to the original size.
         paint.setTextSize(defaultSize);
 
@@ -313,9 +321,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     }
 
     /**
-     * The bottom of the line the chip will be located on is calculated by 4
-     * factors:
-     * 1) which line the chip appears on 
+     * Calculate the bottom of the line the chip will be located on using:
+     * 1) which line the chip appears on
      * 2) the height of a line in the autocomplete view vs the heigt of a chip
      * 3) padding built into the edit text view will move the bottom position
      * 4) the position of the autocomplete view on the screen, taking into account
@@ -349,6 +356,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      * @param alternatesLayout
      * @param alternatesSelectedLayout
      * @param padding Padding around the text in a chip
+     * @deprecated
      */
     public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
             Drawable chipDelete, Bitmap defaultContact, int moreResource, int alternatesLayout,
@@ -363,6 +371,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         mMoreString = moreResource;
         mChipHeight = chipHeight;
         mChipFontSize = chipFontSize;
+    }
+
+    public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
+            Drawable invalidChip, Drawable chipDelete, Bitmap defaultContact, int moreResource,
+            int alternatesLayout, int alternatesSelectedLayout, float chipHeight, float padding,
+            float chipFontSize) {
+        mChipBackground = chipBackground;
+        mChipBackgroundPressed = chipBackgroundPressed;
+        mChipDelete = chipDelete;
+        mChipPadding = (int) padding;
+        mAlternatesLayout = alternatesLayout;
+        mAlternatesSelectedLayout = alternatesSelectedLayout;
+        mDefaultContactPhoto = defaultContact;
+        mMoreString = moreResource;
+        mChipHeight = chipHeight;
+        mChipFontSize = chipFontSize;
+        mInvalidChipBackground = invalidChip;
     }
 
     @Override
@@ -422,19 +447,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         return super.onKeyUp(keyCode, event);
     }
 
+    /**
+     * Create a chip from the default selection. If the popup is showing, the
+     * default is the first item in the popup suggestions list. Otherwise, it is
+     * whatever the user had typed in. End represents where the the tokenizer
+     * should search for a token to turn into a chip.
+     * @return If a chip was created from a real contact.
+     */
     private boolean commitDefault() {
-        return commitDefault(getSelectionEnd());
-    }
-
-    // If the popup is showing, the default is the first item in the popup
-    // suggestions list. Otherwise, it is whatever the user had typed in.
-    // End represents where the the tokenizer should search for a token
-    // to turn into a chip.
-    private boolean commitDefault(int end) {
         Editable editable = getText();
         boolean enough = enoughToFilter();
         boolean shouldSubmitAtPosition = false;
-
+        int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(editable, end);
         if (enough) {
             RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
@@ -712,8 +736,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     }
 
     /**
-     * The more chip is text that replaces any chips that do not fit in the pre-defined
-     * available space when the RecipientEditTextView loses focus.
+     * Create the more chip. The more chip is text that replaces any chips that
+     * do not fit in the pre-defined available space when the
+     * RecipientEditTextView loses focus.
      */
     private ImageSpan createMoreChip() {
         RecipientChip[] recipients = getRecipients();
@@ -743,7 +768,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 "We have recipients. Tt should not be possible to have zero RecipientChips.");
             return null;
         }
-        mRemovedSpans = new ArrayList<RecipientChip>();
+        mRemovedSpans = new ArrayList<RecipientChip>(chips.length);
         int totalReplaceStart = 0;
         int totalReplaceEnd = 0;
         for (int i = numRecipients - overage; i < chips.length; i++) {
@@ -883,9 +908,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         /**
-         * Unselecting a RecipientChip will render the chip without a delete icon
-         * and with an unfocused background. This is called when the RecipientChip
-         * not longer has focus.
+         * Remove selection from this chip. Unselecting a RecipientChip will render
+         * the chip without a delete icon and with an unfocused background. This
+         * is called when the RecipientChip not longer has focus.
          */
         public void unselectChip() {
             int start = getChipStart();
@@ -905,7 +930,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         /**
-         * If the RecipientChip is just an email address,
+         * Show this chip as selected. If the RecipientChip is just an email address,
          * selecting the chip will take the contents of the chip and place it at
          * the end of the RecipientEditTextView for inline editing. If the
          * RecipientChip is a complete contact, then selecting the chip
@@ -957,8 +982,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         /**
-         * If keyCode equals KeyEvent.KEYCODE_DEL, this deletes the currently
-         * selected chip.
+         * Handle key events for a chip. When the keyCode equals
+         * KeyEvent.KEYCODE_DEL, this deletes the currently selected chip.
          */
         public void onKeyDown(int keyCode, KeyEvent event) {
             if (keyCode == KeyEvent.KEYCODE_DEL) {
@@ -1099,8 +1124,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         /**
-         * When a selected chip receives a click event, see if that event was in
-         * the delete icon. If so, delete it. Otherwise, unselect the chip.
+         * Handle click events for a chip. When a selected chip receives a click
+         * event, see if that event was in the delete icon. If so, delete it.
+         * Otherwise, unselect the chip.
          */
         public void onClick(View widget, int offset, float x, float y) {
             if (mSelected) {
@@ -1121,7 +1147,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         }
 
         /**
-         * Handles clicks to alternate addresses for a selected chip. If the user
+         * Handle clicks to alternate addresses for a selected chip. If the user
          * selects an alternate, the chip is replaced with a new contact with the
          * new contact address information.
          */
