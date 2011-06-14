@@ -175,27 +175,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      */
     @Override
     public void append(CharSequence text, int start, int end) {
-        String textString = (String) text;
-        int seperatorPos = -1;
-        if (!TextUtils.isEmpty(textString)) {
-            seperatorPos = textString.indexOf(",");
-        }
-        if (seperatorPos == 0) {
-            // We take care of adding commas.
-            return;
-        }
         super.append(text, start, end);
         if (!TextUtils.isEmpty(text) && TextUtils.getTrimmedLength(text) > 0) {
-            // Can I parse out the entry here?
-            int displayEnd = mTokenizer.findTokenEnd(text, text.length());
-            int displayStart = mTokenizer.findTokenStart(text, displayEnd);
-            if (seperatorPos > 0) {
-                displayEnd = seperatorPos;
-            }
-            final String displayString = textString.substring(displayStart, displayEnd);
-            if (seperatorPos == -1) {
-                textString = (String) mTokenizer.terminateToken(displayString);
-            }
+            final String displayString = (String) text;
+            int seperatorPos = displayString.indexOf(SEPERATOR);
             if (seperatorPos != 0 && !TextUtils.isEmpty(displayString)
                     && TextUtils.getTrimmedLength(displayString) > 0) {
                 mPendingChipsCount++;
@@ -455,6 +438,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 }
                 startingPos = tokenEnd;
                 String token = (String) editable.toString().substring(tokenStart, tokenEnd);
+                int seperatorPos = token.indexOf(SEPERATOR);
+                if (seperatorPos != -1) {
+                    token = token.substring(0, seperatorPos);
+                }
                 editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
                         .constructFakeEntry(token), false));
                 mPendingChipsCount--;
@@ -715,10 +702,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private CharSequence createChip(RecipientEntry entry, boolean pressed) {
         String displayText = entry.getDestination();
-        if (!TextUtils.isEmpty(displayText)
-                && displayText.charAt(displayText.length() - 1) != SEPERATOR) {
-            displayText = (String) mTokenizer.terminateToken(entry.getDestination());
-        }
+        displayText = (String) mTokenizer.terminateToken(displayText);
         // Always leave a blank space at the end of a chip.
         int textLength = displayText.length() - 1;
         SpannableString chipText = new SpannableString(displayText);
