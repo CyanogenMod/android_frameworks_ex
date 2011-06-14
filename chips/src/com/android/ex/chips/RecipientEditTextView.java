@@ -26,6 +26,8 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Handler;
+import android.os.Message;
 import android.text.Editable;
 import android.text.Layout;
 import android.text.Spannable;
@@ -47,8 +49,8 @@ import android.view.View;
 import android.view.ActionMode.Callback;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.AutoCompleteTextView.Validator;
 import android.widget.ListPopupWindow;
+import android.widget.ListView;
 import android.widget.MultiAutoCompleteTextView;
 
 import java.util.Collection;
@@ -108,6 +110,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private Drawable mInvalidChipBackground;
 
+    private Handler mHandler;
+
+    private static int DISMISS = "dismiss".hashCode();
+
+    private static final long DISMISS_DELAY = 300;
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setSuggestionsEnabled(false);
@@ -129,6 +137,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 // TODO: find a better way to unfocus a chip when a user starts typing.
             }
         });
+        mHandler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                if (msg.what == DISMISS) {
+                    ((ListPopupWindow)msg.obj).dismiss();
+                    return;
+                }
+                super.handleMessage(msg);
+            }
+        };
     }
 
     @Override
@@ -1051,10 +1069,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mAlternatesPopup = new ListPopupWindow(getContext());
 
             if (!mAlternatesPopup.isShowing()) {
-                mAlternatesAdapter = new RecipientAlternatesAdapter(
-                        getContext(),
-                        mEntry.getContactId(), mEntry.getDataId(),
-                        mAlternatesLayout, mAlternatesSelectedLayout);
+                mAlternatesAdapter = new RecipientAlternatesAdapter(getContext(),
+                        mEntry.getContactId(), mEntry.getDataId(), mAlternatesLayout);
                 mAnchorView.setLeft(mLeft);
                 mAnchorView.setRight(mLeft);
                 mAlternatesPopup.setAnchorView(mAnchorView);
@@ -1062,6 +1078,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 mAlternatesPopup.setWidth(getWidth());
                 mAlternatesPopup.setOnItemClickListener(this);
                 mAlternatesPopup.show();
+                ListView listView = mAlternatesPopup.getListView();
+                listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+                listView.setItemChecked(mAlternatesAdapter.getCheckedItemPosition(), true);
             }
         }
 
@@ -1138,7 +1157,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
          */
         @Override
         public void onItemClick(AdapterView<?> adapterView, View view, int position, long rowId) {
-            mAlternatesPopup.dismiss();
+            Message delayed = Message.obtain(mHandler, DISMISS);
+            delayed.obj = mAlternatesPopup;
+            mHandler.sendMessageDelayed(delayed, DISMISS_DELAY);
             clearComposingText();
             replaceChip(mAlternatesAdapter.getRecipientEntry(position));
         }

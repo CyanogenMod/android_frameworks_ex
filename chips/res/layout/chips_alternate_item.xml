@@ -20,7 +20,8 @@
     android:layout_height="wrap_content"
     android:minHeight="30dip"
     android:orientation="horizontal"
-    android:gravity="left|center_vertical">
+    android:gravity="left|center_vertical"
+    android:background="@drawable/list_item_background">
     <FrameLayout
         android:layout_width="50dip"
         android:layout_height="wrap_content">

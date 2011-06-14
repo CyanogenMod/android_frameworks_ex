@@ -33,19 +33,17 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
     private final int mLayoutId;
 
-    private final int mSelectedLayoutId;
-
     private final long mCurrentId;
 
-    public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,
-            int selectedViewId) {
+    private int mCheckedItemPosition = -1;
+
+    public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId) {
         super(context, context.getContentResolver().query(Email.CONTENT_URI, EmailQuery.PROJECTION,
                 Email.CONTACT_ID + " =?", new String[] {
                     String.valueOf(contactId)
                 }, null), 0);
         mLayoutInflater = LayoutInflater.from(context);
         mLayoutId = viewId;
-        mSelectedLayoutId = selectedViewId;
         mCurrentId = currentId;
     }
 
@@ -69,7 +67,10 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         Cursor cursor = getCursor();
         cursor.moveToPosition(position);
         if (convertView == null) {
-            convertView = newView(cursor.getLong(EmailQuery.DATA_ID) == mCurrentId);
+            convertView = newView();
+        }
+        if (cursor.getLong(EmailQuery.DATA_ID) == mCurrentId) {
+            mCheckedItemPosition = position;
         }
         bindView(convertView, convertView.getContext(), cursor);
         return convertView;
@@ -101,11 +102,17 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
-        return newView(false);
+        return newView();
     }
 
-    private View newView(boolean isSelected) {
-        return isSelected ? mLayoutInflater.inflate(mSelectedLayoutId, null) : mLayoutInflater
-                .inflate(mLayoutId, null);
+    private View newView() {
+        return mLayoutInflater.inflate(mLayoutId, null);
+    }
+
+    /**
+     * Get the position of the item that should be checked.
+     */
+    public int getCheckedItemPosition() {
+        return mCheckedItemPosition;
     }
 }
