@@ -420,10 +420,27 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      * @param alternatesLayout
      * @param alternatesSelectedLayout
      * @param padding Padding around the text in a chip
+     * @deprecated
      */
     public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
             Drawable invalidChip, Drawable chipDelete, Bitmap defaultContact, int moreResource,
             int alternatesLayout, int alternatesSelectedLayout, float chipHeight, float padding,
+            float chipFontSize) {
+        mChipBackground = chipBackground;
+        mChipBackgroundPressed = chipBackgroundPressed;
+        mChipDelete = chipDelete;
+        mChipPadding = (int) padding;
+        mAlternatesLayout = alternatesLayout;
+        mDefaultContactPhoto = defaultContact;
+        mMoreString = moreResource;
+        mChipHeight = chipHeight;
+        mChipFontSize = chipFontSize;
+        mInvalidChipBackground = invalidChip;
+    }
+
+    public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
+            Drawable invalidChip, Drawable chipDelete, Bitmap defaultContact, int moreResource,
+            int alternatesLayout, float chipHeight, float padding,
             float chipFontSize) {
         mChipBackground = chipBackground;
         mChipBackgroundPressed = chipBackgroundPressed;
