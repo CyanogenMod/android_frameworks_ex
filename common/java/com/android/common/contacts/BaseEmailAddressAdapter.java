@@ -64,6 +64,11 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
     // This is ContactsContract.LIMIT_PARAM_KEY
     private static final String LIMIT_PARAM_KEY = "limit";
 
+    // This is ContactsContract.PRIMARY_ACCOUNT_NAME
+    private static final String PRIMARY_ACCOUNT_NAME = "name_for_primary_account";
+    // This is ContactsContract.PRIMARY_ACCOUNT_TYPE
+    private static final String PRIMARY_ACCOUNT_TYPE = "type_for_primary_account";
+
     /**
      * The preferred number of results to be retrieved. This number may be
      * exceeded if there are several directories configured, because we will use
@@ -168,11 +173,15 @@ public abstract class BaseEmailAddressAdapter extends CompositeCursorAdapter imp
             FilterResults results = new FilterResults();
             Cursor cursor = null;
             if (!TextUtils.isEmpty(constraint)) {
-                Uri uri = Email.CONTENT_FILTER_URI.buildUpon()
+                Uri.Builder builder = Email.CONTENT_FILTER_URI.buildUpon()
                         .appendPath(constraint.toString())
                         .appendQueryParameter(LIMIT_PARAM_KEY,
-                                String.valueOf(mPreferredMaxResultCount))
-                        .build();
+                                String.valueOf(mPreferredMaxResultCount));
+                if (mAccount != null) {
+                    builder.appendQueryParameter(PRIMARY_ACCOUNT_NAME, mAccount.name);
+                    builder.appendQueryParameter(PRIMARY_ACCOUNT_TYPE, mAccount.type);
+                }
+                Uri uri = builder.build();
                 cursor = mContentResolver.query(uri, EmailQuery.PROJECTION, null, null, null);
                 results.count = cursor.getCount();
             }
