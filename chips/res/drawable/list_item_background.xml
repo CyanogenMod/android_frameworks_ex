@@ -15,7 +15,7 @@
 -->
 
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_activated="true"    android:drawable="@drawable/alternate_list_background" />
-    <item android:state_checked="true"    android:drawable="@drawable/alternate_list_background" />
-    <item android:state_selected="true"    android:drawable="@drawable/alternate_list_background" />
+    <item android:state_activated="true"    android:drawable="@drawable/check_selected" />
+    <item android:state_checked="true"    android:drawable="@drawable/check_selected" />
+    <item android:state_selected="true"    android:drawable="@drawable/check_selected" />
 </selector>

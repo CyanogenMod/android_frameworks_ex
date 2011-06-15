@@ -116,12 +116,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private int mPendingChipsCount = 0;
 
+    private static int sSelectedTextColor = -1;
+
     private static final char COMMIT_CHAR_COMMA = ',';
 
     private static final char COMMIT_CHAR_SEMICOLON = ';';
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        if (sSelectedTextColor == -1) {
+            sSelectedTextColor = context.getResources().getColor(android.R.color.white);
+        }
         setSuggestionsEnabled(false);
         setOnItemClickListener(this);
         setCustomSelectionActionModeCallback(this);
@@ -258,7 +263,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         if (mChipBackgroundPressed != null) {
             mChipBackgroundPressed.setBounds(0, 0, width, height);
             mChipBackgroundPressed.draw(canvas);
-
+            paint.setColor(sSelectedTextColor);
             // Align the display text with where the user enters text.
             canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
                     - Math.abs(height - mChipFontSize)/2, paint);
@@ -350,13 +355,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         Layout layout = getLayout();
         int line = 0;
         int lineTop = getTop();
-        if (layout != null) {
-            line = layout.getLineForOffset(offset);
-            lineTop = layout.getLineTop(line);
-        }
 
         TextPaint paint = getPaint();
         float defaultSize = paint.getTextSize();
+        int defaultColor = paint.getColor();
 
         Bitmap tmpBitmap;
         if (pressed) {
@@ -373,12 +375,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         // Pass the full text, un-ellipsized, to the chip.
         Drawable result = new BitmapDrawable(getResources(), tmpBitmap);
         result.setBounds(0, 0, tmpBitmap.getWidth(), tmpBitmap.getHeight());
-        Rect bounds = new Rect(xy[0] + offset, xy[1] + lineTop, xy[0] + tmpBitmap.getWidth(),
-                calculateLineBottom(xy[1], line, tmpBitmap.getHeight()));
-        RecipientChip recipientChip = new RecipientChip(result, contact, offset, bounds);
+        RecipientChip recipientChip = new RecipientChip(result, contact, offset);
         // Return text to the original size.
         paint.setTextSize(defaultSize);
-
+        paint.setColor(defaultColor);
         return recipientChip;
     }
 
@@ -395,8 +395,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         if (line == getLineCount() - 1) {
             bottomPadding += getPaddingBottom();
         }
-        return ((line + 1) * getLineHeight()) + yOffset + getPaddingTop()
-                + (chipHeight - getLineHeight()) + bottomPadding;
+        return yOffset + ((line + 1) * (int)mChipHeight) + getPaddingTop() + bottomPadding;
     }
 
     /**
@@ -926,8 +925,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         private View mAnchorView;
 
-        private int mLeft;
-
         private final long mContactId;
 
         private final long mDataId;
@@ -938,28 +935,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
         private RecipientAlternatesAdapter mAlternatesAdapter;
 
-        private Rect mBounds;
-
         private int mStart = -1;
 
         private int mEnd = -1;
 
         private ListPopupWindow mAlternatesPopup;
 
-        public RecipientChip(Drawable drawable, RecipientEntry entry, int offset, Rect bounds) {
+        public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
             super(drawable);
             mDisplay = entry.getDisplayName();
             mValue = entry.getDestination();
             mContactId = entry.getContactId();
             mDataId = entry.getDataId();
             mEntry = entry;
-            mBounds = bounds;
-
             mAnchorView = new View(getContext());
-            mAnchorView.setLeft(bounds.left);
-            mAnchorView.setRight(bounds.left);
-            mAnchorView.setTop(bounds.bottom);
-            mAnchorView.setBottom(bounds.bottom);
             mAnchorView.setVisibility(View.GONE);
         }
 
@@ -1002,7 +991,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         /**
          * Remove selection from this chip. Unselecting a RecipientChip will render
          * the chip without a delete icon and with an unfocused background. This
-         * is called when the RecipientChip not longer has focus.
+         * is called when the RecipientChip no longer has focus.
          */
         public void unselectChip() {
             int start = getChipStart();
@@ -1161,10 +1150,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             mAlternatesPopup = new ListPopupWindow(getContext());
 
             if (!mAlternatesPopup.isShowing()) {
+                int line = getLayout().getLineForOffset(getChipStart());
+                int[] xy = new int[2];
+                getLocationOnScreen(xy);
+                int bottom = calculateLineBottom(xy[1], line, (int) mChipHeight);
+                mAnchorView.setBottom(bottom);
+                mAnchorView.setTop(bottom);
                 mAlternatesAdapter = new RecipientAlternatesAdapter(getContext(),
                         mEntry.getContactId(), mEntry.getDataId(), mAlternatesLayout);
-                mAnchorView.setLeft(mLeft);
-                mAnchorView.setRight(mLeft);
+                // Align the alternates popup with the left side of the View, regardless
+                // of the position of the chip tapped.
                 mAlternatesPopup.setAnchorView(mAnchorView);
                 mAlternatesPopup.setAdapter(mAlternatesAdapter);
                 mAlternatesPopup.setWidth(getWidth());
@@ -1205,9 +1200,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         private boolean isInDelete(int offset, float x, float y) {
             // Figure out the bounds of this chip and whether or not
             // the user clicked in the X portion.
-            return mSelected
-                    && (offset == getChipEnd()
-                            || (x > (mBounds.right - mChipDeleteWidth) && x < mBounds.right));
+            return mSelected && offset == getChipEnd();
         }
 
         /**
@@ -1238,7 +1231,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         public void draw(Canvas canvas, CharSequence text, int start, int end, float x, int top,
                 int y, int bottom, Paint paint) {
             // Shift the bounds of this span to where it is actually drawn on the screeen.
-            mLeft = (int) x;
             super.draw(canvas, text, start, end, x, top, y, bottom, paint);
         }
 
