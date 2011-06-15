@@ -116,7 +116,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private int mPendingChipsCount = 0;
 
-    private static final char SEPERATOR = ',';
+    private static final char COMMIT_CHAR_COMMA = ',';
+
+    private static final char COMMIT_CHAR_SEMICOLON = ';';
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -134,10 +136,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     clearSelectedChip();
                 }
             }
+
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Do nothing.
+                int length = s.length();
+                // Make sure there is content there to parse and that it is not just
+                // the commit character.
+                if (length > 1) {
+                    char last = s.charAt(length() - 1);
+                    if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
+                        commitDefault();
+                    }
+                }
             }
+
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
                 // Do nothing.
@@ -182,7 +194,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         super.append(text, start, end);
         if (!TextUtils.isEmpty(text) && TextUtils.getTrimmedLength(text) > 0) {
             final String displayString = (String) text;
-            int seperatorPos = displayString.indexOf(SEPERATOR);
+            int seperatorPos = displayString.indexOf(COMMIT_CHAR_COMMA);
             if (seperatorPos != 0 && !TextUtils.isEmpty(displayString)
                     && TextUtils.getTrimmedLength(displayString) > 0) {
                 mPendingChipsCount++;
@@ -428,7 +440,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     @Override
     public void onSizeChanged(int width, int height, int oldw, int oldh) {
         super.onSizeChanged(width, height, oldw, oldh);
-        // Check for any pending tokens created before layout had been completed on the view.
+        // Check for any pending tokens created before layout had been completed
+        // on the view.
         if (width != 0 && height != 0 && mPendingChipsCount > 0) {
             Editable editable = getText();
             // Tokenize!
@@ -437,12 +450,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 int tokenEnd = mTokenizer.findTokenEnd(editable, startingPos);
                 int tokenStart = mTokenizer.findTokenStart(editable, tokenEnd);
                 // Always include seperators with the token to the left.
-                if (tokenEnd < editable.length()-1 && editable.charAt(tokenEnd) == SEPERATOR) {
+                if (tokenEnd < editable.length() - 1
+                        && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
                     tokenEnd++;
                 }
                 startingPos = tokenEnd;
                 String token = (String) editable.toString().substring(tokenStart, tokenEnd);
-                int seperatorPos = token.indexOf(SEPERATOR);
+                int seperatorPos = token.indexOf(COMMIT_CHAR_COMMA);
                 if (seperatorPos != -1) {
                     token = token.substring(0, seperatorPos);
                 }
@@ -543,6 +557,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 String text = editable.toString().substring(start, end);
                 clearComposingText();
                 if (text != null && text.length() > 0 && !text.equals(" ")) {
+                    text = removeCommitChars(text);
                     RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
                     QwertyKeyListener.markAsReplaced(editable, start, end, "");
                     editable.replace(start, end, createChip(entry, false));
@@ -552,6 +567,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             }
         }
         return false;
+    }
+
+    private String removeCommitChars(String text) {
+        int commitCharPosition = text.indexOf(COMMIT_CHAR_COMMA);
+        if (commitCharPosition != -1) {
+            text = text.substring(0, commitCharPosition);
+        }
+        commitCharPosition = text.indexOf(COMMIT_CHAR_SEMICOLON);
+        if (commitCharPosition != -1) {
+            text = text.substring(0, commitCharPosition);
+        }
+        return text;
     }
 
     /**
