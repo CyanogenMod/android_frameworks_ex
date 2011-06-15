@@ -128,7 +128,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         addTextChangedListener(new TextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
-                // Do nothing.
+                if (mSelectedChip != null) {
+                    setCursorVisible(true);
+                    setSelection(getText().length());
+                    clearSelectedChip();
+                }
             }
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -136,7 +140,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             }
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                // TODO: find a better way to unfocus a chip when a user starts typing.
+                // Do nothing.
             }
         });
         mHandler = new Handler() {
@@ -988,6 +992,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             clearSelectedChip();
             setCursorVisible(true);
             setSelection(editable.length());
+            if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
+                mAlternatesPopup.dismiss();
+            }
         }
 
         /**
