@@ -211,6 +211,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     public void onFocusChanged(boolean hasFocus, int direction, Rect previous) {
         if (!hasFocus) {
             shrink();
+            // Reset any pending chips as they would have been handled
+            // when the field lost focus.
+            mPendingChipsCount = 0;
         } else {
             expand();
         }
@@ -448,19 +451,21 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
             while (startingPos < editable.length() && mPendingChipsCount > 0) {
                 int tokenEnd = mTokenizer.findTokenEnd(editable, startingPos);
                 int tokenStart = mTokenizer.findTokenStart(editable, tokenEnd);
-                // Always include seperators with the token to the left.
-                if (tokenEnd < editable.length() - 1
-                        && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
-                    tokenEnd++;
+                if (findChip(tokenStart) == null) {
+                    // Always include seperators with the token to the left.
+                    if (tokenEnd < editable.length() - 1
+                            && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
+                        tokenEnd++;
+                    }
+                    startingPos = tokenEnd;
+                    String token = (String) editable.toString().substring(tokenStart, tokenEnd);
+                    int seperatorPos = token.indexOf(COMMIT_CHAR_COMMA);
+                    if (seperatorPos != -1) {
+                        token = token.substring(0, seperatorPos);
+                    }
+                    editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
+                            .constructFakeEntry(token), false));
                 }
-                startingPos = tokenEnd;
-                String token = (String) editable.toString().substring(tokenStart, tokenEnd);
-                int seperatorPos = token.indexOf(COMMIT_CHAR_COMMA);
-                if (seperatorPos != -1) {
-                    token = token.substring(0, seperatorPos);
-                }
-                editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
-                        .constructFakeEntry(token), false));
                 mPendingChipsCount--;
             }
             mPendingChipsCount = 0;
