@@ -519,10 +519,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     if (mSelectedChip != null) {
                         clearSelectedChip();
                         return true;
-                    } else if (mSelectedChip == null) {
-                        if (focusNext()) {
-                            return true;
-                        }
+                    } else if (focusNext()) {
+                        return true;
                     }
                 }
                 break;
@@ -563,17 +561,28 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         boolean shouldSubmitAtPosition = false;
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(editable, end);
+        boolean submitText = false;
         if (enough) {
             RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
             if ((chips == null || chips.length == 0)) {
                 // There's something being filtered or typed that has not been
                 // completed yet.
+                // Check for the end of the token.
+                end = mTokenizer.findTokenEnd(editable, start);
+                // The user has tapped somewhere in the middle of the text
+                // and started editing. In this case, we always want to
+                // submit the full text token and not what may be in the
+                // suggestions popup.
+                if (end != getSelectionEnd()) {
+                    submitText = true;
+                    setSelection(end);
+                }
                 shouldSubmitAtPosition = true;
             }
         }
 
         if (shouldSubmitAtPosition) {
-            if (getAdapter().getCount() > 0) {
+            if (!submitText && getAdapter().getCount() > 0) {
                 // choose the first entry.
                 submitItemAtPosition(0);
                 dismissDropDown();
