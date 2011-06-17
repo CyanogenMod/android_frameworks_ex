@@ -388,17 +388,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
     /**
      * Calculate the bottom of the line the chip will be located on using:
      * 1) which line the chip appears on
-     * 2) the height of a line in the autocomplete view vs the heigt of a chip
-     * 3) padding built into the edit text view will move the bottom position
+     * 2) the height of a chip
+     * 3) padding built into the edit text view
      * 4) the position of the autocomplete view on the screen, taking into account
      * that any top padding will move this down visually
      */
     private int calculateLineBottom(int yOffset, int line, int chipHeight) {
-        int bottomPadding = 0;
-        if (line == getLineCount() - 1) {
-            bottomPadding += getPaddingBottom();
-        }
-        return yOffset + ((line + 1) * (int)mChipHeight) + getPaddingTop() + bottomPadding;
+        // Line offsets start at zero.
+        int actualLine = line + 1;
+        return yOffset + (actualLine * (chipHeight + getPaddingBottom())) + getPaddingTop();
     }
 
     /**
