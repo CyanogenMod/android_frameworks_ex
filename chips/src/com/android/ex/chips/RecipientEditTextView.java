@@ -918,7 +918,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
      * RecipientChip defines an ImageSpan that contains information relevant to
      * a particular recipient.
      */
-    public class RecipientChip extends ImageSpan implements OnItemClickListener {
+    public class RecipientChip extends ImageSpan implements OnItemClickListener,
+            RecipientAlternatesAdapter.OnCheckedItemChangedListener {
         private final CharSequence mDisplay;
 
         private final CharSequence mValue;
@@ -940,6 +941,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         private int mEnd = -1;
 
         private ListPopupWindow mAlternatesPopup;
+
+        private int mCheckedItem;
 
         public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
             super(drawable);
@@ -1156,8 +1159,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 int bottom = calculateLineBottom(xy[1], line, (int) mChipHeight);
                 mAnchorView.setBottom(bottom);
                 mAnchorView.setTop(bottom);
-                mAlternatesAdapter = new RecipientAlternatesAdapter(getContext(),
-                        mEntry.getContactId(), mEntry.getDataId(), mAlternatesLayout);
+                mCheckedItem = -1;
+                mAlternatesAdapter = new RecipientAlternatesAdapter(getContext(), mEntry
+                        .getContactId(), mEntry.getDataId(), mAlternatesLayout, this);
                 // Align the alternates popup with the left side of the View, regardless
                 // of the position of the chip tapped.
                 mAlternatesPopup.setAnchorView(mAnchorView);
@@ -1167,7 +1171,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                 mAlternatesPopup.show();
                 ListView listView = mAlternatesPopup.getListView();
                 listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-                listView.setItemChecked(mAlternatesAdapter.getCheckedItemPosition(), true);
+                // Checked item would be -1 if the adapter has not
+                // loaded the view that should be checked yet. The
+                // variable will be set correctly when onCheckedItemChanged
+                // is called in a separate thread.
+                if (mCheckedItem != -1) {
+                    listView.setItemChecked(mCheckedItem, true);
+                }
+            }
+        }
+
+        @Override
+        public void onCheckedItemChanged(int position) {
+            ListView listView = mAlternatesPopup.getListView();
+            if (listView != null && listView.getCheckedItemCount() == 0) {
+                listView.setItemChecked(position, true);
+            } else {
+                mCheckedItem = position;
             }
         }
 
