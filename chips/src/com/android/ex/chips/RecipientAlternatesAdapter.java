@@ -37,7 +37,10 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
     private int mCheckedItemPosition = -1;
 
-    public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId) {
+    private OnCheckedItemChangedListener mCheckedItemChangedListener;
+
+    public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,
+            OnCheckedItemChangedListener listener) {
         super(context, context.getContentResolver().query(Email.CONTENT_URI, EmailQuery.PROJECTION,
                 Email.CONTACT_ID + " =?", new String[] {
                     String.valueOf(contactId)
@@ -45,6 +48,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         mLayoutInflater = LayoutInflater.from(context);
         mLayoutId = viewId;
         mCurrentId = currentId;
+        mCheckedItemChangedListener = listener;
     }
 
     @Override
@@ -71,6 +75,9 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         }
         if (cursor.getLong(EmailQuery.DATA_ID) == mCurrentId) {
             mCheckedItemPosition = position;
+            if (mCheckedItemChangedListener != null) {
+                mCheckedItemChangedListener.onCheckedItemChanged(mCheckedItemPosition);
+            }
         }
         bindView(convertView, convertView.getContext(), cursor);
         return convertView;
@@ -109,10 +116,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         return mLayoutInflater.inflate(mLayoutId, null);
     }
 
-    /**
-     * Get the position of the item that should be checked.
-     */
-    public int getCheckedItemPosition() {
-        return mCheckedItemPosition;
+    /*package*/ static interface OnCheckedItemChangedListener {
+        public void onCheckedItemChanged(int position);
     }
 }
