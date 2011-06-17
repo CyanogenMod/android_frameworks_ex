@@ -88,8 +88,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
 
     private RecipientChip mSelectedChip;
 
-    private int mChipDeleteWidth;
-
     private int mAlternatesLayout;
 
     private Bitmap mDefaultContactPhoto;
@@ -356,8 +354,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     "Unable to render any chips as setChipDimensions was not called.");
         }
         Layout layout = getLayout();
-        int line = 0;
-        int lineTop = getTop();
 
         TextPaint paint = getPaint();
         float defaultSize = paint.getTextSize();
@@ -516,15 +512,42 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
         switch (keyCode) {
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_TAB:
                 if (event.hasNoModifiers()) {
                     if (commitDefault()) {
                         return true;
                     }
+                    if (mSelectedChip != null) {
+                        clearSelectedChip();
+                        return true;
+                    } else if (mSelectedChip == null) {
+                        if (focusNext()) {
+                            return true;
+                        }
+                    }
                 }
                 break;
+            case KeyEvent.KEYCODE_TAB:
+                if (event.hasNoModifiers()) {
+                    if (mSelectedChip != null) {
+                        clearSelectedChip();
+                    } else {
+                        commitDefault();
+                    }
+                    if (focusNext()) {
+                        return true;
+                    }
+                }
         }
         return super.onKeyUp(keyCode, event);
+    }
+
+    private boolean focusNext() {
+        View next = focusSearch(View.FOCUS_DOWN);
+        if (next != null) {
+            next.requestFocus();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -565,7 +588,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView
                     editable.replace(start, end, createChip(entry, false));
                     dismissDropDown();
                 }
-                return false;
+                return true;
             }
         }
         return false;
