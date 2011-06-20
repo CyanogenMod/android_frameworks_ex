@@ -48,6 +48,8 @@ import android.view.View;
 import android.view.ActionMode.Callback;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
 import android.widget.ListView;
@@ -190,6 +192,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 super.handleMessage(msg);
             }
         };
+
+        // Start the filtering process as soon as possible. This will
+        // cause any needed services to be started and make the first filter
+        // query come back more quickly.
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                Filter f = (Filter)((Filterable) getAdapter()).getFilter();
+                f.filter(null);
+            }
+        });
     }
 
     @Override
