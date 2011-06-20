@@ -122,6 +122,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private static final char COMMIT_CHAR_SEMICOLON = ';';
 
+    private static final char COMMIT_CHAR_SPACE = ' ';
+
     private ListPopupWindow mAlternatesPopup;
 
     /**
@@ -173,6 +175,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     char last = s.charAt(length() - 1);
                     if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
                         commitDefault();
+                    } else if (last == COMMIT_CHAR_SPACE) {
+                        // Check if this is a valid email address. If it is, commit it.
+                        String text = getText().toString();
+                        int tokenStart = mTokenizer.findTokenStart(text, start);
+                        String sub = text.substring(tokenStart, start);
+                        if (mValidator != null && mValidator.isValid(sub)) {
+                            commitDefault();
+                        }
                     }
                 }
             }
@@ -592,7 +602,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         boolean shouldSubmitAtPosition = false;
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(editable, end);
-        boolean submitText = false;
+
         if (enough) {
             RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
             if ((chips == null || chips.length == 0)) {
@@ -605,7 +615,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 // submit the full text token and not what may be in the
                 // suggestions popup.
                 if (end != getSelectionEnd()) {
-                    submitText = true;
                     setSelection(end);
                 }
                 shouldSubmitAtPosition = true;
@@ -613,7 +622,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
 
         if (shouldSubmitAtPosition) {
-            if (!submitText && getAdapter().getCount() > 0) {
+            if (getAdapter().getCount() > 0) {
                 // choose the first entry.
                 submitItemAtPosition(0);
                 dismissDropDown();
@@ -641,6 +650,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         commitCharPosition = text.indexOf(COMMIT_CHAR_SEMICOLON);
         if (commitCharPosition != -1) {
+            text = text.substring(0, commitCharPosition);
+        }
+        commitCharPosition = text.indexOf(COMMIT_CHAR_SPACE);
+        if (commitCharPosition != -1 && commitCharPosition != 0) {
             text = text.substring(0, commitCharPosition);
         }
         return text;
