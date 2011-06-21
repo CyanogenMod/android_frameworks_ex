@@ -122,8 +122,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private static final char COMMIT_CHAR_SEMICOLON = ';';
 
-    // TODO: do not run on appeneded recipients.
-    //private static final char COMMIT_CHAR_SPACE = ' ';
+    private static final char COMMIT_CHAR_SPACE = ' ';
 
     private ListPopupWindow mAlternatesPopup;
 
@@ -133,6 +132,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private OnItemClickListener mAlternatesListener;
 
     private int mCheckedItem;
+
+    private TextWatcher mTextWatcher;
+
+    private final Runnable mAddTextWatcher = new Runnable() {
+        @Override
+        public void run() {
+            if (mTextWatcher == null) {
+                mTextWatcher = new RecipientTextWatcher();
+                addTextChangedListener(mTextWatcher);
+            }
+        }
+    };
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -155,47 +166,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         setSuggestionsEnabled(false);
         setOnItemClickListener(this);
         setCustomSelectionActionModeCallback(this);
-        // When the user starts typing, make sure we unselect any selected
-        // chips.
-        addTextChangedListener(new TextWatcher() {
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (mSelectedChip != null) {
-                    setCursorVisible(true);
-                    setSelection(getText().length());
-                    clearSelectedChip();
-                }
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                int length = s.length();
-                // Make sure there is content there to parse and that it is not
-                // just the commit character.
-                if (length > 1) {
-                    char last = s.charAt(length() - 1);
-                    if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
-                        commitDefault();
-                    }
-                    // TODO: make sure this only runs AFTER appended recipients
-                    // are handled.
-                    /*else if (last == COMMIT_CHAR_SPACE) {
-                        // Check if this is a valid email address. If it is, commit it.
-                        String text = getText().toString();
-                        int tokenStart = mTokenizer.findTokenStart(text, start);
-                        String sub = text.substring(tokenStart, start);
-                        if (mValidator != null && mValidator.isValid(sub)) {
-                            commitDefault();
-                        }
-                    }*/
-                }
-            }
-
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                // Do nothing.
-            }
-        });
         mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -263,6 +233,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // Reset any pending chips as they would have been handled
             // when the field lost focus.
             mPendingChipsCount = 0;
+            mHandler.post(mAddTextWatcher);
         } else {
             expand();
         }
@@ -485,31 +456,35 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         super.onSizeChanged(width, height, oldw, oldh);
         // Check for any pending tokens created before layout had been completed
         // on the view.
-        if (width != 0 && height != 0 && mPendingChipsCount > 0) {
-            Editable editable = getText();
-            // Tokenize!
-            int startingPos = 0;
-            while (startingPos < editable.length() && mPendingChipsCount > 0) {
-                int tokenEnd = mTokenizer.findTokenEnd(editable, startingPos);
-                int tokenStart = mTokenizer.findTokenStart(editable, tokenEnd);
-                if (findChip(tokenStart) == null) {
-                    // Always include seperators with the token to the left.
-                    if (tokenEnd < editable.length() - 1
-                            && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
-                        tokenEnd++;
+        if (width != 0 && height != 0) {
+            if (mPendingChipsCount > 0) {
+                Editable editable = getText();
+                // Tokenize!
+                int startingPos = 0;
+                while (startingPos < editable.length() && mPendingChipsCount > 0) {
+                    int tokenEnd = mTokenizer.findTokenEnd(editable, startingPos);
+                    int tokenStart = mTokenizer.findTokenStart(editable, tokenEnd);
+                    if (findChip(tokenStart) == null) {
+                        // Always include seperators with the token to the
+                        // left.
+                        if (tokenEnd < editable.length() - 1
+                                && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
+                            tokenEnd++;
+                        }
+                        startingPos = tokenEnd;
+                        String token = editable.toString().substring(tokenStart, tokenEnd);
+                        int seperatorPos = token.indexOf(COMMIT_CHAR_COMMA);
+                        if (seperatorPos != -1) {
+                            token = token.substring(0, seperatorPos);
+                        }
+                        editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
+                                .constructFakeEntry(token), false));
                     }
-                    startingPos = tokenEnd;
-                    String token = editable.toString().substring(tokenStart, tokenEnd);
-                    int seperatorPos = token.indexOf(COMMIT_CHAR_COMMA);
-                    if (seperatorPos != -1) {
-                        token = token.substring(0, seperatorPos);
-                    }
-                    editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
-                            .constructFakeEntry(token), false));
+                    mPendingChipsCount--;
                 }
-                mPendingChipsCount--;
             }
             mPendingChipsCount = 0;
+            mHandler.post(mAddTextWatcher);
         }
     }
 
@@ -604,67 +579,73 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     private boolean commitDefault() {
         Editable editable = getText();
-        boolean enough = enoughToFilter();
-        boolean shouldSubmitAtPosition = false;
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(editable, end);
 
-        if (enough) {
-            RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
-            if ((chips == null || chips.length == 0)) {
-                // There's something being filtered or typed that has not been
-                // completed yet.
-                // Check for the end of the token.
-                end = mTokenizer.findTokenEnd(editable, start);
-                // The user has tapped somewhere in the middle of the text
-                // and started editing. In this case, we always want to
-                // submit the full text token and not what may be in the
-                // suggestions popup.
-                if (end != getSelectionEnd()) {
-                    setSelection(end);
-                }
-                shouldSubmitAtPosition = true;
-            }
-        }
-
-        if (shouldSubmitAtPosition) {
-            if (getAdapter().getCount() > 0) {
-                // choose the first entry.
-                submitItemAtPosition(0);
-                dismissDropDown();
+        if (shouldCreateChip(start, end)) {
+            int whatEnd = mTokenizer.findTokenEnd(getText(), start);
+            // In the middle of chip; treat this as an edit
+            // and commit the whole token.
+            if (whatEnd != getSelectionEnd()) {
+                handleEdit(start, whatEnd);
                 return true;
-            } else {
-                String text = editable.toString().substring(start, end);
-                clearComposingText();
-                if (text != null && text.length() > 0 && !text.equals(" ")) {
-                    text = removeCommitChars(text);
-                    RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
-                    QwertyKeyListener.markAsReplaced(editable, start, end, "");
-                    editable.replace(start, end, createChip(entry, false));
-                    dismissDropDown();
-                }
+            }
+            return commitChip(start, end , editable);
+        }
+        return false;
+    }
+
+    private void commitByCharacter() {
+        Editable editable = getText();
+        int end = getSelectionEnd();
+        int start = mTokenizer.findTokenStart(editable, end);
+        if (shouldCreateChip(start, end)) {
+            commitChip(start, end, editable);
+        }
+    }
+
+    private boolean commitChip(int start, int end, Editable editable) {
+        if (getAdapter().getCount() > 0) {
+            // choose the first entry.
+            submitItemAtPosition(0);
+            dismissDropDown();
+            return true;
+        } else {
+            int tokenEnd = mTokenizer.findTokenEnd(editable, start);
+            String text = editable.toString().substring(start, tokenEnd).trim();
+            clearComposingText();
+            if (text != null && text.length() > 0 && !text.equals(" ")) {
+                RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
+                QwertyKeyListener.markAsReplaced(editable, start, end, "");
+                CharSequence chipText = createChip(entry, false);
+                editable.replace(start, end, chipText);
+                dismissDropDown();
                 return true;
             }
         }
         return false;
     }
 
-    private String removeCommitChars(String text) {
-        int commitCharPosition = text.indexOf(COMMIT_CHAR_COMMA);
-        if (commitCharPosition != -1) {
-            text = text.substring(0, commitCharPosition);
+    private boolean shouldCreateChip(int start, int end) {
+        if (enoughToFilter()) {
+            RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
+            if ((chips == null || chips.length == 0)) {
+                return true;
+            }
         }
-        commitCharPosition = text.indexOf(COMMIT_CHAR_SEMICOLON);
-        if (commitCharPosition != -1) {
-            text = text.substring(0, commitCharPosition);
-        }
-        // TODO: make sure this only runs AFTER appended recipients
-        // are handled.
-        /*commitCharPosition = text.indexOf(COMMIT_CHAR_SPACE);
-        if (commitCharPosition != -1 && commitCharPosition != 0) {
-            text = text.substring(0, commitCharPosition);
-        }*/
-        return text;
+        return false;
+    }
+
+    private void handleEdit(int start, int end) {
+        // This is in the middle of a chip, so select out the whole chip
+        // and commit it.
+        Editable editable = getText();
+        setSelection(end);
+        String text = getText().toString().substring(start, end);
+        RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
+        QwertyKeyListener.markAsReplaced(editable, start, end, "");
+        CharSequence chipText = createChip(entry, false);
+        editable.replace(start, getSelectionEnd(), chipText);
     }
 
     /**
@@ -1235,5 +1216,46 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    private class RecipientTextWatcher implements TextWatcher {
+        @Override
+        public void afterTextChanged(Editable s) {
+            if (mPendingChipsCount > 0) {
+                return;
+            }
+            if (mSelectedChip != null) {
+                setCursorVisible(true);
+                setSelection(getText().length());
+                clearSelectedChip();
+            }
+            int length = s.length();
+            // Make sure there is content there to parse and that it is
+            // not
+            // just the commit character.
+            if (length > 1) {
+                char last = s.charAt(length() - 1);
+                if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
+                    commitByCharacter();
+                } else if (last == COMMIT_CHAR_SPACE) {
+                    // Check if this is a valid email address. If it is,
+                    // commit it.
+                    String text = getText().toString();
+                    int tokenStart = mTokenizer.findTokenStart(text, getSelectionEnd());
+                    String sub = text.substring(tokenStart, mTokenizer.findTokenEnd(text,
+                            tokenStart));
+                    if (mValidator != null && mValidator.isValid(sub)) {
+                        commitByCharacter();
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+        }
+
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+        }
+    }
 
 }
