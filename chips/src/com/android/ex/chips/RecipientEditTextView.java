@@ -176,7 +176,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     char last = s.charAt(length() - 1);
                     if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
                         commitDefault();
-                    } 
+                    }
                     // TODO: make sure this only runs AFTER appended recipients
                     // are handled.
                     /*else if (last == COMMIT_CHAR_SPACE) {
@@ -206,17 +206,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 super.handleMessage(msg);
             }
         };
+    }
 
+    @Override
+    public <T extends ListAdapter & Filterable> void setAdapter(T adapter) {
+        super.setAdapter(adapter);
+        if (adapter == null) {
+            return;
+        }
         // Start the filtering process as soon as possible. This will
         // cause any needed services to be started and make the first filter
         // query come back more quickly.
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                Filter f = (Filter)((Filterable) getAdapter()).getFilter();
-                f.filter(null);
-            }
-        });
+        Filter f = ((Filterable) adapter).getFilter();
+        f.filter(null);
     }
 
     @Override
@@ -497,7 +499,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         tokenEnd++;
                     }
                     startingPos = tokenEnd;
-                    String token = (String) editable.toString().substring(tokenStart, tokenEnd);
+                    String token = editable.toString().substring(tokenStart, tokenEnd);
                     int seperatorPos = token.indexOf(COMMIT_CHAR_COMMA);
                     if (seperatorPos != -1) {
                         token = token.substring(0, seperatorPos);
@@ -686,7 +688,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private Spannable getSpannable() {
-        return (Spannable) getText();
+        return getText();
     }
 
     private int getChipStart(RecipientChip chip) {
