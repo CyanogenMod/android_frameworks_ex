@@ -787,6 +787,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         View anchorView = new View(context);
         anchorView.setBottom(bottom);
         anchorView.setTop(bottom);
+        anchorView.setLeft(xy[0]);
+        anchorView.setRight(xy[0]);
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
         alternatesPopup.setWidth(width);
