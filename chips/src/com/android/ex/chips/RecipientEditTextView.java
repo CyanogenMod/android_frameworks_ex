@@ -1125,15 +1125,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int start = getChipStart(chip);
         int end = getChipEnd(chip);
         Editable editable = getText();
+        mSelectedChip = null;
         if (start == -1 || end == -1) {
             Log.e(TAG, "The chip being unselected no longer exists but should.");
         } else {
-            getSpannable().removeSpan(this);
+            getSpannable().removeSpan(chip);
             QwertyKeyListener.markAsReplaced(editable, start, end, "");
             editable.replace(start, end, createChip(chip.getEntry(), false));
         }
-        mSelectedChip = null;
-        clearSelectedChip();
         setCursorVisible(true);
         setSelection(editable.length());
         if (mAlternatesPopup != null && mAlternatesPopup.isShowing()) {
