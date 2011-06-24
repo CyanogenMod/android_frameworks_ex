@@ -100,6 +100,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ArrayList<RecipientChip> mRemovedSpans;
 
+    private ArrayList<String> mPendingChips = new ArrayList<String>();
+
     private float mChipHeight;
 
     private float mChipFontSize;
@@ -223,6 +225,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (seperatorPos != 0 && !TextUtils.isEmpty(displayString)
                     && TextUtils.getTrimmedLength(displayString) > 0) {
                 mPendingChipsCount++;
+                mPendingChips.add((String)text);
             }
         }
     }
@@ -234,6 +237,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // Reset any pending chips as they would have been handled
             // when the field lost focus.
             mPendingChipsCount = 0;
+            mPendingChips.clear();
             mHandler.post(mAddTextWatcher);
         } else {
             expand();
@@ -305,7 +309,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * Get the background drawable for a RecipientChip.
      */
     public Drawable getChipBackground(RecipientEntry contact) {
-        return mValidator != null && mValidator.isValid(contact.getDestination()) ?
+        return (mValidator != null && mValidator.isValid(contact.getDestination())) ?
                 mChipBackground : mInvalidChipBackground;
     }
 
@@ -461,30 +465,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (mPendingChipsCount > 0) {
                 Editable editable = getText();
                 // Tokenize!
-                int startingPos = 0;
-                while (startingPos < editable.length() && mPendingChipsCount > 0) {
-                    int tokenEnd = mTokenizer.findTokenEnd(editable, startingPos);
-                    int tokenStart = mTokenizer.findTokenStart(editable, tokenEnd);
-                    if (findChip(tokenStart) == null) {
-                        // Always include seperators with the token to the
-                        // left.
-                        if (tokenEnd < editable.length() - 1
-                                && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
-                            tokenEnd++;
-                        }
-                        startingPos = tokenEnd;
-                        String token = editable.toString().substring(tokenStart, tokenEnd);
-                        int seperatorPos = token.indexOf(COMMIT_CHAR_COMMA);
-                        if (seperatorPos != -1) {
-                            token = token.substring(0, seperatorPos);
-                        }
-                        editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
-                                .constructFakeEntry(token), false));
+                for (int i = 0; i < mPendingChips.size(); i++) {
+                    String current = mPendingChips.get(i);
+                    int tokenStart = editable.toString().indexOf(current);
+                    int tokenEnd = tokenStart + current.length();
+                    // Always include seperators with the token to the
+                    // left.
+                    if (tokenEnd < editable.length() - 1
+                            && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
+                        tokenEnd++;
                     }
-                    mPendingChipsCount--;
+                    String token = editable.toString().substring(tokenStart, tokenEnd);
+                    editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
+                            .constructFakeEntry(token), false));
                 }
+                mPendingChipsCount--;
             }
             mPendingChipsCount = 0;
+            mPendingChips.clear();
             mHandler.post(mAddTextWatcher);
         }
     }
