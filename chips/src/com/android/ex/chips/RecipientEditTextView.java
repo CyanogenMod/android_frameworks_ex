@@ -131,7 +131,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     private OnItemClickListener mAlternatesListener;
 
-    private int mCheckedItem;
+    private int mCheckedItem;  
 
     private TextWatcher mTextWatcher;
 
@@ -155,10 +155,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             @Override
             public void onItemClick(AdapterView<?> adapterView,View view, int position,
                     long rowId) {
+                mAlternatesPopup.setOnItemClickListener(null);
                 replaceChip(mSelectedChip, ((RecipientAlternatesAdapter) adapterView.getAdapter())
                         .getRecipientEntry(position));
                 Message delayed = Message.obtain(mHandler, DISMISS);
-                delayed.obj = RecipientEditTextView.this.mAlternatesPopup;
+                delayed.obj = mAlternatesPopup;
                 mHandler.sendMessageDelayed(delayed, DISMISS_DELAY);
                 clearComposingText();
             }
@@ -627,7 +628,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private boolean shouldCreateChip(int start, int end) {
-        if (enoughToFilter()) {
+        if (hasFocus() && enoughToFilter()) {
             RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
             if ((chips == null || chips.length == 0)) {
                 return true;
@@ -775,7 +776,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         alternatesPopup.setWidth(width);
         alternatesPopup.setAnchorView(anchorView);
         alternatesPopup.setAdapter(createAlternatesAdapter(currentChip));
-        alternatesPopup.setOnItemClickListener(mAlternatesListener); // currentChip);
+        alternatesPopup.setOnItemClickListener(mAlternatesListener);
         alternatesPopup.show();
         ListView listView = alternatesPopup.getListView();
         listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
@@ -983,26 +984,25 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         ImageSpan moreSpan = new ImageSpan(result);
         Spannable spannable = getSpannable();
         // Remove the overage chips.
-        RecipientChip[] chips = spannable.getSpans(0, text.length(), RecipientChip.class);
-        if (chips == null || chips.length == 0) {
+        if (recipients == null || recipients.length == 0) {
             Log.w(TAG,
                 "We have recipients. Tt should not be possible to have zero RecipientChips.");
             return null;
         }
-        mRemovedSpans = new ArrayList<RecipientChip>(chips.length);
+        mRemovedSpans = new ArrayList<RecipientChip>();
         int totalReplaceStart = 0;
         int totalReplaceEnd = 0;
-        for (int i = numRecipients - overage; i < chips.length; i++) {
-            mRemovedSpans.add(chips[i]);
+        for (int i = numRecipients - overage; i < recipients.length; i++) {
+            mRemovedSpans.add(recipients[i]);
             if (i == numRecipients - overage) {
-                totalReplaceStart = spannable.getSpanStart(chips[i]);
+                totalReplaceStart = spannable.getSpanStart(recipients[i]);
             }
-            if (i == chips.length - 1) {
-                totalReplaceEnd = spannable.getSpanEnd(chips[i]);
+            if (i == recipients.length - 1) {
+                totalReplaceEnd = spannable.getSpanEnd(recipients[i]);
             }
-            chips[i].storeChipStart(spannable.getSpanStart(chips[i]));
-            chips[i].storeChipEnd(spannable.getSpanEnd(chips[i]));
-            spannable.removeSpan(chips[i]);
+            recipients[i].storeChipStart(spannable.getSpanStart(recipients[i]));
+            recipients[i].storeChipEnd(spannable.getSpanEnd(recipients[i]));
+            spannable.removeSpan(recipients[i]);
         }
         SpannableString chipText = new SpannableString(text.subSequence(totalReplaceStart,
                 totalReplaceEnd));
@@ -1216,10 +1216,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    /**
+     * Get whether there are any recipients pending addition to the view.
+     * If there are, don't do anything in the text watcher.
+     * @return
+     */
+    private boolean chipsPending() {
+        return mPendingChipsCount > 0 || (mRemovedSpans != null && mRemovedSpans.size() > 0);
+    }
+
     private class RecipientTextWatcher implements TextWatcher {
         @Override
         public void afterTextChanged(Editable s) {
-            if (mPendingChipsCount > 0) {
+            if (chipsPending()) {
                 return;
             }
             if (mSelectedChip != null) {
