@@ -891,10 +891,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void submitItemAtPosition(int position) {
         RecipientEntry entry = (RecipientEntry) getAdapter().getItem(position);
-        // If the display name and the address are the same, then make this
-        // a fake recipient that is editable.
-        if (TextUtils.equals(entry.getDisplayName(), entry.getDestination())) {
-            entry = RecipientEntry.constructFakeEntry(entry.getDestination());
+        // If the display name and the address are the same, or if this is a
+        // valid contact, but the destination is invalid, then make this a fake
+        // recipient that is editable.
+        String destination = entry.getDestination();
+        if (TextUtils.equals(entry.getDisplayName(), destination)
+                || (mValidator != null && !mValidator.isValid(destination))) {
+            entry = RecipientEntry.constructFakeEntry(destination);
         }
         clearComposingText();
 
