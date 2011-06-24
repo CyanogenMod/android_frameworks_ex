@@ -100,7 +100,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ArrayList<RecipientChip> mRemovedSpans;
 
-    private ArrayList<String> mPendingChips = new ArrayList<String>();
+    private final ArrayList<String> mPendingChips = new ArrayList<String>();
 
     private float mChipHeight;
 
@@ -601,6 +601,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (shouldCreateChip(start, end)) {
             commitChip(start, end, editable);
         }
+        setSelection(getText().length());
     }
 
     private boolean commitChip(int start, int end, Editable editable) {
@@ -645,6 +646,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         QwertyKeyListener.markAsReplaced(editable, start, end, "");
         CharSequence chipText = createChip(entry, false);
         editable.replace(start, getSelectionEnd(), chipText);
+        dismissDropDown();
     }
 
     /**
@@ -1214,11 +1216,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
-    /**
-     * Get whether there are any recipients pending addition to the view.
-     * If there are, don't do anything in the text watcher.
-     * @return
-     */
     private boolean chipsPending() {
         return mPendingChipsCount > 0 || (mRemovedSpans != null && mRemovedSpans.size() > 0);
     }
@@ -1226,6 +1223,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private class RecipientTextWatcher implements TextWatcher {
         @Override
         public void afterTextChanged(Editable s) {
+            // Get whether there are any recipients pending addition to the view.
+            // If there are, don't do anything in the text watcher.
             if (chipsPending()) {
                 return;
             }
@@ -1236,10 +1235,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
             int length = s.length();
             // Make sure there is content there to parse and that it is
-            // not
-            // just the commit character.
+            // not just the commit character.
             if (length > 1) {
-                char last = s.charAt(length() - 1);
+                char last;
+                int end = getSelectionEnd() - 1;
+                int len = length() - 1;
+                if (end != len) {
+                    last = s.charAt(end);
+                } else {
+                    last = s.charAt(len);
+                }
                 if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
                     commitByCharacter();
                 } else if (last == COMMIT_CHAR_SPACE) {
