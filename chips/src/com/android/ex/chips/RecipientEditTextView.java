@@ -469,15 +469,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     String current = mPendingChips.get(i);
                     int tokenStart = editable.toString().indexOf(current);
                     int tokenEnd = tokenStart + current.length();
-                    // Always include seperators with the token to the
-                    // left.
-                    if (tokenEnd < editable.length() - 1
-                            && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
-                        tokenEnd++;
+                    if (tokenStart >= 0) {
+                        // When we have a valid token, include it with the token
+                        // to the left.
+                        if (tokenEnd < editable.length() - 2
+                                && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
+                            tokenEnd++;
+                        }
+                        String token = editable.toString().substring(tokenStart, tokenEnd);
+                        editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
+                                .constructFakeEntry(token), false));
                     }
-                    String token = editable.toString().substring(tokenStart, tokenEnd);
-                    editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
-                            .constructFakeEntry(token), false));
                 }
                 mPendingChipsCount--;
             }
