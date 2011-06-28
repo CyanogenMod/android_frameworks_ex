@@ -357,7 +357,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 // Draw the photo on the left side.
                 Matrix matrix = new Matrix();
                 RectF src = new RectF(0, 0, photo.getWidth(), photo.getHeight());
-                RectF dst = new RectF(0, 0, iconWidth, height);
+                RectF dst = new RectF(width - iconWidth, 0, width, height);
                 matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
                 canvas.drawBitmap(photo, matrix, paint);
             } else {
@@ -366,7 +366,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
 
             // Align the display text with where the user enters text.
-            canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding + iconWidth,
+            canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding,
                     height - Math.abs(height - mChipFontSize) / 2, paint);
         } else {
             Log.w(TAG, "Unable to draw a background for the chips as it was never set");
