@@ -1243,7 +1243,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // not just the commit character.
             if (length > 1) {
                 char last;
-                int end = getSelectionEnd() - 1;
+                int end = getSelectionEnd() == 0 ? 0 : getSelectionEnd() - 1;
                 int len = length() - 1;
                 if (end != len) {
                     last = s.charAt(end);
