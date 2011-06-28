@@ -21,6 +21,8 @@ import com.android.ex.chips.BaseRecipientAdapter.EmailQuery;
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.ContactsContract.CommonDataKinds.Email;
+import android.text.util.Rfc822Token;
+import android.text.util.Rfc822Tokenizer;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,7 +30,10 @@ import android.widget.CursorAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.util.HashMap;
+
 public class RecipientAlternatesAdapter extends CursorAdapter {
+    static final int MAX_LOOKUPS = 50;
     private final LayoutInflater mLayoutInflater;
 
     private final int mLayoutId;
@@ -38,6 +43,53 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     private int mCheckedItemPosition = -1;
 
     private OnCheckedItemChangedListener mCheckedItemChangedListener;
+
+    /**
+     * Get a HashMap of address to RecipientEntry that contains all contact
+     * information for a contact with the provided address, if one exists. This
+     * may block the UI, so run it in an async task.
+     *
+     * @param context Context.
+     * @param addresses Array of addresses on which to perform the lookup.
+     * @return HashMap<String,RecipientEntry>
+     */
+    public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
+            String[] inAddresses) {
+        int addressesSize = Math.min(MAX_LOOKUPS, inAddresses.length);
+        String[] addresses = new String[addressesSize];
+        StringBuilder bindString = new StringBuilder();
+        // Create the "?" string and set up arguments.
+        for (int i = 0; i < addressesSize; i++) {
+            Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(inAddresses[i]);
+            addresses[i] = (tokens.length > 0 ? tokens[0].getAddress() : inAddresses[i]);
+            bindString.append("?");
+            if (i < addressesSize - 1) {
+                bindString.append(",");
+            }
+        }
+
+        Cursor c = context.getContentResolver().query(Email.CONTENT_URI, EmailQuery.PROJECTION,
+                Email.ADDRESS + " IN (" + bindString.toString() + ")", addresses, null);
+        HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
+        if (c != null) {
+            try {
+                if (c.moveToFirst()) {
+                    do {
+                        String address = c.getString(EmailQuery.ADDRESS);
+                        recipientEntries.put(address, RecipientEntry.constructTopLevelEntry(
+                                c.getString(EmailQuery.NAME),
+                                c.getString(EmailQuery.ADDRESS),
+                                c.getLong(EmailQuery.CONTACT_ID),
+                                c.getLong(EmailQuery.DATA_ID),
+                                c.getString(EmailQuery.PHOTO_THUMBNAIL_URI)));
+                    } while (c.moveToNext());
+                }
+            } finally {
+                c.close();
+            }
+        }
+        return recipientEntries;
+    }
 
     public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,
             OnCheckedItemChangedListener listener) {

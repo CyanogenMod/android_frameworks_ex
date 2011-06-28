@@ -25,12 +25,14 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.text.Editable;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
@@ -60,6 +62,7 @@ import android.widget.MultiAutoCompleteTextView;
 import android.widget.ScrollView;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -131,6 +134,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ListPopupWindow mAlternatesPopup;
 
+    private ArrayList<RecipientChip> mTemporaryRecipients;
+
     private ArrayList<RecipientChip> mRemovedSpans;
 
     /**
@@ -139,7 +144,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private OnItemClickListener mAlternatesListener;
 
     private int mCheckedItem;
-
     private TextWatcher mTextWatcher;
 
     private ScrollView mScrollView;
@@ -155,6 +159,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
         }
     };
+
+    private IndividualReplacementTask mIndividualReplacements;
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -200,7 +206,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // cause any needed services to be started and make the first filter
         // query come back more quickly.
         Filter f = ((Filterable) adapter).getFilter();
-        f.filter("xxxxxxxxxxxx");
+        f.filter("sara");
     }
 
     @Override
@@ -269,6 +275,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         setCursorVisible(true);
         Editable text = getText();
         setSelection(text != null && text.length() > 0 ? text.length() : 0);
+        // If there are any temporary chips, try replacing them now that the user
+        // has expanded the field.
+        if (mTemporaryRecipients != null && mTemporaryRecipients.size() > 0) {
+            new RecipientReplacementTask().execute();
+            mTemporaryRecipients = null;
+        }
     }
 
     private CharSequence ellipsizeText(CharSequence text, TextPaint paint, float maxWidth) {
@@ -477,6 +489,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mPendingChips.clear();
             mHandler.post(mAddTextWatcher);
         }
+        // Try to find the scroll view parent, if it exists.
         if (mScrollView == null && !mTried) {
             ViewParent parent = getParent();
             while (parent != null && !(parent instanceof ScrollView)) {
@@ -490,6 +503,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void handlePendingChips() {
+        mTemporaryRecipients = new ArrayList<RecipientChip>(mPendingChipsCount);
         Editable editable = getText();
         // Tokenize!
         for (int i = 0; i < mPendingChips.size(); i++) {
@@ -508,7 +522,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mPendingChipsCount--;
         }
         sanitizeSpannable();
-        if (!hasFocus()) {
+        if (mTemporaryRecipients != null
+                && mTemporaryRecipients.size() <= RecipientAlternatesAdapter.MAX_LOOKUPS) {
+            if (hasFocus() || mTemporaryRecipients.size() < CHIP_LIMIT) {
+                new RecipientReplacementTask().execute();
+                mTemporaryRecipients = null;
+            } else {
+                // Create the "more" chip
+                mIndividualReplacements = new IndividualReplacementTask();
+                mIndividualReplacements.execute(new ArrayList<RecipientChip>(mTemporaryRecipients
+                        .subList(0, CHIP_LIMIT)));
+
+                createMoreChip();
+            }
+        } else {
+            // There are too many recipients to look up, so just fall back to
+            // showing addresses
+            // for all of them.
+            mTemporaryRecipients = null;
             createMoreChip();
         }
     }
@@ -568,6 +599,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
 
         editable.replace(tokenStart, tokenEnd, chipText);
+        // Add this chip to the list of entries "to replace"
+        if (chip != null) {
+            mTemporaryRecipients.add(chip);
+        }
     }
 
     private RecipientEntry createTokenizedEntry(String token) {
@@ -874,8 +909,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int bottom = calculateOffsetFromBottom(line, (int) mChipHeight);
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
-        alternatesPopup.setAnchorView(this);
         alternatesPopup.setWidth(width);
+        alternatesPopup.setAnchorView(this);
         alternatesPopup.setVerticalOffset(bottom);
         alternatesPopup.setAdapter(createAlternatesAdapter(currentChip));
         alternatesPopup.setOnItemClickListener(mAlternatesListener);
@@ -1112,14 +1147,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (i == recipients.length - 1) {
                 totalReplaceEnd = spannable.getSpanEnd(recipients[i]);
             }
-            recipients[i].storeChipStart(spannable.getSpanStart(recipients[i]));
-            recipients[i].storeChipEnd(spannable.getSpanEnd(recipients[i]));
+            if (mTemporaryRecipients != null && !mTemporaryRecipients.contains(recipients[i])) {
+                recipients[i].storeChipStart(spannable.getSpanStart(recipients[i]));
+                recipients[i].storeChipEnd(spannable.getSpanEnd(recipients[i]));
+            }
             spannable.removeSpan(recipients[i]);
         }
-        SpannableString chipText = new SpannableString(text.subSequence(totalReplaceStart,
-                totalReplaceEnd));
+        // TODO: why would these ever be backwards?
+        int end = Math.max(totalReplaceStart, totalReplaceEnd);
+        int start = Math.min(totalReplaceStart, totalReplaceEnd);
+        SpannableString chipText = new SpannableString(text.subSequence(start, end));
         chipText.setSpan(moreSpan, 0, chipText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        text.replace(totalReplaceStart, totalReplaceEnd, chipText);
+        text.replace(start, end, chipText);
         mMoreChip = moreSpan;
     }
 
@@ -1204,7 +1243,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
             newChip.setSelected(true);
             showAlternates(newChip, mAlternatesPopup, getWidth(), getContext());
-            setCursorVisible(false);
             return newChip;
         } else {
             CharSequence text = currentChip.getValue();
@@ -1388,6 +1426,123 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+        }
+    }
+
+    private class RecipientReplacementTask extends AsyncTask<Void, Void, Void> {
+        private RecipientChip createFreeChip(RecipientEntry entry) {
+            String displayText = entry.getDestination();
+            displayText = (String) mTokenizer.terminateToken(displayText);
+            try {
+                return constructChipSpan(entry, -1, false);
+            } catch (NullPointerException e) {
+                Log.e(TAG, e.getMessage(), e);
+                return null;
+            }
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            if (mIndividualReplacements != null) {
+                mIndividualReplacements.cancel(true);
+            }
+            // For each chip in the list, look up the matching contact.
+            // If there is a match, replace that chip with the matching
+            // chip.
+            final ArrayList<RecipientChip> originalRecipients = new ArrayList<RecipientChip>();
+            RecipientChip[] existingChips = getSpannable().getSpans(0, getText().length(),
+                    RecipientChip.class);
+            for (int i = 0; i < existingChips.length; i++) {
+                originalRecipients.add(existingChips[i]);
+            }
+            if (mRemovedSpans != null) {
+                originalRecipients.addAll(mRemovedSpans);
+            }
+            String[] addresses = new String[originalRecipients.size()];
+            for (int i = 0; i < originalRecipients.size(); i++) {
+                addresses[i] = originalRecipients.get(i).getEntry().getDestination();
+            }
+            HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
+                    .getMatchingRecipients(getContext(), addresses);
+            final ArrayList<RecipientChip> replacements = new ArrayList<RecipientChip>();
+            for (final RecipientChip temp : originalRecipients) {
+                RecipientEntry entry = null;
+                if (temp.getEntry().getContactId() == INVALID_CONTACT
+                        && getSpannable().getSpanStart(temp) != -1) {
+                    // Replace this.
+                    entry = createValidatedEntry(entries.get(temp.getEntry().getDestination()));
+                }
+                if (entry != null) {
+                    replacements.add(createFreeChip(entry));
+                } else {
+                    replacements.add(temp);
+                }
+            }
+            if (replacements != null && replacements.size() > 0) {
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        SpannableStringBuilder text = new SpannableStringBuilder(getText()
+                                .toString());
+                        Editable oldText = getText();
+                        SpannableString chipText;
+                        int start, end;
+                        int i = 0;
+                        for (RecipientChip chip : originalRecipients) {
+                            start = oldText.getSpanStart(chip);
+                            if (start != -1) {
+                            end = oldText.getSpanEnd(chip);
+                            chipText = new SpannableString(text.subSequence(start, end));
+                            chipText.setSpan(replacements.get(i), 0, end - start,
+                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                            text.removeSpan(chip);
+                            text.replace(start, end, chipText);
+                            }
+                            i++;
+                        }
+                        Editable editable = getText();
+                        editable.clear();
+                        editable.insert(0, text);
+                        originalRecipients.clear();
+                    }
+                });
+            }
+            return null;
+        }
+    }
+
+    private class IndividualReplacementTask extends AsyncTask<Object, Void, Void> {
+        @SuppressWarnings("unchecked")
+        @Override
+        protected Void doInBackground(Object... params) {
+            // For each chip in the list, look up the matching contact.
+            // If there is a match, replace that chip with the matching
+            // chip.
+            final ArrayList<RecipientChip> originalRecipients =
+                (ArrayList<RecipientChip>) params[0];
+            String[] addresses = new String[originalRecipients.size()];
+            for (int i = 0; i < originalRecipients.size(); i++) {
+                addresses[i] = originalRecipients.get(i).getEntry().getDestination();
+            }
+            HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
+                    .getMatchingRecipients(getContext(), addresses);
+            for (final RecipientChip temp : originalRecipients) {
+                if (temp.getEntry().getContactId() == INVALID_CONTACT
+                        && getSpannable().getSpanStart(temp) != -1) {
+                    // Replace this.
+                    final RecipientEntry entry = createValidatedEntry(entries.get(temp.getEntry()
+                            .getDestination()));
+                    if (entry != null) {
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                replaceChip(temp, entry);
+                            }
+                        });
+                    }
+                }
+            }
+            return null;
         }
     }
 }
