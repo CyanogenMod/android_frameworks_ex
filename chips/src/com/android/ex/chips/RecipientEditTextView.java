@@ -45,6 +45,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewParent;
 import android.view.ActionMode.Callback;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -54,6 +55,7 @@ import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
 import android.widget.ListView;
 import android.widget.MultiAutoCompleteTextView;
+import android.widget.ScrollView;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -133,9 +135,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     private OnItemClickListener mAlternatesListener;
 
-    private int mCheckedItem;  
+    private int mCheckedItem;
 
     private TextWatcher mTextWatcher;
+
+    private ScrollView mScrollView;
+
+    private boolean mTried;
 
     private final Runnable mAddTextWatcher = new Runnable() {
         @Override
@@ -241,6 +247,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mHandler.post(mAddTextWatcher);
         } else {
             expand();
+            scrollLineIntoView(getLineCount());
         }
         super.onFocusChanged(hasFocus, direction, previous);
     }
@@ -409,13 +416,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * 1) which line the chip appears on
      * 2) the height of a chip
      * 3) padding built into the edit text view
-     * 4) the position of the autocomplete view on the screen, taking into account
-     * that any top padding will move this down visually
      */
-    private int calculateLineBottom(int yOffset, int line, int chipHeight) {
+    private int calculateOffsetFromBottom(int line, int chipHeight) {
         // Line offsets start at zero.
-        int actualLine = line + 1;
-        return yOffset + (actualLine * (chipHeight + getPaddingBottom())) + getPaddingTop();
+        int actualLine = getLineCount() - (line + 1);
+        return -((actualLine * (chipHeight + getPaddingBottom())) + getPaddingTop());
     }
 
     /**
@@ -486,6 +491,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mPendingChipsCount = 0;
             mPendingChips.clear();
             mHandler.post(mAddTextWatcher);
+        }
+        if (mScrollView == null && !mTried) {
+            ViewParent parent = getParent();
+            while (parent != null && !(parent instanceof ScrollView)) {
+                parent = parent.getParent();
+            }
+            if (parent != null) {
+                mScrollView = (ScrollView) parent;
+            }
+            mTried = true;
         }
     }
 
@@ -736,6 +751,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
             float x = event.getX();
             float y = event.getY();
+            setCursorVisible(false);
             int offset = putOffsetInRange(getOffsetForPosition(x, y));
             RecipientChip currentChip = findChip(offset);
             if (currentChip != null) {
@@ -750,11 +766,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         setSelection(getText().length());
                         commitDefault();
                         mSelectedChip = selectChip(currentChip);
+                        if (mSelectedChip != null
+                                && mSelectedChip.getEntry().getContactId() == INVALID_CONTACT) {
+                            scrollLineIntoView(getLayout().getLineForOffset(
+                                    getChipStart(mSelectedChip)));
+                        }
                     } else {
                         onClick(mSelectedChip, offset, x, y);
                     }
                 }
                 chipWasSelected = true;
+                handled = true;
             }
         }
         if (action == MotionEvent.ACTION_UP && !chipWasSelected) {
@@ -763,20 +785,22 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return handled;
     }
 
+    private void scrollLineIntoView(int line) {
+        int scrollBy = calculateOffsetFromBottom(line, (int)mChipHeight);
+        if (mScrollView != null) {
+            mScrollView.scrollBy(0, scrollBy);
+        }
+    }
+
     private void showAlternates(RecipientChip currentChip, ListPopupWindow alternatesPopup,
             int width, Context context) {
         int line = getLayout().getLineForOffset(getChipStart(currentChip));
-        int[] xy = getLocationOnScreen();
-        int bottom = calculateLineBottom(xy[1], line, (int) mChipHeight);
-        View anchorView = new View(context);
-        anchorView.setBottom(bottom);
-        anchorView.setTop(bottom);
-        anchorView.setLeft(xy[0]);
-        anchorView.setRight(xy[0]);
+        int bottom = calculateOffsetFromBottom(line, (int) mChipHeight);
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
+        alternatesPopup.setAnchorView(this);
         alternatesPopup.setWidth(width);
-        alternatesPopup.setAnchorView(anchorView);
+        alternatesPopup.setVerticalOffset(bottom);
         alternatesPopup.setAdapter(createAlternatesAdapter(currentChip));
         alternatesPopup.setOnItemClickListener(mAlternatesListener);
         alternatesPopup.show();
@@ -790,12 +814,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             listView.setItemChecked(mCheckedItem, true);
             mCheckedItem = -1;
         }
-    }
-
-    private int[] getLocationOnScreen() {
-        int[] xy = new int[2];
-        getLocationOnScreen(xy);
-        return xy;
     }
 
     private ListAdapter createAlternatesAdapter(RecipientChip chip) {
