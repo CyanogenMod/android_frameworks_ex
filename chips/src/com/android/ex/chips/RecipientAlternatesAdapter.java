@@ -54,8 +54,10 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     @Override
     public long getItemId(int position) {
         Cursor c = getCursor();
-        c.moveToPosition(position);
-        return c.getLong(EmailQuery.DATA_ID);
+        if (c.moveToPosition(position)) {
+            c.getLong(EmailQuery.DATA_ID);
+        }
+        return -1;
     }
 
     public RecipientEntry getRecipientEntry(int position) {

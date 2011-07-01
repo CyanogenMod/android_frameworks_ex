@@ -37,6 +37,8 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.method.QwertyKeyListener;
 import android.text.style.ImageSpan;
+import android.text.util.Rfc822Token;
+import android.text.util.Rfc822Tokenizer;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
@@ -100,7 +102,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private int mMoreString;
 
-    private ArrayList<RecipientChip> mRemovedSpans;
 
     private final ArrayList<String> mPendingChips = new ArrayList<String>();
 
@@ -129,6 +130,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private static final char COMMIT_CHAR_SPACE = ' ';
 
     private ListPopupWindow mAlternatesPopup;
+
+    private ArrayList<RecipientChip> mRemovedSpans;
 
     /**
      * Used with {@link mAlternatesPopup}. Handles clicks to alternate addresses for a selected chip.
@@ -197,7 +200,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // cause any needed services to be started and make the first filter
         // query come back more quickly.
         Filter f = ((Filterable) adapter).getFilter();
-        f.filter(null);
+        f.filter("xxxxxxxxxxxx");
     }
 
     @Override
@@ -258,7 +261,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         } else {
             commitDefault();
         }
-        mMoreChip = createMoreChip();
+        createMoreChip();
     }
 
     private void expand() {
@@ -468,25 +471,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // on the view.
         if (width != 0 && height != 0) {
             if (mPendingChipsCount > 0) {
-                Editable editable = getText();
-                // Tokenize!
-                for (int i = 0; i < mPendingChips.size(); i++) {
-                    String current = mPendingChips.get(i);
-                    int tokenStart = editable.toString().indexOf(current);
-                    int tokenEnd = tokenStart + current.length();
-                    if (tokenStart >= 0) {
-                        // When we have a valid token, include it with the token
-                        // to the left.
-                        if (tokenEnd < editable.length() - 2
-                                && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
-                            tokenEnd++;
-                        }
-                        String token = editable.toString().substring(tokenStart, tokenEnd);
-                        editable.replace(tokenStart, tokenEnd, createChip(RecipientEntry
-                                .constructFakeEntry(token), false));
-                    }
-                }
-                mPendingChipsCount--;
+                handlePendingChips();
             }
             mPendingChipsCount = 0;
             mPendingChips.clear();
@@ -502,6 +487,98 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
             mTried = true;
         }
+    }
+
+    private void handlePendingChips() {
+        Editable editable = getText();
+        // Tokenize!
+        for (int i = 0; i < mPendingChips.size(); i++) {
+            String current = mPendingChips.get(i);
+            int tokenStart = editable.toString().indexOf(current);
+            int tokenEnd = tokenStart + current.length();
+            if (tokenStart >= 0) {
+                // When we have a valid token, include it with the token
+                // to the left.
+                if (tokenEnd < editable.length() - 2
+                        && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
+                    tokenEnd++;
+                }
+                createReplacementChip(tokenStart, tokenEnd, editable);
+            }
+            mPendingChipsCount--;
+        }
+        sanitizeSpannable();
+        if (!hasFocus()) {
+            createMoreChip();
+        }
+    }
+
+    /**
+     * Remove any characters after the last valid chip.
+     */
+    private void sanitizeSpannable() {
+        // Find the last chip; eliminate any commit characters after it.
+        RecipientChip[] chips = getRecipients();
+        if (chips != null && chips.length > 0) {
+            int end;
+            ImageSpan lastSpan;
+            if (mMoreChip != null) {
+                lastSpan = mMoreChip;
+            } else {
+                lastSpan = chips[chips.length - 1];
+            }
+            end = getSpannable().getSpanEnd(lastSpan);
+            Editable editable = getText();
+            int length = editable.length();
+            if (length > end) {
+                // See what characters occur after that and eliminate them.
+                if (Log.isLoggable(TAG, Log.DEBUG)) {
+                    Log.d(TAG, "There were extra characters after the last tokenizable entry."
+                            + editable);
+                }
+                editable.delete(end + 1, length);
+            }
+        }
+    }
+
+    /**
+     * Create a chip that represents just the email address of a recipient. At some later
+     * point, this chip will be attached to a real contact entry, if one exists.
+     */
+    private void createReplacementChip(int tokenStart, int tokenEnd, Editable editable) {
+        String token = editable.toString().substring(tokenStart, tokenEnd).trim();
+        int commitCharIndex = token.indexOf(COMMIT_CHAR_COMMA);
+        if (commitCharIndex == token.length() - 1) {
+            token = token.substring(0, token.length() - 1);
+        }
+        RecipientEntry entry = createTokenizedEntry(token);
+        String displayText = entry.getDestination();
+        displayText = (String) mTokenizer.terminateToken(displayText);
+        // Always leave a blank space at the end of a chip.
+        int textLength = displayText.length() - 1;
+        SpannableString chipText = new SpannableString(displayText);
+        int end = getSelectionEnd();
+        int start = mTokenizer.findTokenStart(getText(), end);
+        RecipientChip chip = null;
+        try {
+            chip = constructChipSpan(entry, start, false);
+            chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } catch (NullPointerException e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
+
+        editable.replace(tokenStart, tokenEnd, chipText);
+    }
+
+    private RecipientEntry createTokenizedEntry(String token) {
+        Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
+        String address;
+        if (tokens != null && tokens.length > 0) {
+            address = tokens[0].getAddress();
+        } else {
+            address = token;
+        }
+        return RecipientEntry.constructFakeEntry(address);
     }
 
     @Override
@@ -786,9 +863,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void scrollLineIntoView(int line) {
-        int scrollBy = calculateOffsetFromBottom(line, (int)mChipHeight);
         if (mScrollView != null) {
-            mScrollView.scrollBy(0, scrollBy);
+            mScrollView.scrollBy(0, calculateOffsetFromBottom(line, (int) mChipHeight));
         }
     }
 
@@ -910,15 +986,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void submitItemAtPosition(int position) {
-        RecipientEntry entry = (RecipientEntry) getAdapter().getItem(position);
-        // If the display name and the address are the same, or if this is a
-        // valid contact, but the destination is invalid, then make this a fake
-        // recipient that is editable.
-        String destination = entry.getDestination();
-        if (TextUtils.equals(entry.getDisplayName(), destination)
-                || (mValidator != null && !mValidator.isValid(destination))) {
-            entry = RecipientEntry.constructFakeEntry(destination);
-        }
+        RecipientEntry entry = createValidatedEntry(
+                (RecipientEntry)getAdapter().getItem(position));
         clearComposingText();
 
         int end = getSelectionEnd();
@@ -927,6 +996,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Editable editable = getText();
         QwertyKeyListener.markAsReplaced(editable, start, end, "");
         editable.replace(start, end, createChip(entry, false));
+    }
+
+    private RecipientEntry createValidatedEntry(RecipientEntry item) {
+        if (item == null) {
+            return null;
+        }
+        final RecipientEntry entry;
+        // If the display name and the address are the same, or if this is a
+        // valid contact, but the destination is invalid, then make this a fake
+        // recipient that is editable.
+        String destination = item.getDestination();
+        if (TextUtils.equals(item.getDisplayName(), destination)
+                || (mValidator != null && !mValidator.isValid(destination))) {
+            entry = RecipientEntry.constructFakeEntry(destination);
+        } else {
+            entry = item;
+        }
+        return entry;
     }
 
     /** Returns a collection of contact Id for each chip inside this View. */
@@ -985,10 +1072,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * do not fit in the pre-defined available space when the
      * RecipientEditTextView loses focus.
      */
-    private ImageSpan createMoreChip() {
+    private void createMoreChip() {
         RecipientChip[] recipients = getRecipients();
         if (recipients == null || recipients.length <= CHIP_LIMIT) {
-            return null;
+            mMoreChip = null;
+            return;
         }
         int numRecipients = recipients.length;
         int overage = numRecipients - CHIP_LIMIT;
@@ -1009,8 +1097,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // Remove the overage chips.
         if (recipients == null || recipients.length == 0) {
             Log.w(TAG,
-                "We have recipients. Tt should not be possible to have zero RecipientChips.");
-            return null;
+                    "We have recipients. Tt should not be possible to have zero RecipientChips.");
+            mMoreChip = null;
+            return;
         }
         mRemovedSpans = new ArrayList<RecipientChip>();
         int totalReplaceStart = 0;
@@ -1031,7 +1120,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 totalReplaceEnd));
         chipText.setSpan(moreSpan, 0, chipText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         text.replace(totalReplaceStart, totalReplaceEnd, chipText);
-        return moreSpan;
+        mMoreChip = moreSpan;
     }
 
     /**
@@ -1050,7 +1139,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 SpannableString associatedText;
                 for (RecipientChip chip : mRemovedSpans) {
                     int chipStart = chip.getStoredChipStart();
-                    int chipEnd = Math.min(editable.length(), chip.getStoredChipEnd());
+                    int chipEnd;
+                    String token;
+                    if (chipStart == -1) {
+                        // Need to find the location of the chip, again.
+                        token = (String)mTokenizer.terminateToken(chip.getEntry().getDestination());
+                        chipStart = editable.toString().indexOf(token);
+                        chipEnd = chipStart + token.length();
+                    } else {
+                        chipEnd = Math.min(editable.length(), chip.getStoredChipEnd());
+                    }
                     if (Log.isLoggable(TAG, Log.DEBUG) && chipEnd != chip.getStoredChipEnd()) {
                         Log.d(TAG,
                                 "Unexpectedly, the chip ended after the end of the editable text. "
@@ -1292,5 +1390,4 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
         }
     }
-
 }
