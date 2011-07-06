@@ -43,7 +43,7 @@ import android.text.style.ImageSpan;
     public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
         super(drawable);
         mDisplay = entry.getDisplayName();
-        mValue = entry.getDestination();
+        mValue = entry.getDestination().trim();
         mContactId = entry.getContactId();
         mDataId = entry.getDataId();
         mEntry = entry;

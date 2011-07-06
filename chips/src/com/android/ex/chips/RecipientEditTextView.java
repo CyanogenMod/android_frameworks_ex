@@ -1217,14 +1217,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             int end = getChipEnd(currentChip);
             getSpannable().removeSpan(currentChip);
             RecipientChip newChip;
-            CharSequence displayText = mTokenizer.terminateToken(currentChip.getValue());
-            // Always leave a blank space at the end of a chip.
-            int textLength = displayText.length() - 1;
-            SpannableString chipText = new SpannableString(displayText);
             try {
                 newChip = constructChipSpan(currentChip.getEntry(), start, true);
-                chipText.setSpan(newChip, 0, textLength,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
                 return null;
@@ -1234,7 +1228,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (start == -1 || end == -1) {
                 Log.d(TAG, "The chip being selected no longer exists but should.");
             } else {
-                editable.replace(start, end, chipText);
+                editable.setSpan(newChip, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
             newChip.setSelected(true);
             if (newChip.getEntry().getContactId() == INVALID_CONTACT) {
@@ -1270,7 +1264,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         } else {
             getSpannable().removeSpan(chip);
             QwertyKeyListener.markAsReplaced(editable, start, end, "");
-            editable.replace(start, end, createChip(chip.getEntry(), false));
+            editable.removeSpan(chip);
+            try {
+                editable.setSpan(constructChipSpan(chip.getEntry(), start, false), start, end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } catch (NullPointerException e) {
+                Log.e(TAG, e.getMessage(), e);
+            }
         }
         setCursorVisible(true);
         setSelection(editable.length());
@@ -1323,7 +1323,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mSelectedChip = null;
         }
         // Always remove trailing spaces when removing a chip.
-        while (toDelete >= 0 && toDelete < text.length() - 1 && text.charAt(toDelete) == ' ') {
+        while (toDelete >= 0 && toDelete < text.length() && text.charAt(toDelete) == ' ') {
             toDelete++;
         }
         spannable.removeSpan(chip);
