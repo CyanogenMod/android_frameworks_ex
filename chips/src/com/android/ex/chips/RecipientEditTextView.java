@@ -432,10 +432,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * 2) the height of a chip
      * 3) padding built into the edit text view
      */
-    private int calculateOffsetFromBottom(int line, int chipHeight) {
+    private int calculateOffsetFromBottom(int line) {
         // Line offsets start at zero.
         int actualLine = getLineCount() - (line + 1);
-        return -((actualLine * (chipHeight + getPaddingBottom())) + getPaddingTop());
+        // TODO: when b/4559727 is fixed, the bottom padding should be applied to each line.
+        return -((actualLine * (int)mChipHeight) + getPaddingBottom() + getPaddingTop());
     }
 
     /**
@@ -537,8 +538,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
         } else {
             // There are too many recipients to look up, so just fall back to
-            // showing addresses
-            // for all of them.
+            // showing addresses for all of them.
             mTemporaryRecipients = null;
             createMoreChip();
         }
@@ -878,11 +878,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         setSelection(getText().length());
                         commitDefault();
                         mSelectedChip = selectChip(currentChip);
-                        if (mSelectedChip != null
-                                && mSelectedChip.getEntry().getContactId() == INVALID_CONTACT) {
-                            scrollLineIntoView(getLayout().getLineForOffset(
-                                    getChipStart(mSelectedChip)));
-                        }
                     } else {
                         onClick(mSelectedChip, offset, x, y);
                     }
@@ -899,14 +894,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void scrollLineIntoView(int line) {
         if (mScrollView != null) {
-            mScrollView.scrollBy(0, calculateOffsetFromBottom(line, (int) mChipHeight));
+            mScrollView.scrollBy(0, calculateOffsetFromBottom(line));
         }
     }
 
     private void showAlternates(RecipientChip currentChip, ListPopupWindow alternatesPopup,
             int width, Context context) {
         int line = getLayout().getLineForOffset(getChipStart(currentChip));
-        int bottom = calculateOffsetFromBottom(line, (int) mChipHeight);
+        int bottom = calculateOffsetFromBottom(line);
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
         alternatesPopup.setWidth(width);
@@ -1242,6 +1237,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 editable.replace(start, end, chipText);
             }
             newChip.setSelected(true);
+            if (newChip.getEntry().getContactId() == INVALID_CONTACT) {
+                scrollLineIntoView(getLayout().getLineForOffset(
+                        getChipStart(newChip)));
+            }
             showAlternates(newChip, mAlternatesPopup, getWidth(), getContext());
             return newChip;
         } else {
