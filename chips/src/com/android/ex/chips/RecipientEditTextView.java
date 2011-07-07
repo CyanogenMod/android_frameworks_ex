@@ -435,8 +435,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private int calculateOffsetFromBottom(int line) {
         // Line offsets start at zero.
         int actualLine = getLineCount() - (line + 1);
-        // TODO: when b/4559727 is fixed, the bottom padding should be applied to each line.
-        return -((actualLine * (int)mChipHeight) + getPaddingBottom() + getPaddingTop());
+        return -((actualLine * ((int)mChipHeight) + getPaddingBottom()) + getPaddingTop());
     }
 
     /**
@@ -577,7 +576,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * point, this chip will be attached to a real contact entry, if one exists.
      */
     private void createReplacementChip(int tokenStart, int tokenEnd, Editable editable) {
-        String token = editable.toString().substring(tokenStart, tokenEnd).trim();
+        String token = editable.toString().substring(tokenStart, tokenEnd);
         int commitCharIndex = token.indexOf(COMMIT_CHAR_COMMA);
         if (commitCharIndex == token.length() - 1) {
             token = token.substring(0, token.length() - 1);
@@ -991,7 +990,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         String displayText = entry.getDestination();
         displayText = (String) mTokenizer.terminateToken(displayText);
         // Always leave a blank space at the end of a chip.
-        int textLength = displayText.length() - 1;
+        int textLength = displayText.length()-1;
         SpannableString chipText = new SpannableString(displayText);
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(getText(), end);
@@ -1170,7 +1169,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (mRemovedSpans != null && mRemovedSpans.size() > 0) {
                 // Recreate each removed span.
                 Editable editable = getText();
-                SpannableString associatedText;
                 for (RecipientChip chip : mRemovedSpans) {
                     int chipStart = chip.getStoredChipStart();
                     int chipEnd;
@@ -1179,7 +1177,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         // Need to find the location of the chip, again.
                         token = (String)mTokenizer.terminateToken(chip.getEntry().getDestination());
                         chipStart = editable.toString().indexOf(token);
-                        chipEnd = chipStart + token.length();
+                        // -1 for the space!
+                        chipEnd = chipStart + token.length() - 1;
                     } else {
                         chipEnd = Math.min(editable.length(), chip.getStoredChipEnd());
                     }
@@ -1189,10 +1188,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                         + "Chip End " + chip.getStoredChipEnd()
                                         + "Editable length " + editable.length());
                     }
-                    associatedText = new SpannableString(editable.subSequence(chipStart, chipEnd));
-                    associatedText.setSpan(chip, 0, associatedText.length(),
-                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    editable.replace(chipStart, chipEnd, associatedText);
+                    editable.setSpan(chip, chipStart, chipEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
                 mRemovedSpans.clear();
             }
@@ -1351,7 +1347,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             Log.e(TAG, "The chip to replace does not exist but should.");
             editable.insert(0, chipText);
         } else {
-            editable.replace(start, end, chipText);
+            // There may be a space to replace with this chip's new associated
+            // space. Check for it.
+            int toReplace = end;
+            while (toReplace >= 0 && toReplace < editable.length()
+                    && editable.charAt(toReplace) == ' ') {
+                toReplace++;
+            }
+            editable.replace(start, toReplace, chipText);
         }
         setCursorVisible(true);
         if (wasSelected) {
@@ -1484,18 +1487,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         SpannableStringBuilder text = new SpannableStringBuilder(getText()
                                 .toString());
                         Editable oldText = getText();
-                        SpannableString chipText;
                         int start, end;
                         int i = 0;
                         for (RecipientChip chip : originalRecipients) {
                             start = oldText.getSpanStart(chip);
                             if (start != -1) {
-                            end = oldText.getSpanEnd(chip);
-                            chipText = new SpannableString(text.subSequence(start, end));
-                            chipText.setSpan(replacements.get(i), 0, end - start,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                            text.removeSpan(chip);
-                            text.replace(start, end, chipText);
+                                end = oldText.getSpanEnd(chip);
+                                text.removeSpan(chip);
+                                // Leave a spot for the space!
+                                text.setSpan(replacements.get(i), start, end,
+                                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                             }
                             i++;
                         }
