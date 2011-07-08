@@ -1188,7 +1188,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                         + "Chip End " + chip.getStoredChipEnd()
                                         + "Editable length " + editable.length());
                     }
-                    editable.setSpan(chip, chipStart, chipEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    // Only set the span if we found a matching token.
+                    if (chipStart != -1) {
+                        editable.setSpan(chip, chipStart, chipEnd,
+                                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
                 }
                 mRemovedSpans.clear();
             }
