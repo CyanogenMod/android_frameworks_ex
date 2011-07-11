@@ -26,8 +26,9 @@ public class RecipientEntry {
     public static final int ENTRY_TYPE_PERSON = 0;
     public static final int ENTRY_TYPE_SEP_NORMAL = 1;
     public static final int ENTRY_TYPE_SEP_WITHIN_GROUP = 2;
+    public static final int ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH = 3;
 
-    public static final int ENTRY_TYPE_SIZE = 3;
+    public static final int ENTRY_TYPE_SIZE = 4;
 
     /** Separator entry dividing two persons or groups. */
     public static final RecipientEntry SEP_NORMAL =
@@ -35,6 +36,8 @@ public class RecipientEntry {
     /** Separator entry dividing two entries inside a person or a group. */
     public static final RecipientEntry SEP_WITHIN_GROUP =
             new RecipientEntry(ENTRY_TYPE_SEP_WITHIN_GROUP);
+    public static final RecipientEntry WAITING_FOR_DIRECTORY_SEARCH =
+            new RecipientEntry(ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH);
 
     private final int mEntryType;
 

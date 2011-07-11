@@ -16,4 +16,8 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <!-- Text displayed when the recipientedittextview is not focused. Displays the total number of recipients since the field is shrunk to just display a portion -->
     <string name="more_string">\u002B <xliff:g id="count">%1$s</xliff:g> more</string>
+
+    <!-- Text displayed when there are remote directories not returning results.
+         [CHAR LIMIT=50] -->
+    <string name="chips_waiting_for_directory_result">Waiting for more contacts</string>
 </resources>

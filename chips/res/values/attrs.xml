@@ -15,9 +15,10 @@
 -->
 
 <resources>
-    <add-resource type="dimen" name="chip_padding"></add-resource>
-    <add-resource type="dimen" name="chip_height"></add-resource>
-    <add-resource type="dimen" name="chip_text_size"></add-resource>
-    <add-resource type="color" name="default_chip_background"></add-resource>
-    <add-resource type="string" name="more_string"></add-resource>
+    <add-resource type="dimen" name="chip_padding" />
+    <add-resource type="dimen" name="chip_height" />
+    <add-resource type="dimen" name="chip_text_size" />
+    <add-resource type="color" name="default_chip_background" />
+    <add-resource type="string" name="more_string" />
+    <add-resource type="string" name="chips_waiting_for_directory_result" />
 </resources>

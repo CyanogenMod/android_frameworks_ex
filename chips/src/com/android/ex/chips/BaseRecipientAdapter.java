@@ -28,6 +28,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Message;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
@@ -83,6 +84,14 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     /** The number of photos cached in this Adapter. */
     private static final int PHOTO_CACHE_SIZE = 20;
+
+    /**
+     * The "Waiting for more contacts" message will be displayed if search is not complete
+     * within this many milliseconds.
+     */
+    private static final int MESSAGE_SEARCH_PENDING_DELAY = 1000;
+    /** Used to prepare "Waiting for more contacts" message. */
+    private static final int MESSAGE_SEARCH_PENDING = 1;
 
     public static final int QUERY_TYPE_EMAIL = 0;
     public static final int QUERY_TYPE_PHONE = 1;
@@ -177,8 +186,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 }
             }
 
-            // TODO: implement group feature
-
             final Cursor directoryCursor = mContentResolver.query(
                     DirectoryListQuery.URI, DirectoryListQuery.PROJECTION, null, null, null);
 
@@ -193,13 +200,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         protected void publishResults(final CharSequence constraint, FilterResults results) {
             if (results.values != null) {
                 final Cursor[] cursors = (Cursor[]) results.values;
-                // Run on one thread.
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        onFirstDirectoryLoadFinished(constraint, cursors[0], cursors[1]);
-                    }
-                });
+                onFirstDirectoryLoadFinished(constraint, cursors[0], cursors[1]);
             }
             results.count = getCount();
         }
@@ -246,20 +247,13 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 }
             }
 
-            // TODO: implement group feature
-
             return results;
         }
 
         @Override
         protected void publishResults(final CharSequence constraint, FilterResults results) {
             final Cursor cursor = (Cursor) results.values;
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    onDirectoryLoadFinished(constraint, mParams, cursor);
-                }
-            });
+            onDirectoryLoadFinished(constraint, mParams, cursor);
             results.count = getCount();
         }
     }
@@ -289,6 +283,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private final List<RecipientEntry> mEntries;
     private final Set<String> mExistingDestinations;
 
+    /** The number of directories this adapter is waiting for results. */
+    private int mRemainingDirectoryCount;
+
     /**
      * Used to ignore asynchronous queries with a different constraint, which may appear when
      * users type characters quickly.
@@ -298,6 +295,32 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private final HandlerThread mPhotoHandlerThread;
     private final Handler mPhotoHandler;
     private final LruCache<Uri, byte[]> mPhotoCacheMap;
+
+    /**
+     * Handler specific for maintaining "Waiting for more contacts" message, which will be shown
+     * when:
+     * - there are directories to be searched
+     * - results from directories are slow to come
+     */
+    private final class DelayedMessageHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            if (mRemainingDirectoryCount > 0) {
+                constructEntryList(true);
+            }
+        }
+
+        public void sendDelayedLoadMessage() {
+            sendMessageDelayed(obtainMessage(MESSAGE_SEARCH_PENDING, 0, 0, null),
+                    MESSAGE_SEARCH_PENDING_DELAY);
+        }
+
+        public void removeDelayedLoadMessage() {
+            removeMessages(MESSAGE_SEARCH_PENDING);
+        }
+    }
+
+    private final DelayedMessageHandler mDelayedMessageHandler = new DelayedMessageHandler();
 
     /**
      * Constructor for email queries.
@@ -363,8 +386,12 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 mEntryMap.clear();
                 mNonAggregatedEntries.clear();
                 mExistingDestinations.clear();
+
+                // Reset counters related to directory load.
+                mRemainingDirectoryCount = 0;
+
                 putEntriesWithCursor(defaultDirectoryCursor, true);
-                constructEntryList();
+                constructEntryList(false);
                 limit = mPreferredMaxResultCount - getCount();
             }
 
@@ -450,27 +477,49 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             params.filter.setLimit(limit);
             params.filter.filter(constraint);
         }
+
+        // Directory search started. We may show "waiting" message if directory results are slow.
+        mRemainingDirectoryCount = count - 1;
+        mDelayedMessageHandler.sendDelayedLoadMessage();
     }
 
     /** Must be inside a default Looper thread to avoid synchronization problem. */
     public void onDirectoryLoadFinished(
             CharSequence constraint, DirectorySearchParams params, Cursor cursor) {
-        if (cursor != null) {
-            try {
-                if (DEBUG) {
-                    Log.v(TAG, "finished loading directory \"" + params.displayName + "\"" +
+        try {
+            mDelayedMessageHandler.removeDelayedLoadMessage();
+
+            final boolean usesSameConstraint = TextUtils.equals(constraint, mCurrentConstraint);
+            // Check if the received result matches the current constraint.
+            // If not - the user must have continued typing after the request was issued, which
+            // means several member variables (like mRemainingDirectoryLoad) are already
+            // overwritten so shouldn't be touched here anymore.
+            if (usesSameConstraint) {
+                mRemainingDirectoryCount--;
+                if (cursor != null) {
+                    if (DEBUG) {
+                        Log.v(TAG, "finished loading directory \"" + params.displayName + "\"" +
                             " with query " + constraint);
+                    }
+
+                    if (usesSameConstraint) {
+                        putEntriesWithCursor(cursor, params.directoryId == Directory.DEFAULT);
+                    }
                 }
 
-                // Check if the received result matches the current constraint
-                // If not - the user must have continued typing after the request was issued
-                final boolean usesSameConstraint;
-                usesSameConstraint = TextUtils.equals(constraint, mCurrentConstraint);
-                if (usesSameConstraint) {
-                    putEntriesWithCursor(cursor, params.directoryId == Directory.DEFAULT);
-                    constructEntryList();
+                // Show the list again without "waiting" message.
+                constructEntryList(false);
+
+                if (mRemainingDirectoryCount > 0) {
+                    if (DEBUG) {
+                        Log.v(TAG, "Resend delayed load message. Current mRemainingDirectoryLoad: "
+                            + mRemainingDirectoryCount);
+                    }
+                    mDelayedMessageHandler.sendDelayedLoadMessage();
                 }
-            } finally {
+            }
+        } finally {
+            if (cursor != null) {
                 cursor.close();
             }
         }
@@ -480,7 +529,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * Stores each contact information to {@link #mEntryMap}. {@link #mEntries} isn't touched here.
      *
      * In order to make the new information available from outside Adapter,
-     * call {@link #constructEntryList()} after this method.
+     * call {@link #constructEntryList(boolean)} after this method.
      */
     private void putEntriesWithCursor(Cursor cursor, boolean validContactId) {
         cursor.move(-1);
@@ -537,7 +586,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * thread to get one from directories. The thread ({@link #mPhotoHandlerThread}) will
      * request {@link #notifyDataSetChanged()} after having the photo asynchronously.
      */
-    private void constructEntryList() {
+    private void constructEntryList(boolean showMessageIfDirectoryLoadRemaining) {
         mEntries.clear();
         int validEntryCount = 0;
         for (Map.Entry<Long, List<RecipientEntry>> mapEntry : mEntryMap.entrySet()) {
@@ -570,9 +619,13 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
         }
 
-        // Remove last divider
-        if (mEntries.size() > 1) {
-            mEntries.remove(mEntries.size() - 1);
+        if (showMessageIfDirectoryLoadRemaining && mRemainingDirectoryCount > 0) {
+            mEntries.add(RecipientEntry.WAITING_FOR_DIRECTORY_SEARCH);
+        } else {
+            // Remove last divider
+            if (mEntries.size() > 1) {
+                mEntries.remove(mEntries.size() - 1);
+            }
         }
         notifyDataSetChanged();
     }
@@ -729,6 +782,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 return convertView != null ? convertView
                         : mInflater.inflate(getSeparatorWithinGroupLayout(), parent, false);
             }
+            case RecipientEntry.ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH: {
+                return convertView != null ? convertView
+                        : mInflater.inflate(getWaitingForDirectorySearchLayout(), parent, false);
+            }
             default: {
                 String displayName = entry.getDisplayName();
                 String emailAddress = entry.getDestination();
@@ -787,6 +844,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * Returns a layout id for a separator dividing two destinations for a same person or group.
      */
     protected abstract int getSeparatorWithinGroupLayout();
+    /**
+     * Returns a layout id for a view showing "waiting for more contacts".
+     */
+    protected abstract int getWaitingForDirectorySearchLayout();
 
     /**
      * Returns a resource ID representing an image which should be shown when ther's no relevant
