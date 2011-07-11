@@ -23,6 +23,7 @@ import android.database.Cursor;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -43,6 +44,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     private int mCheckedItemPosition = -1;
 
     private OnCheckedItemChangedListener mCheckedItemChangedListener;
+
+    private static final String TAG = "RecipAlternates";
 
     /**
      * Get a HashMap of address to RecipientEntry that contains all contact
@@ -68,6 +71,10 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             }
         }
 
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, "Doing reverse lookup for " + addresses.toString());
+        }
+
         Cursor c = context.getContentResolver().query(Email.CONTENT_URI, EmailQuery.PROJECTION,
                 Email.ADDRESS + " IN (" + bindString.toString() + ")", addresses, null);
         HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
@@ -82,6 +89,13 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                                 c.getLong(EmailQuery.CONTACT_ID),
                                 c.getLong(EmailQuery.DATA_ID),
                                 c.getString(EmailQuery.PHOTO_THUMBNAIL_URI)));
+                        if (Log.isLoggable(TAG, Log.DEBUG)) {
+                            Log.d(TAG, "Received reverse look up information for " + address
+                                    + " RESULTS: "
+                                    + " NAME : " + c.getString(EmailQuery.NAME)
+                                    + " CONTACT ID : " + c.getLong(EmailQuery.CONTACT_ID)
+                                    + " ADDRESS :" + c.getString(EmailQuery.ADDRESS));
+                        }
                     } while (c.moveToNext());
                 }
             } finally {
