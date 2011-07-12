@@ -265,7 +265,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mSelectedChip != null) {
             clearSelectedChip();
         } else {
-            commitDefault();
+            Editable editable = getText();
+            int end = getSelectionEnd();
+            int start = mTokenizer.findTokenStart(editable, end);
+
+            int whatEnd = mTokenizer.findTokenEnd(getText(), start);
+            // In the middle of chip; treat this as an edit
+            // and commit the whole token.
+            if (whatEnd != getSelectionEnd()) {
+                handleEdit(start, whatEnd);
+                return;
+            }
+            commitChip(start, end, editable);
         }
         createMoreChip();
     }
@@ -862,7 +873,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
             float x = event.getX();
             float y = event.getY();
-            setCursorVisible(false);
             int offset = putOffsetInRange(getOffsetForPosition(x, y));
             RecipientChip currentChip = findChip(offset);
             if (currentChip != null) {
@@ -882,6 +892,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     }
                 }
                 chipWasSelected = true;
+                setCursorVisible(false);
                 handled = true;
             }
         }
