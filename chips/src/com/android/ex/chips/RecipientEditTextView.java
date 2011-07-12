@@ -233,6 +233,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     @Override
     public void append(CharSequence text, int start, int end) {
+        // We don't care about watching text changes while appending.
+        if (mTextWatcher != null) {
+            removeTextChangedListener(mTextWatcher);
+        }
         super.append(text, start, end);
         if (!TextUtils.isEmpty(text) && TextUtils.getTrimmedLength(text) > 0) {
             final String displayString = (String) text;
@@ -249,11 +253,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     public void onFocusChanged(boolean hasFocus, int direction, Rect previous) {
         if (!hasFocus) {
             shrink();
-            // Reset any pending chips as they would have been handled
-            // when the field lost focus.
-            mPendingChipsCount = 0;
-            mPendingChips.clear();
-            mHandler.post(mAddTextWatcher);
         } else {
             expand();
             scrollLineIntoView(getLineCount());
@@ -265,18 +264,29 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mSelectedChip != null) {
             clearSelectedChip();
         } else {
-            Editable editable = getText();
-            int end = getSelectionEnd();
-            int start = mTokenizer.findTokenStart(editable, end);
-
-            int whatEnd = mTokenizer.findTokenEnd(getText(), start);
-            // In the middle of chip; treat this as an edit
-            // and commit the whole token.
-            if (whatEnd != getSelectionEnd()) {
-                handleEdit(start, whatEnd);
-                return;
+            // Reset any pending chips as they would have been handled
+            // when the field lost focus.
+            if (mPendingChipsCount > 0) {
+                handlePendingChips();
+                mPendingChipsCount = 0;
+                mPendingChips.clear();
+            } else {
+                Editable editable = getText();
+                int end = getSelectionEnd();
+                int start = mTokenizer.findTokenStart(editable, end);
+                RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
+                if ((chips == null || chips.length == 0)) {
+                    int whatEnd = mTokenizer.findTokenEnd(getText(), start);
+                    // In the middle of chip; treat this as an edit
+                    // and commit the whole token.
+                    if (whatEnd != getSelectionEnd()) {
+                        handleEdit(start, whatEnd);
+                    } else {
+                        commitChip(start, end, editable);
+                    }
+                }
             }
-            commitChip(start, end, editable);
+            mHandler.post(mAddTextWatcher);
         }
         createMoreChip();
     }
@@ -744,7 +754,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private boolean commitChip(int start, int end, Editable editable) {
-        if (getAdapter().getCount() > 0) {
+        if (getAdapter().getCount() > 0 && enoughToFilter()) {
             // choose the first entry.
             submitItemAtPosition(0);
             dismissDropDown();
