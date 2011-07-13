@@ -202,11 +202,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (adapter == null) {
             return;
         }
-        // Start the filtering process as soon as possible. This will
-        // cause any needed services to be started and make the first filter
-        // query come back more quickly.
-        Filter f = ((Filterable) adapter).getFilter();
-        f.filter("sara");
     }
 
     @Override
