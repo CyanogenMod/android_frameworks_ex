@@ -1057,7 +1057,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // valid contact, but the destination is invalid, then make this a fake
         // recipient that is editable.
         String destination = item.getDestination();
-        if (TextUtils.equals(item.getDisplayName(), destination)
+        if (TextUtils.isEmpty(item.getDisplayName())
+                || TextUtils.equals(item.getDisplayName(), destination)
                 || (mValidator != null && !mValidator.isValid(destination))) {
             entry = RecipientEntry.constructFakeEntry(destination);
         } else {
