@@ -14,6 +14,9 @@
      limitations under the License.
 -->
 
-<inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#20000000"
-    android:insetLeft="50dip"/>
+ <selector xmlns:android="http://schemas.android.com/apk/res/android">
+   <item android:state_activated="true" android:color="@android:color/white" />
+   <item android:state_checked="true" android:color="@android:color/white" />
+   <item android:state_selected="true" android:color="@android:color/white" />
+   <item android:color="#777777"/>
+ </selector>

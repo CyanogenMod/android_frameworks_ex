@@ -16,4 +16,6 @@
 
 <resources>
     <color name="default_chip_background">#77CCCCCC</color>
+    <color name="list_item_selected">#0099cc</color>
+    <color name="chip_selected">#0099cc</color>
 </resources>

@@ -18,44 +18,37 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="30dip"
     android:orientation="horizontal"
-    android:gravity="center_vertical">
+    android:gravity="center_vertical"
+    android:background="@drawable/list_item_background">
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="left|center_vertical"
         android:layout_weight="1">
         <TextView android:id="@android:id/text1"
-                  android:textColor="?android:attr/textColorPrimary"
-                  android:textAppearance="?android:attr/textAppearanceMedium"
+                  android:textColor="@drawable/list_item_font_primary"
+                  android:textSize="18sp"
                   android:layout_width="wrap_content"
                   android:layout_height="wrap_content"
-                  android:gravity="center_vertical"
-                  android:paddingLeft="6dip"
+                  android:paddingLeft="8dip"
                   android:singleLine="true"
-                  android:ellipsize="end" />
+                  android:ellipsize="end" 
+                  />
         <TextView android:id="@android:id/text2"
-                  android:textColor="?android:attr/textColorSecondary"
-                  android:textAppearance="?android:attr/textAppearanceSmall"
+                  android:textColor="@drawable/list_item_font_secondary"
+                  android:textSize="14sp"
                   android:layout_width="wrap_content"
                   android:layout_height="wrap_content"
-                  android:gravity="center_vertical"
-                  android:paddingLeft="6dip"
+                  android:paddingLeft="16dip"
                   android:singleLine="true"
                   android:ellipsize="end" />
     </LinearLayout>
-    <FrameLayout
-        android:layout_width="50dip"
-        android:layout_height="wrap_content">
-        <ImageView
-            android:id="@android:id/icon"
-            android:layout_width="42dip"
-            android:layout_height="42dip"
-            android:layout_margin="4dip"
-            android:src="@drawable/ic_contact_picture"
-            android:cropToPadding="true"
-            android:scaleType="centerCrop" />
-    </FrameLayout>
+    <ImageView
+        android:id="@android:id/icon"
+        android:layout_width="48dip"
+        android:layout_height="48dip"
+        android:src="@drawable/ic_contact_picture"
+        android:cropToPadding="true"
+        android:scaleType="centerCrop" />
 </LinearLayout>
