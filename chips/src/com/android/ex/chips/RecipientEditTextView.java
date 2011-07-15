@@ -1033,6 +1033,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private void submitItemAtPosition(int position) {
         RecipientEntry entry = createValidatedEntry(
                 (RecipientEntry)getAdapter().getItem(position));
+        if (entry == null) {
+            return;
+        }
         clearComposingText();
 
         int end = getSelectionEnd();
