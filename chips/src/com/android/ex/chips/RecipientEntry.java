@@ -22,6 +22,13 @@ import android.net.Uri;
  * Represents one entry inside recipient auto-complete list.
  */
 public class RecipientEntry {
+    /*package*/ static final int INVALID_CONTACT = -1;
+    /**
+     * A GENERATED_CONTACT is one that was created based entirely on
+     * information passed in to the RecipientEntry from an external source
+     * that is not a real contact.
+     */
+    /*package*/ static final int GENERATED_CONTACT = -2;
 
     public static final int ENTRY_TYPE_PERSON = 0;
     public static final int ENTRY_TYPE_SEP_NORMAL = 1;
@@ -89,12 +96,31 @@ public class RecipientEntry {
     }
 
     /**
+     * Determine if this was a RecipientEntry created from recipient info or
+     * an entry from contacts.
+     */
+    public static boolean isCreatedRecipient(long id) {
+        return id == RecipientEntry.INVALID_CONTACT || id == RecipientEntry.GENERATED_CONTACT;
+    }
+
+    /**
      * Construct a RecipientEntry from just an address that has been entered.
      * This address has not been resolved to a contact and therefore does not
      * have a contact id or photo.
      */
     public static RecipientEntry constructFakeEntry(String address) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, address, address, -1, -1, null, true);
+        return new RecipientEntry(ENTRY_TYPE_PERSON, address, address, INVALID_CONTACT,
+                INVALID_CONTACT, null, true);
+    }
+
+    /**
+     * Construct a RecipientEntry from just an address that has been entered
+     * with both an associated display name. This address has not been resolved
+     * to a contact and therefore does not have a contact id or photo.
+     */
+    public static RecipientEntry constructGeneratedEntry(String display, String address) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, display, address, GENERATED_CONTACT,
+                GENERATED_CONTACT, null, true);
     }
 
     public static RecipientEntry constructTopLevelEntry(
