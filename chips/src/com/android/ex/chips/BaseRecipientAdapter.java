@@ -823,6 +823,11 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     }
 
     @Override
+    public boolean isEnabled(int position) {
+        return mEntries.get(position).isSelectable();
+    }
+
+    @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         final RecipientEntry entry = mEntries.get(position);
         switch (entry.getEntryType()) {

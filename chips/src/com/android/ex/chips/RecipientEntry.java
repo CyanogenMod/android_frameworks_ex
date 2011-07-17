@@ -161,4 +161,8 @@ public class RecipientEntry {
     public boolean isSeparator() {
         return mIsDivider;
     }
+
+    public boolean isSelectable() {
+        return mEntryType == ENTRY_TYPE_PERSON;
+    }
 }
