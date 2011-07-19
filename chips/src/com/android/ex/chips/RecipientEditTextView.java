@@ -53,7 +53,6 @@ import android.view.ViewParent;
 import android.view.ActionMode.Callback;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
@@ -79,8 +78,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     // TODO: get correct number/ algorithm from with UX.
     private static final int CHIP_LIMIT = 2;
-
-    private static final int INVALID_CONTACT = -1;
 
     // TODO: get correct size from UX.
     private static final float MORE_WIDTH_FACTOR = 0.25f;
@@ -134,6 +131,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ListPopupWindow mAlternatesPopup;
 
+    private ListPopupWindow mAddressPopup;
+
     private ArrayList<RecipientChip> mTemporaryRecipients;
 
     private ArrayList<RecipientChip> mRemovedSpans;
@@ -168,6 +167,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             sSelectedTextColor = context.getResources().getColor(android.R.color.white);
         }
         mAlternatesPopup = new ListPopupWindow(context);
+        mAddressPopup = new ListPopupWindow(context);
         mAlternatesListener = new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView,View view, int position,
@@ -374,7 +374,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             background.draw(canvas);
 
             // Don't draw photos for recipients that have been typed in.
-            if (contact.getContactId() != INVALID_CONTACT) {
+            if (contact.getContactId() != RecipientEntry.INVALID_CONTACT) {
                 byte[] photoBytes = contact.getPhotoBytes();
                 // There may not be a photo yet if anything but the first contact address
                 // was selected.
@@ -622,13 +622,26 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private RecipientEntry createTokenizedEntry(String token) {
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
-        String address;
+        String display = null;
         if (tokens != null && tokens.length > 0) {
-            address = tokens[0].getAddress();
-        } else {
-            address = token;
+            display = tokens[0].getName();
+            if (!TextUtils.isEmpty(display)) {
+                return RecipientEntry.constructGeneratedEntry(display, token);
+            }
+            display = tokens[0].getAddress();
+            if (!TextUtils.isEmpty(display)) {
+                return RecipientEntry.constructGeneratedEntry(display, token);
+            }
         }
-        return RecipientEntry.constructFakeEntry(address);
+        return RecipientEntry.constructFakeEntry(token);
+    }
+
+    private String tokenizeAddress(String destination) {
+        Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(destination);
+        if (tokens != null && tokens.length > 0) {
+            return tokens[0].getAddress();
+        }
+        return destination;
     }
 
     @Override
@@ -759,7 +772,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             String text = editable.toString().substring(start, tokenEnd).trim();
             clearComposingText();
             if (text != null && text.length() > 0 && !text.equals(" ")) {
-                RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
+                RecipientEntry entry = createTokenizedEntry(text);
                 QwertyKeyListener.markAsReplaced(editable, start, end, "");
                 CharSequence chipText = createChip(entry, false);
                 editable.replace(start, end, chipText);
@@ -940,6 +953,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private ListAdapter createAlternatesAdapter(RecipientChip chip) {
         return new RecipientAlternatesAdapter(getContext(), chip.getContactId(), chip.getDataId(),
                 mAlternatesLayout, this);
+    }
+
+    private ListAdapter createSingleAddressAdapter(RecipientChip currentChip) {
+        return new SingleRecipientArrayAdapter(getContext(), mAlternatesLayout, currentChip
+                .getEntry());
     }
 
     public void onCheckedItemChanged(int position) {
@@ -1232,7 +1250,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * just contained an email address.
      */
     public RecipientChip selectChip(RecipientChip currentChip) {
-        if (currentChip.getContactId() != INVALID_CONTACT) {
+        if (currentChip.getContactId() == RecipientEntry.INVALID_CONTACT) {
+            CharSequence text = currentChip.getValue();
+            Editable editable = getText();
+            removeChip(currentChip);
+            editable.append(text);
+            setCursorVisible(true);
+            setSelection(editable.length());
+            return null;
+        } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT) {
             int start = getChipStart(currentChip);
             int end = getChipEnd(currentChip);
             getSpannable().removeSpan(currentChip);
@@ -1251,23 +1277,61 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 editable.setSpan(newChip, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
             newChip.setSelected(true);
-            if (newChip.getEntry().getContactId() == INVALID_CONTACT) {
-                scrollLineIntoView(getLayout().getLineForOffset(
-                        getChipStart(newChip)));
+            if (newChip.getEntry().getContactId() == RecipientEntry.INVALID_CONTACT) {
+                scrollLineIntoView(getLayout().getLineForOffset(getChipStart(newChip)));
+            }
+            showAddress(newChip, mAddressPopup, getWidth(), getContext());
+            return newChip;
+        } else {
+            int start = getChipStart(currentChip);
+            int end = getChipEnd(currentChip);
+            getSpannable().removeSpan(currentChip);
+            RecipientChip newChip;
+            try {
+                newChip = constructChipSpan(currentChip.getEntry(), start, true);
+            } catch (NullPointerException e) {
+                Log.e(TAG, e.getMessage(), e);
+                return null;
+            }
+            Editable editable = getText();
+            QwertyKeyListener.markAsReplaced(editable, start, end, "");
+            if (start == -1 || end == -1) {
+                Log.d(TAG, "The chip being selected no longer exists but should.");
+            } else {
+                editable.setSpan(newChip, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            newChip.setSelected(true);
+            if (newChip.getEntry().getContactId() == RecipientEntry.INVALID_CONTACT) {
+                scrollLineIntoView(getLayout().getLineForOffset(getChipStart(newChip)));
             }
             showAlternates(newChip, mAlternatesPopup, getWidth(), getContext());
             return newChip;
-        } else {
-            CharSequence text = currentChip.getValue();
-            Editable editable = getText();
-            removeChip(currentChip);
-            editable.append(text);
-            setCursorVisible(true);
-            setSelection(editable.length());
-            return null;
         }
     }
 
+
+    private void showAddress(final RecipientChip currentChip, final ListPopupWindow popup,
+            int width, Context context) {
+        int line = getLayout().getLineForOffset(getChipStart(currentChip));
+        int bottom = calculateOffsetFromBottom(line);
+        // Align the alternates popup with the left side of the View,
+        // regardless of the position of the chip tapped.
+        popup.setWidth(width);
+        popup.setAnchorView(this);
+        popup.setVerticalOffset(bottom);
+        popup.setAdapter(createSingleAddressAdapter(currentChip));
+        popup.setOnItemClickListener(new OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                unselectChip(currentChip);
+                popup.dismiss();
+            }
+        });
+        popup.show();
+        ListView listView = popup.getListView();
+        listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        listView.setItemChecked(0, true);
+    }
 
     /**
      * Remove selection from this chip. Unselecting a RecipientChip will render
@@ -1408,8 +1472,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private class RecipientTextWatcher implements TextWatcher {
         @Override
         public void afterTextChanged(Editable s) {
-            // Get whether there are any recipients pending addition to the view.
-            // If there are, don't do anything in the text watcher.
+            // Get whether there are any recipients pending addition to the
+            // view. If there are, don't do anything in the text watcher.
             if (chipsPending()) {
                 return;
             }
@@ -1448,6 +1512,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
         @Override
         public void onTextChanged(CharSequence s, int start, int before, int count) {
+            // Do nothing.
         }
 
         @Override
@@ -1493,10 +1558,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             final ArrayList<RecipientChip> replacements = new ArrayList<RecipientChip>();
             for (final RecipientChip temp : originalRecipients) {
                 RecipientEntry entry = null;
-                if (temp.getEntry().getContactId() == INVALID_CONTACT
+                if (RecipientEntry.isCreatedRecipient(temp.getEntry().getContactId())
                         && getSpannable().getSpanStart(temp) != -1) {
                     // Replace this.
-                    entry = createValidatedEntry(entries.get(temp.getEntry().getDestination()));
+                    entry = createValidatedEntry(entries.get(tokenizeAddress(temp.getEntry()
+                            .getDestination())));
                 }
                 if (entry != null) {
                     replacements.add(createFreeChip(entry));
@@ -1551,11 +1617,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
                     .getMatchingRecipients(getContext(), addresses);
             for (final RecipientChip temp : originalRecipients) {
-                if (temp.getEntry().getContactId() == INVALID_CONTACT
+                if (RecipientEntry.isCreatedRecipient(temp.getEntry().getContactId())
                         && getSpannable().getSpanStart(temp) != -1) {
                     // Replace this.
-                    final RecipientEntry entry = createValidatedEntry(entries.get(temp.getEntry()
-                            .getDestination()));
+                    final RecipientEntry entry = createValidatedEntry(entries
+                            .get(tokenizeAddress(temp.getEntry().getDestination())));
                     if (entry != null) {
                         mHandler.post(new Runnable() {
                             @Override
