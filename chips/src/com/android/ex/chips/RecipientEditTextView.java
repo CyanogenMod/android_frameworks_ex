@@ -161,6 +161,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private IndividualReplacementTask mIndividualReplacements;
 
+    private Runnable mHandlePendingChips = new Runnable() {
+
+        @Override
+        public void run() {
+            handlePendingChips();
+            mHandler.post(mAddTextWatcher);
+        }
+
+    };
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         if (sSelectedTextColor == -1) {
@@ -242,6 +252,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 mPendingChips.add((String)text);
             }
         }
+        // Put a message on the queue to make sure we ALWAYS handle pending chips.
+        if (mPendingChipsCount > 0) {
+            postHandlePendingChips();
+        }
     }
 
     @Override
@@ -262,9 +276,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // Reset any pending chips as they would have been handled
             // when the field lost focus.
             if (mPendingChipsCount > 0) {
-                handlePendingChips();
-                mPendingChipsCount = 0;
-                mPendingChips.clear();
+                postHandlePendingChips();
             } else {
                 Editable editable = getText();
                 int end = getSelectionEnd();
@@ -495,16 +507,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public void onSizeChanged(int width, int height, int oldw, int oldh) {
         super.onSizeChanged(width, height, oldw, oldh);
-        // Check for any pending tokens created before layout had been completed
-        // on the view.
-        if (width != 0 && height != 0) {
-            if (mPendingChipsCount > 0) {
-                handlePendingChips();
-            }
-            mPendingChipsCount = 0;
-            mPendingChips.clear();
-            mHandler.post(mAddTextWatcher);
-        }
         // Try to find the scroll view parent, if it exists.
         if (mScrollView == null && !mTried) {
             ViewParent parent = getParent();
@@ -518,44 +520,57 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
-    private void handlePendingChips() {
-        mTemporaryRecipients = new ArrayList<RecipientChip>(mPendingChipsCount);
-        Editable editable = getText();
-        // Tokenize!
-        for (int i = 0; i < mPendingChips.size(); i++) {
-            String current = mPendingChips.get(i);
-            int tokenStart = editable.toString().indexOf(current);
-            int tokenEnd = tokenStart + current.length();
-            if (tokenStart >= 0) {
-                // When we have a valid token, include it with the token
-                // to the left.
-                if (tokenEnd < editable.length() - 2
-                        && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
-                    tokenEnd++;
-                }
-                createReplacementChip(tokenStart, tokenEnd, editable);
-            }
-            mPendingChipsCount--;
-        }
-        sanitizeSpannable();
-        if (mTemporaryRecipients != null
-                && mTemporaryRecipients.size() <= RecipientAlternatesAdapter.MAX_LOOKUPS) {
-            if (hasFocus() || mTemporaryRecipients.size() < CHIP_LIMIT) {
-                new RecipientReplacementTask().execute();
-                mTemporaryRecipients = null;
-            } else {
-                // Create the "more" chip
-                mIndividualReplacements = new IndividualReplacementTask();
-                mIndividualReplacements.execute(new ArrayList<RecipientChip>(mTemporaryRecipients
-                        .subList(0, CHIP_LIMIT)));
+    private void postHandlePendingChips() {
+        mHandler.removeCallbacks(mHandlePendingChips);
+        mHandler.post(mHandlePendingChips);
+    }
 
+    private void handlePendingChips() {
+        if (mPendingChipsCount <= 0) {
+            return;
+        }
+        synchronized (mPendingChips) {
+            mTemporaryRecipients = new ArrayList<RecipientChip>(mPendingChipsCount);
+            Editable editable = getText();
+            // Tokenize!
+            for (int i = 0; i < mPendingChips.size(); i++) {
+                String current = mPendingChips.get(i);
+                int tokenStart = editable.toString().indexOf(current);
+                int tokenEnd = tokenStart + current.length();
+                if (tokenStart >= 0) {
+                    // When we have a valid token, include it with the token
+                    // to the left.
+                    if (tokenEnd < editable.length() - 2
+                            && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
+                        tokenEnd++;
+                    }
+                    createReplacementChip(tokenStart, tokenEnd, editable);
+                }
+                mPendingChipsCount--;
+            }
+            sanitizeSpannable();
+            if (mTemporaryRecipients != null
+                    && mTemporaryRecipients.size() <= RecipientAlternatesAdapter.MAX_LOOKUPS) {
+                if (hasFocus() || mTemporaryRecipients.size() < CHIP_LIMIT) {
+                    new RecipientReplacementTask().execute();
+                    mTemporaryRecipients = null;
+                } else {
+                    // Create the "more" chip
+                    mIndividualReplacements = new IndividualReplacementTask();
+                    mIndividualReplacements.execute(new ArrayList<RecipientChip>(
+                            mTemporaryRecipients.subList(0, CHIP_LIMIT)));
+
+                    createMoreChip();
+                }
+            } else {
+                // There are too many recipients to look up, so just fall back
+                // to
+                // showing addresses for all of them.
+                mTemporaryRecipients = null;
                 createMoreChip();
             }
-        } else {
-            // There are too many recipients to look up, so just fall back to
-            // showing addresses for all of them.
-            mTemporaryRecipients = null;
-            createMoreChip();
+            mPendingChipsCount = 0;
+            mPendingChips.clear();
         }
     }
 
