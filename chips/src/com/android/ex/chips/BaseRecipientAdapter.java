@@ -115,16 +115,21 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public static final String[] PROJECTION = {
             Contacts.DISPLAY_NAME,       // 0
             Email.DATA,                  // 1
-            Email.CONTACT_ID,            // 2
-            Email._ID,                   // 3
-            Contacts.PHOTO_THUMBNAIL_URI // 4
+            Email.TYPE,                  // 2
+            Email.LABEL,                 // 3
+            Email.CONTACT_ID,            // 4
+            Email._ID,                   // 5
+            Contacts.PHOTO_THUMBNAIL_URI // 6
+
         };
 
         public static final int NAME = 0;
         public static final int ADDRESS = 1;
-        public static final int CONTACT_ID = 2;
-        public static final int DATA_ID = 3;
-        public static final int PHOTO_THUMBNAIL_URI = 4;
+        public static final int ADDRESS_TYPE = 2;
+        public static final int ADDRESS_LABEL = 3;
+        public static final int CONTACT_ID = 4;
+        public static final int DATA_ID = 5;
+        public static final int PHOTO_THUMBNAIL_URI = 6;
     }
 
     private static class PhotoQuery {
@@ -160,14 +165,19 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private static class TemporaryEntry {
         public final String displayName;
         public final String destination;
+        public final int destinationType;
+        public final String destinationLabel;
         public final long contactId;
         public final long dataId;
         public final String thumbnailUriString;
 
-        public TemporaryEntry(String displayName, String destination,
+        public TemporaryEntry(String displayName,
+                String destination, int destinationType, String destinationLabel,
                 long contactId, long dataId, String thumbnailUriString) {
             this.displayName = displayName;
             this.destination = destination;
+            this.destinationType = destinationType;
+            this.destinationLabel = destinationLabel;
             this.contactId = contactId;
             this.dataId = dataId;
             this.thumbnailUriString = thumbnailUriString;
@@ -603,6 +613,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private TemporaryEntry constructTemporaryEntryFromCursor(Cursor cursor) {
         return new TemporaryEntry(cursor.getString(EmailQuery.NAME),
                 cursor.getString(EmailQuery.ADDRESS),
+                cursor.getInt(EmailQuery.ADDRESS_TYPE),
+                cursor.getString(EmailQuery.ADDRESS_LABEL),
                 cursor.getLong(EmailQuery.CONTACT_ID),
                 cursor.getLong(EmailQuery.DATA_ID),
                 cursor.getString(EmailQuery.PHOTO_THUMBNAIL_URI));
@@ -620,19 +632,22 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
         if (!isAggregatedEntry) {
             nonAggregatedEntries.add(RecipientEntry.constructTopLevelEntry(
-                    entry.displayName, entry.destination, entry.contactId, entry.dataId,
-                    entry.thumbnailUriString));
+                    entry.displayName,
+                    entry.destination, entry.destinationType, entry.destinationLabel,
+                    entry.contactId, entry.dataId, entry.thumbnailUriString));
         } else if (entryMap.containsKey(entry.contactId)) {
             // We already have a section for the person.
             final List<RecipientEntry> entryList = entryMap.get(entry.contactId);
             entryList.add(RecipientEntry.constructSecondLevelEntry(
-                    entry.displayName, entry.destination, entry.contactId, entry.dataId,
-                    entry.thumbnailUriString));
+                    entry.displayName,
+                    entry.destination, entry.destinationType, entry.destinationLabel,
+                    entry.contactId, entry.dataId, entry.thumbnailUriString));
         } else {
             final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
             entryList.add(RecipientEntry.constructTopLevelEntry(
-                    entry.displayName, entry.destination, entry.contactId, entry.dataId,
-                    entry.thumbnailUriString));
+                    entry.displayName,
+                    entry.destination, entry.destinationType, entry.destinationLabel,
+                    entry.contactId, entry.dataId, entry.thumbnailUriString));
             entryMap.put(entry.contactId, entryList);
         }
     }
@@ -845,26 +860,33 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
             default: {
                 String displayName = entry.getDisplayName();
-                String emailAddress = entry.getDestination();
+                String destination = entry.getDestination();
                 if (TextUtils.isEmpty(displayName)
-                        || TextUtils.equals(displayName, emailAddress)) {
-                    displayName = emailAddress;
-                    emailAddress = null;
+                        || TextUtils.equals(displayName, destination)) {
+                    displayName = destination;
+                    destination = null;
                 }
+
+                final CharSequence destinationType = Email.getTypeLabel(mContext.getResources(),
+                        entry.getDestinationType(), entry.getDestinationLabel());
 
                 final View itemView = convertView != null ? convertView
                         : mInflater.inflate(getItemLayout(), parent, false);
                 final TextView displayNameView =
-                        (TextView)itemView.findViewById(getDisplayNameId());
-                final TextView emailAddressView =
-                        (TextView)itemView.findViewById(getDestinationId());
+                        (TextView) itemView.findViewById(getDisplayNameId());
+                final TextView destinationView =
+                        (TextView) itemView.findViewById(getDestinationId());
+                final TextView destinationTypeView =
+                        (TextView) itemView.findViewById(getDestinationTypeId());
                 final ImageView imageView = (ImageView)itemView.findViewById(getPhotoId());
                 displayNameView.setText(displayName);
-                if (!TextUtils.isEmpty(emailAddress)) {
-                    emailAddressView.setText(emailAddress);
+                if (!TextUtils.isEmpty(destination)) {
+                    destinationView.setText(destination);
                 } else {
-                    emailAddressView.setText(null);
+                    destinationView.setText(null);
                 }
+                destinationTypeView.setText(destinationType);
+
                 if (entry.isFirstLevel()) {
                     displayNameView.setVisibility(View.VISIBLE);
                     if (imageView != null) {
@@ -880,7 +902,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     }
                 } else {
                     displayNameView.setVisibility(View.GONE);
-                    if (imageView != null) imageView.setVisibility(View.GONE);
+                    if (imageView != null) {
+                        imageView.setVisibility(View.INVISIBLE);
+                    }
                 }
                 return itemView;
             }
@@ -913,19 +937,27 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     protected abstract int getDefaultPhotoResource();
 
     /**
-     * Returns an id for TextView in an item View for showing a display name. In default
-     * {@link android.R.id#text1} is returned.
+     * Returns an id for TextView in an item View for showing a display name. By default
+     * {@link android.R.id#title} is returned.
      */
     protected int getDisplayNameId() {
-        return android.R.id.text1;
+        return android.R.id.title;
     }
 
     /**
      * Returns an id for TextView in an item View for showing a destination
      * (an email address or a phone number).
-     * In default {@link android.R.id#text2} is returned.
+     * By default {@link android.R.id#text1} is returned.
      */
     protected int getDestinationId() {
+        return android.R.id.text1;
+    }
+
+    /**
+     * Returns an id for TextView in an item View for showing the type of the destination.
+     * By default {@link android.R.id#text2} is returned.
+     */
+    protected int getDestinationTypeId() {
         return android.R.id.text2;
     }
 

@@ -26,16 +26,16 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_weight="1">
-        <TextView android:id="@android:id/text1"
+        <TextView android:id="@android:id/title"
                   android:textColor="@drawable/list_item_font_primary"
                   android:textSize="18sp"
                   android:layout_width="wrap_content"
                   android:layout_height="wrap_content"
                   android:paddingLeft="8dip"
                   android:singleLine="true"
-                  android:ellipsize="end" 
+                  android:ellipsize="end"
                   />
-        <TextView android:id="@android:id/text2"
+        <TextView android:id="@android:id/text1"
                   android:textColor="@drawable/list_item_font_secondary"
                   android:textSize="14sp"
                   android:layout_width="wrap_content"
@@ -44,11 +44,24 @@
                   android:singleLine="true"
                   android:ellipsize="end" />
     </LinearLayout>
-    <ImageView
-        android:id="@android:id/icon"
-        android:layout_width="48dip"
-        android:layout_height="48dip"
-        android:src="@drawable/ic_contact_picture"
-        android:cropToPadding="true"
-        android:scaleType="centerCrop" />
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical|right">
+        <TextView
+            android:id="@android:id/text2"
+            android:textColor="@drawable/list_item_font_secondary"
+            android:textSize="12sp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="8dip" />
+        <ImageView
+            android:id="@android:id/icon"
+            android:layout_width="48dip"
+            android:layout_height="48dip"
+            android:src="@drawable/ic_contact_picture"
+            android:cropToPadding="true"
+            android:scaleType="centerCrop" />
+    </LinearLayout>
 </LinearLayout>

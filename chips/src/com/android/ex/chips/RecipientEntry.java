@@ -17,18 +17,22 @@
 package com.android.ex.chips;
 
 import android.net.Uri;
+import android.provider.ContactsContract.CommonDataKinds.Email;
 
 /**
  * Represents one entry inside recipient auto-complete list.
  */
 public class RecipientEntry {
-    /*package*/ static final int INVALID_CONTACT = -1;
+    /* package */ static final int INVALID_CONTACT = -1;
     /**
      * A GENERATED_CONTACT is one that was created based entirely on
      * information passed in to the RecipientEntry from an external source
      * that is not a real contact.
      */
-    /*package*/ static final int GENERATED_CONTACT = -2;
+    /* package */ static final int GENERATED_CONTACT = -2;
+
+    /** Used when {@link #mDestinationType} is invalid and thus shouldn't be used for display. */
+    /* package */ static final int INVALID_DESTINATION_TYPE = -1;
 
     public static final int ENTRY_TYPE_PERSON = 0;
     public static final int ENTRY_TYPE_SEP_NORMAL = 1;
@@ -56,6 +60,13 @@ public class RecipientEntry {
     private final String mDisplayName;
     /** Destination for this contact entry. Would be an email address or a phone number. */
     private final String mDestination;
+    /** Type of the destination like {@link Email#TYPE_HOME} */
+    private final int mDestinationType;
+    /**
+     * Label of the destination which will be used when type was {@link Email#TYPE_CUSTOM}.
+     * Can be null when {@link #mDestinationType} is {@link #INVALID_DESTINATION_TYPE}.
+     */
+    private final String mDestinationLabel;
     /** ID for the person */
     private final long mContactId;
     /** ID for the destination */
@@ -74,6 +85,8 @@ public class RecipientEntry {
         mEntryType = entryType;
         mDisplayName = null;
         mDestination = null;
+        mDestinationType = INVALID_DESTINATION_TYPE;
+        mDestinationLabel = null;
         mContactId = -1;
         mDataId = -1;
         mPhotoThumbnailUri = null;
@@ -82,12 +95,15 @@ public class RecipientEntry {
     }
 
     private RecipientEntry(
-            int entryType, String displayName, String destination, long contactId, long dataId,
-            Uri photoThumbnailUri, boolean isFirstLevel) {
+            int entryType, String displayName,
+            String destination, int destinationType, String destinationLabel,
+            long contactId, long dataId, Uri photoThumbnailUri, boolean isFirstLevel) {
         mEntryType = entryType;
         mIsFirstLevel = isFirstLevel;
         mDisplayName = displayName;
         mDestination = destination;
+        mDestinationType = destinationType;
+        mDestinationLabel = destinationLabel;
         mContactId = contactId;
         mDataId = dataId;
         mPhotoThumbnailUri = photoThumbnailUri;
@@ -109,8 +125,9 @@ public class RecipientEntry {
      * have a contact id or photo.
      */
     public static RecipientEntry constructFakeEntry(String address) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, address, address, INVALID_CONTACT,
-                INVALID_CONTACT, null, true);
+        return new RecipientEntry(ENTRY_TYPE_PERSON, address, address,
+                INVALID_DESTINATION_TYPE, null,
+                INVALID_CONTACT, INVALID_CONTACT, null, true);
     }
 
     /**
@@ -119,30 +136,38 @@ public class RecipientEntry {
      * to a contact and therefore does not have a contact id or photo.
      */
     public static RecipientEntry constructGeneratedEntry(String display, String address) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, display, address, GENERATED_CONTACT,
-                GENERATED_CONTACT, null, true);
+        return new RecipientEntry(ENTRY_TYPE_PERSON, display,
+                address, INVALID_DESTINATION_TYPE, null,
+                GENERATED_CONTACT, GENERATED_CONTACT, null, true);
     }
 
     public static RecipientEntry constructTopLevelEntry(
-            String displayName, String destination, long contactId, long dataId,
-            Uri photoThumbnailUri) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId,
+            String displayName, String destination, int destinationType, String destinationLabel,
+            long contactId, long dataId, Uri photoThumbnailUri) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, displayName,
+                destination, destinationType, destinationLabel,
+                contactId, dataId,
                 photoThumbnailUri, true);
     }
 
     public static RecipientEntry constructTopLevelEntry(
-            String displayName, String destination, long contactId, long dataId,
+            String displayName, String destination, int destinationType, String destinationLabel,
+            long contactId, long dataId,
             String thumbnailUriAsString) {
         return new RecipientEntry(
-                ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId,
+                ENTRY_TYPE_PERSON, displayName,
+                destination, destinationType, destinationLabel,
+                contactId, dataId,
                 (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), true);
     }
 
     public static RecipientEntry constructSecondLevelEntry(
-            String displayName, String destination, long contactId, long dataId,
-            String thumbnailUriAsString) {
+            String displayName, String destination, int destinationType, String destinationLabel,
+            long contactId, long dataId, String thumbnailUriAsString) {
         return new RecipientEntry(
-                ENTRY_TYPE_PERSON, displayName, destination, contactId, dataId,
+                ENTRY_TYPE_PERSON, displayName,
+                destination, destinationType, destinationLabel,
+                contactId, dataId,
                 (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), false);
     }
 
@@ -156,6 +181,14 @@ public class RecipientEntry {
 
     public String getDestination() {
         return mDestination;
+    }
+
+    public int getDestinationType() {
+        return mDestinationType;
+    }
+
+    public String getDestinationLabel() {
+        return mDestinationLabel;
     }
 
     public long getContactId() {

@@ -53,7 +53,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      * may block the UI, so run it in an async task.
      *
      * @param context Context.
-     * @param addresses Array of addresses on which to perform the lookup.
+     * @param inAddresses Array of addresses on which to perform the lookup.
      * @return HashMap<String,RecipientEntry>
      */
     public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
@@ -75,9 +75,9 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             Log.d(TAG, "Doing reverse lookup for " + addresses.toString());
         }
 
+        HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
         Cursor c = context.getContentResolver().query(Email.CONTENT_URI, EmailQuery.PROJECTION,
                 Email.ADDRESS + " IN (" + bindString.toString() + ")", addresses, null);
-        HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
         if (c != null) {
             try {
                 if (c.moveToFirst()) {
@@ -86,6 +86,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                         recipientEntries.put(address, RecipientEntry.constructTopLevelEntry(
                                 c.getString(EmailQuery.NAME),
                                 c.getString(EmailQuery.ADDRESS),
+                                c.getInt(EmailQuery.ADDRESS_TYPE),
+                                c.getString(EmailQuery.ADDRESS_LABEL),
                                 c.getLong(EmailQuery.CONTACT_ID),
                                 c.getLong(EmailQuery.DATA_ID),
                                 c.getString(EmailQuery.PHOTO_THUMBNAIL_URI)));
@@ -129,9 +131,11 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     public RecipientEntry getRecipientEntry(int position) {
         Cursor c = getCursor();
         c.moveToPosition(position);
-        return RecipientEntry.constructTopLevelEntry(c.getString(EmailQuery.NAME), c
-                .getString(EmailQuery.ADDRESS), c.getLong(EmailQuery.CONTACT_ID), c
-                .getLong(EmailQuery.DATA_ID), c.getString(EmailQuery.PHOTO_THUMBNAIL_URI));
+        return RecipientEntry.constructTopLevelEntry(c.getString(EmailQuery.NAME),
+                c.getString(EmailQuery.ADDRESS), c.getInt(EmailQuery.ADDRESS_TYPE),
+                c.getString(EmailQuery.ADDRESS_LABEL),
+                c.getLong(EmailQuery.CONTACT_ID), c.getLong(EmailQuery.DATA_ID),
+                c.getString(EmailQuery.PHOTO_THUMBNAIL_URI));
     }
 
     @Override
