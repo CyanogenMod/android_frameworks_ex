@@ -23,4 +23,5 @@
     <add-resource type="color" name="chip_selected" />
     <add-resource type="string" name="more_string" />
     <add-resource type="string" name="chips_waiting_for_directory_result" />
+    <add-resource type="style" name="RecipientEditTextView" />
 </resources>
