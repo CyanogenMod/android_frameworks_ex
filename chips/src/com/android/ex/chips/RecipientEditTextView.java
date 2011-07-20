@@ -507,6 +507,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public void onSizeChanged(int width, int height, int oldw, int oldh) {
         super.onSizeChanged(width, height, oldw, oldh);
+        if (width != 0 && height != 0 && mPendingChipsCount > 0) {
+            postHandlePendingChips();
+        }
         // Try to find the scroll view parent, if it exists.
         if (mScrollView == null && !mTried) {
             ViewParent parent = getParent();
@@ -527,6 +530,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void handlePendingChips() {
         if (mPendingChipsCount <= 0) {
+            return;
+        }
+        if (getWidth() <= 0) {
+            // The widget has not been sized yet.
+            // This will be called as a result of onSizeChanged
+            // at a later point.
             return;
         }
         synchronized (mPendingChips) {
@@ -613,11 +622,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             token = token.substring(0, token.length() - 1);
         }
         RecipientEntry entry = createTokenizedEntry(token);
-        String displayText = entry.getDestination();
-        displayText = (String) mTokenizer.terminateToken(displayText);
+        String destText = entry.getDestination();
+        destText = (String) mTokenizer.terminateToken(destText);
         // Always leave a blank space at the end of a chip.
-        int textLength = displayText.length() - 1;
-        SpannableString chipText = new SpannableString(displayText);
+        int textLength = destText.length() - 1;
+        SpannableString chipText = new SpannableString(destText);
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(getText(), end);
         RecipientChip chip = null;
