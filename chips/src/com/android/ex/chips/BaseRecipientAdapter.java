@@ -471,7 +471,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      */
     private CharSequence mCurrentConstraint;
 
-    private final HandlerThread mPhotoHandlerThread;
+    // TODO: need to find better way to manage the thread.
+    private static final HandlerThread sPhotoHandlerThread =
+            new HandlerThread("photo_handler");
     private final Handler mPhotoHandler;
     private final LruCache<Uri, byte[]> mPhotoCacheMap;
 
@@ -514,9 +516,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mContentResolver = context.getContentResolver();
         mInflater = LayoutInflater.from(context);
         mPreferredMaxResultCount = preferredMaxResultCount;
-        mPhotoHandlerThread = new HandlerThread("photo_handler");
-        mPhotoHandlerThread.start();
-        mPhotoHandler = new Handler(mPhotoHandlerThread.getLooper());
+        if (!sPhotoHandlerThread.isAlive()) {
+            sPhotoHandlerThread.start();
+        }
+        mPhotoHandler = new Handler(sPhotoHandlerThread.getLooper());
         mPhotoCacheMap = new LruCache<Uri, byte[]>(PHOTO_CACHE_SIZE);
     }
 
@@ -804,13 +807,14 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         return cursor;
     }
 
-    public void close() {
+    // TODO: This won't be used at all. We should find better way to quit the thread..
+    /*public void close() {
         mEntries = null;
         mPhotoCacheMap.evictAll();
-        if (!mPhotoHandlerThread.quit()) {
+        if (!sPhotoHandlerThread.quit()) {
             Log.w(TAG, "Failed to quit photo handler thread, ignoring it.");
         }
-    }
+    }*/
 
     @Override
     public int getCount() {
