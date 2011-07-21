@@ -161,7 +161,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     public void bindView(View view, Context context, Cursor cursor) {
         int position = cursor.getPosition();
 
-        TextView display = (TextView) view.findViewById(android.R.id.text1);
+        TextView display = (TextView) view.findViewById(android.R.id.title);
         ImageView imageView = (ImageView) view.findViewById(android.R.id.icon);
         RecipientEntry entry = getRecipientEntry(position);
         if (position == 0) {
@@ -175,8 +175,13 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             display.setVisibility(View.GONE);
             imageView.setVisibility(View.GONE);
         }
-        TextView destination = (TextView) view.findViewById(android.R.id.text2);
+        TextView destination = (TextView) view.findViewById(android.R.id.text1);
         destination.setText(cursor.getString(EmailQuery.ADDRESS));
+
+        TextView destinationType = (TextView) view.findViewById(android.R.id.text2);
+        destinationType.setText(Email.getTypeLabel(context.getResources(),
+                cursor.getInt(EmailQuery.ADDRESS_TYPE),
+                cursor.getString(EmailQuery.ADDRESS_LABEL)));
     }
 
     @Override
