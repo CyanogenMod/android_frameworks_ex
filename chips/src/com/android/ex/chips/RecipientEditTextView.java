@@ -616,8 +616,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * point, this chip will be attached to a real contact entry, if one exists.
      */
     private void createReplacementChip(int tokenStart, int tokenEnd, Editable editable) {
+        if (alreadyHasChip(tokenStart, tokenEnd)) {
+            // There is already a chip present at this location.
+            // Don't recreate it.
+            return;
+        }
         String token = editable.toString().substring(tokenStart, tokenEnd);
-        int commitCharIndex = token.indexOf(COMMIT_CHAR_COMMA);
+        int commitCharIndex = token.trim().lastIndexOf(COMMIT_CHAR_COMMA);
         if (commitCharIndex == token.length() - 1) {
             token = token.substring(0, token.length() - 1);
         }
@@ -808,13 +813,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private boolean shouldCreateChip(int start, int end) {
-        if (hasFocus() && enoughToFilter()) {
-            RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
-            if ((chips == null || chips.length == 0)) {
-                return true;
-            }
+        return hasFocus() && enoughToFilter() && !alreadyHasChip(start, end);
+    }
+
+    private boolean alreadyHasChip(int start, int end) {
+        RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
+        if ((chips == null || chips.length == 0)) {
+            return false;
         }
-        return false;
+        return true;
     }
 
     private void handleEdit(int start, int end) {
@@ -1496,6 +1503,21 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private class RecipientTextWatcher implements TextWatcher {
         @Override
         public void afterTextChanged(Editable s) {
+            // If the text has been set to null or empty, make sure we remove
+            // all the spans we applied.
+            if (TextUtils.isEmpty(s)) {
+                // Remove all the chips spans.
+                Spannable spannable = getSpannable();
+                RecipientChip[] chips = spannable.getSpans(0, getText().length(),
+                        RecipientChip.class);
+                for (RecipientChip chip : chips) {
+                    spannable.removeSpan(chip);
+                }
+                if (mMoreChip != null) {
+                    spannable.removeSpan(mMoreChip);
+                }
+                return;
+            }
             // Get whether there are any recipients pending addition to the
             // view. If there are, don't do anything in the text watcher.
             if (chipsPending()) {
