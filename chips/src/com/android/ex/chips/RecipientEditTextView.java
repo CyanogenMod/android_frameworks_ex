@@ -45,6 +45,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -59,6 +60,7 @@ import android.widget.ListPopupWindow;
 import android.widget.ListView;
 import android.widget.MultiAutoCompleteTextView;
 import android.widget.ScrollView;
+import android.widget.TextView;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -79,9 +81,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     // TODO: get correct number/ algorithm from with UX.
     private static final int CHIP_LIMIT = 2;
 
-    // TODO: get correct size from UX.
-    private static final float MORE_WIDTH_FACTOR = 0.25f;
-
     private Drawable mChipBackground = null;
 
     private Drawable mChipDelete = null;
@@ -100,7 +99,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ImageSpan mMoreChip;
 
-    private int mMoreString;
+    private TextView mMoreItem;
 
 
     private final ArrayList<String> mPendingChips = new ArrayList<String>();
@@ -498,7 +497,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mChipPadding = (int) padding;
         mAlternatesLayout = alternatesLayout;
         mDefaultContactPhoto = defaultContact;
-        mMoreString = moreResource;
+        mMoreItem = (TextView) LayoutInflater.from(getContext()).inflate(moreResource, null);
         mChipHeight = chipHeight;
         mChipFontSize = chipFontSize;
         mInvalidChipBackground = invalidChip;
@@ -1179,14 +1178,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int numRecipients = recipients.length;
         int overage = numRecipients - CHIP_LIMIT;
         Editable text = getText();
-        // TODO: get the correct size from visual design.
-        int width = (int) Math.floor(getWidth() * MORE_WIDTH_FACTOR);
+        String moreText = String.format(mMoreItem.getText().toString(), overage);
+        TextPaint morePaint = new TextPaint(getPaint());
+        morePaint.setTextSize(mMoreItem.getTextSize());
+        morePaint.setColor(mMoreItem.getCurrentTextColor());
+        int width = (int)morePaint.measureText(moreText) + mMoreItem.getPaddingLeft()
+                + mMoreItem.getPaddingRight();
         int height = getLineHeight();
         Bitmap drawable = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(drawable);
-        String moreText = getResources().getString(mMoreString, overage);
         canvas.drawText(moreText, 0, moreText.length(), 0, height - getLayout().getLineDescent(0),
-                getPaint());
+                morePaint);
 
         Drawable result = new BitmapDrawable(getResources(), drawable);
         result.setBounds(0, 0, width, height);

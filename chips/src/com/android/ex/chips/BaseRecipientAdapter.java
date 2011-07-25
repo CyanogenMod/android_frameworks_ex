@@ -859,7 +859,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 }
 
                 final CharSequence destinationType = Email.getTypeLabel(mContext.getResources(),
-                        entry.getDestinationType(), entry.getDestinationLabel());
+                        entry.getDestinationType(), entry.getDestinationLabel()).toString()
+                        .toUpperCase();
 
                 final View itemView = convertView != null ? convertView
                         : mInflater.inflate(getItemLayout(), parent, false);

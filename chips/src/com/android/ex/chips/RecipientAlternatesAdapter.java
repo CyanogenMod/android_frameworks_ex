@@ -181,7 +181,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         TextView destinationType = (TextView) view.findViewById(android.R.id.text2);
         destinationType.setText(Email.getTypeLabel(context.getResources(),
                 cursor.getInt(EmailQuery.ADDRESS_TYPE),
-                cursor.getString(EmailQuery.ADDRESS_LABEL)));
+                cursor.getString(EmailQuery.ADDRESS_LABEL)).toString().toUpperCase());
     }
 
     @Override
