@@ -16,6 +16,8 @@
 
 package com.android.ex.variablespeed;
 
+import com.google.common.base.Preconditions;
+
 import android.content.Context;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -62,6 +64,7 @@ public class VariableSpeed implements MediaPlayerProxy {
     @GuardedBy("lock") private MediaPlayer.OnCompletionListener mCompletionListener;
 
     private VariableSpeed(Executor executor) throws UnsupportedOperationException {
+        Preconditions.checkNotNull(executor);
         mExecutor = executor;
         try {
             VariableSpeedNative.loadLibrary();
@@ -147,7 +150,7 @@ public class VariableSpeed implements MediaPlayerProxy {
 
     private void waitForLatch(CountDownLatch latch) {
         try {
-            boolean success = latch.await(10, TimeUnit.SECONDS);
+            boolean success = latch.await(1, TimeUnit.SECONDS);
             if (!success) {
                 reportException(new TimeoutException("waited too long"));
             }
@@ -344,9 +347,7 @@ public class VariableSpeed implements MediaPlayerProxy {
     @Override
     public int getCurrentPosition() {
         synchronized (lock) {
-            if (mHasBeenReleased) {
-                return 0;
-            }
+            check(!mHasBeenReleased, "has been released, reset before use");
             if (!mHasStartedPlayback) {
                 return 0;
             }
