@@ -910,18 +910,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * {@link #getDestinationId()}, and {@link #getPhotoId()}.
      */
     protected abstract int getItemLayout();
-    /** Returns a layout id for a separator dividing two person or groups. */
-    @Deprecated
-    protected int getSeparatorLayout() {
-        return -1;
-    }
-    /**
-     * Returns a layout id for a separator dividing two destinations for a same person or group.
-     */
-    @Deprecated
-    protected int getSeparatorWithinGroupLayout() {
-        return -1;
-    }
+
     /**
      * Returns a layout id for a view showing "waiting for more contacts".
      */
