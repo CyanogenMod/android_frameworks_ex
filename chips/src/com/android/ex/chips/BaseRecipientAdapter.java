@@ -675,11 +675,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 entries.add(entry);
                 tryFetchPhoto(entry);
                 validEntryCount++;
-                if (i < size - 1) {
-                    entries.add(RecipientEntry.SEP_WITHIN_GROUP);
-                }
             }
-            entries.add(RecipientEntry.SEP_NORMAL);
             if (validEntryCount > mPreferredMaxResultCount) {
                 break;
             }
@@ -692,7 +688,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 entries.add(entry);
                 tryFetchPhoto(entry);
 
-                entries.add(RecipientEntry.SEP_NORMAL);
                 validEntryCount++;
             }
         }
@@ -850,14 +845,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     public View getView(int position, View convertView, ViewGroup parent) {
         final RecipientEntry entry = mEntries.get(position);
         switch (entry.getEntryType()) {
-            case RecipientEntry.ENTRY_TYPE_SEP_NORMAL: {
-                return convertView != null ? convertView
-                        : mInflater.inflate(getSeparatorLayout(), parent, false);
-            }
-            case RecipientEntry.ENTRY_TYPE_SEP_WITHIN_GROUP: {
-                return convertView != null ? convertView
-                        : mInflater.inflate(getSeparatorWithinGroupLayout(), parent, false);
-            }
             case RecipientEntry.ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH: {
                 return convertView != null ? convertView
                         : mInflater.inflate(getWaitingForDirectorySearchLayout(), parent, false);
@@ -924,11 +911,17 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      */
     protected abstract int getItemLayout();
     /** Returns a layout id for a separator dividing two person or groups. */
-    protected abstract int getSeparatorLayout();
+    @Deprecated
+    protected int getSeparatorLayout() {
+        return -1;
+    }
     /**
      * Returns a layout id for a separator dividing two destinations for a same person or group.
      */
-    protected abstract int getSeparatorWithinGroupLayout();
+    @Deprecated
+    protected int getSeparatorWithinGroupLayout() {
+        return -1;
+    }
     /**
      * Returns a layout id for a view showing "waiting for more contacts".
      */
