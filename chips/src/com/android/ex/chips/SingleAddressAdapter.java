@@ -52,12 +52,12 @@ class SingleRecipientArrayAdapter extends ArrayAdapter<RecipientEntry> {
     }
 
     private void bindView(View view, Context context, RecipientEntry entry) {
-        TextView display = (TextView) view.findViewById(android.R.id.text1);
+        TextView display = (TextView) view.findViewById(android.R.id.title);
         ImageView imageView = (ImageView) view.findViewById(android.R.id.icon);
         display.setText(entry.getDisplayName());
         display.setVisibility(View.VISIBLE);
         imageView.setVisibility(View.VISIBLE);
-        TextView destination = (TextView) view.findViewById(android.R.id.text2);
+        TextView destination = (TextView) view.findViewById(android.R.id.text1);
         destination.setText(Rfc822Tokenizer.tokenize(entry.getDestination())[0].getAddress());
     }
 }
