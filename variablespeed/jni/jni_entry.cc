@@ -68,12 +68,10 @@ JNI_METHOD(stopPlayback, void) (JNIEnv*, jclass) {
 }
 
 JNI_METHOD(getCurrentPosition, int) (JNIEnv*, jclass) {
-  MethodLog _("getCurrentPosition");
   return AudioEngine::GetEngine()->GetCurrentPosition();
 }
 
 JNI_METHOD(getTotalDuration, int) (JNIEnv*, jclass) {
-  MethodLog _("getTotalDuration");
   return AudioEngine::GetEngine()->GetTotalDuration();
 }
 

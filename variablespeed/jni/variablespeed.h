@@ -109,8 +109,6 @@ class AudioEngine {
 
   size_t channels_;
   size_t sampleRate_;
-  SLuint32 slSampleRate_;
-  SLuint32 slOutputChannels_;
   size_t targetFrames_;
   float windowDuration_;
   float windowOverlapDuration_;
