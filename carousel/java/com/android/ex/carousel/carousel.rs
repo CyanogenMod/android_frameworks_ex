@@ -1641,7 +1641,7 @@ static void cullCards()
                     || (p <= prefetchFirst && p > prefetchLast)) {
                 cards[i].shouldPrefetch = true;
                 cards[i].cardVisible = (p >= visibleFirst && p < visibleLast)
-                        || p <= visibleFirst && p > visibleLast;
+                        || (p <= visibleFirst && p > visibleLast);
                 // cards[i].detailVisible will be set at draw time
             } else {
                 cards[i].shouldPrefetch = false;
