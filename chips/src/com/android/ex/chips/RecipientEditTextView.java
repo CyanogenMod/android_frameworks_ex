@@ -165,7 +165,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         @Override
         public void run() {
             handlePendingChips();
-            mHandler.post(mAddTextWatcher);
         }
 
     };
@@ -203,6 +202,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 super.handleMessage(msg);
             }
         };
+        mTextWatcher = new RecipientTextWatcher();
+        addTextChangedListener(mTextWatcher);
     }
 
     @Override
@@ -255,6 +256,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mPendingChipsCount > 0) {
             postHandlePendingChips();
         }
+        mHandler.post(mAddTextWatcher);
     }
 
     @Override
@@ -651,7 +653,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private RecipientEntry createTokenizedEntry(String token) {
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
-        if (tokens != null && tokens.length > 0) {
+        if (isValid(token) && tokens != null && tokens.length > 0) {
             display = tokens[0].getName();
             if (!TextUtils.isEmpty(display)) {
                 return RecipientEntry.constructGeneratedEntry(display, token);
@@ -661,7 +663,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 return RecipientEntry.constructGeneratedEntry(display, token);
             }
         }
+        // Unable to validate the token or to create a valid token from it.
+        // Just create a chip the user can edit.
+        if (mValidator != null && !mValidator.isValid(token)) {
+            // Try fixing up the entry using the validator.
+            token = mValidator.fixText(token).toString();
+            token = Rfc822Tokenizer.tokenize(token)[0].getAddress();
+        }
         return RecipientEntry.constructFakeEntry(token);
+    }
+
+    private boolean isValid(String text) {
+        return mValidator == null ? true : mValidator.isValid(text);
     }
 
     private String tokenizeAddress(String destination) {
@@ -940,7 +953,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     }
                 }
                 chipWasSelected = true;
-                setCursorVisible(false);
                 handled = true;
             }
         }
@@ -1314,6 +1326,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 scrollLineIntoView(getLayout().getLineForOffset(getChipStart(newChip)));
             }
             showAddress(newChip, mAddressPopup, getWidth(), getContext());
+            setCursorVisible(false);
             return newChip;
         } else {
             int start = getChipStart(currentChip);
@@ -1338,6 +1351,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 scrollLineIntoView(getLayout().getLineForOffset(getChipStart(newChip)));
             }
             showAlternates(newChip, mAlternatesPopup, getWidth(), getContext());
+            setCursorVisible(false);
             return newChip;
         }
     }
