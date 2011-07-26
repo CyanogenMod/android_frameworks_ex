@@ -28,10 +28,10 @@ Java_com_android_ex_variablespeed_VariableSpeedNative_##x
 class MethodLog {
  public:
   explicit MethodLog(const char* name) : name_(name) {
-    LOGD("+ %s", name);
+    LOGV("+ %s", name);
   }
   virtual ~MethodLog() {
-    LOGD("- %s", name_);
+    LOGV("- %s", name_);
   }
 
  private:
@@ -75,13 +75,13 @@ JNI_METHOD(getTotalDuration, int) (JNIEnv*, jclass) {
   return AudioEngine::GetEngine()->GetTotalDuration();
 }
 
-JNI_METHOD(initializeEngine, void) (JNIEnv*, jclass, int channels,
-    int sampleRate, int targetFrames, float windowDuration,
+JNI_METHOD(initializeEngine, void) (JNIEnv*, jclass,
+    int targetFrames, float windowDuration,
     float windowOverlapDuration, size_t maxPlayBufferCount,
     float initialRate, size_t decodeInitialSize, size_t decodeMaxSize,
     size_t startPositionMillis) {
   MethodLog _("initializeEngine");
-  AudioEngine::SetEngine(new AudioEngine(channels, sampleRate, targetFrames,
+  AudioEngine::SetEngine(new AudioEngine(targetFrames,
       windowDuration, windowOverlapDuration, maxPlayBufferCount, initialRate,
       decodeInitialSize, decodeMaxSize, startPositionMillis));
 }

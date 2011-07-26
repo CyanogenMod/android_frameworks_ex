@@ -27,8 +27,6 @@ import javax.annotation.concurrent.NotThreadSafe;
  */
 @Immutable
 /*package*/ final class EngineParameters {
-    private final int mChannels;
-    private final int mSampleRate;
     private final int mTargetFrames;
     private final int mMaxPlayBufferCount;
     private final float mWindowDuration;
@@ -37,14 +35,6 @@ import javax.annotation.concurrent.NotThreadSafe;
     private final int mDecodeBufferInitialSize;
     private final int mDecodeBufferMaxSize;
     private final int mStartPositionMillis;
-
-    public int getChannels() {
-        return mChannels;
-    }
-
-    public int getSampleRate() {
-        return mSampleRate;
-    }
 
     public int getTargetFrames() {
         return mTargetFrames;
@@ -78,12 +68,9 @@ import javax.annotation.concurrent.NotThreadSafe;
         return mStartPositionMillis;
     }
 
-    private EngineParameters(int channels, int sampleRate, int targetFrames,
-            int maxPlayBufferCount, float windowDuration, float windowOverlapDuration,
-            float initialRate, int decodeBufferInitialSize, int decodeBufferMaxSize,
-            int startPositionMillis) {
-        mChannels = channels;
-        mSampleRate = sampleRate;
+    private EngineParameters(int targetFrames, int maxPlayBufferCount, float windowDuration,
+            float windowOverlapDuration, float initialRate, int decodeBufferInitialSize,
+            int decodeBufferMaxSize, int startPositionMillis) {
         mTargetFrames = targetFrames;
         mMaxPlayBufferCount = maxPlayBufferCount;
         mWindowDuration = windowDuration;
@@ -103,8 +90,6 @@ import javax.annotation.concurrent.NotThreadSafe;
      */
     @NotThreadSafe
     public static class Builder {
-        private int mChannels = 2;
-        private int mSampleRate = 44100;
         private int mTargetFrames = 1000;
         private int mMaxPlayBufferCount = 2;
         private float mWindowDuration = 0.08f;
@@ -115,24 +100,9 @@ import javax.annotation.concurrent.NotThreadSafe;
         private int mStartPositionMillis = 0;
 
         public EngineParameters build() {
-            return new EngineParameters(mChannels, mSampleRate, mTargetFrames, mMaxPlayBufferCount,
+            return new EngineParameters(mTargetFrames, mMaxPlayBufferCount,
                     mWindowDuration, mWindowOverlapDuration, mInitialRate,
                     mDecodeBufferInitialSize, mDecodeBufferMaxSize, mStartPositionMillis);
-        }
-
-        public Builder channels(int channels) {
-            mChannels = channels;
-            return this;
-        }
-
-        public Builder sampleRate(int sampleRate) {
-            mSampleRate = sampleRate;
-            return this;
-        }
-
-        public Builder targetFrames(int targetFrames) {
-            mTargetFrames = targetFrames;
-            return this;
         }
 
         public Builder maxPlayBufferCount(int maxPlayBufferCount) {

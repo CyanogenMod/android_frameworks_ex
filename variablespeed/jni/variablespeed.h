@@ -42,10 +42,10 @@ namespace video_editing {
 // native methods.
 class AudioEngine {
  public:
-  AudioEngine(size_t channels, size_t sampleRate, size_t targetFrames,
-      float windowDuration, float windowOverlapDuration,
-      size_t maxPlayBufferCount, float initialRate, size_t decodeInitialSize,
-      size_t decodeMaxSize, size_t startPositionMillis);
+  AudioEngine(size_t targetFrames, float windowDuration,
+      float windowOverlapDuration, size_t maxPlayBufferCount,
+      float initialRate, size_t decodeInitialSize, size_t decodeMaxSize,
+      size_t startPositionMillis);
   virtual ~AudioEngine();
 
   bool PlayUri(const char* uri);
@@ -83,6 +83,10 @@ class AudioEngine {
   void ClearDecodeBuffer();
   bool IsDecodeBufferEmpty();
   bool GetHasReachedPlayingBuffersLimit();
+  bool HasSampleRateAndChannels();
+  SLuint32 GetSLSampleRate();
+  SLuint32 GetSLChannels();
+  size_t GetChannelCount();
 
   // The single global audio engine instance.
   static AudioEngine* audioEngine_;
@@ -107,8 +111,12 @@ class AudioEngine {
   float* floatBuffer_;
   float* injectBuffer_;
 
-  size_t channels_;
-  size_t sampleRate_;
+  // Required when we create the audio player.
+  // Set during the first callback from the decoder.
+  // Guarded by callbackLock_.
+  SLuint32 mSampleRate;
+  SLuint32 mChannels;
+
   size_t targetFrames_;
   float windowDuration_;
   float windowOverlapDuration_;
@@ -131,6 +139,9 @@ class AudioEngine {
   // Protected by lock_.
   // Stores the total duration of the track.
   SLmillisecond totalDurationMs_;
+  // Protected by lock_.
+  // Stores the current position of the decoder head.
+  SLmillisecond decoderCurrentPosition_;
   // Protected by lock_.
   // Set externally via RequestStart(), this determines when we begin to
   // playback audio.

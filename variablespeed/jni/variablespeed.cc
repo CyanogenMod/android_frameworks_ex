@@ -44,6 +44,11 @@ const size_t kNumberOfSamplesPerBuffer = 1152;
 const size_t kBufferSizeInBytes = 2 * kNumberOfSamplesPerBuffer;
 const size_t kSampleSizeInBytes = 4;
 
+// Keys used when extracting metadata from the decoder.
+// TODO: Remove these constants once they are part of OpenSLES_Android.h.
+const char* kKeyPcmFormatNumChannels = "AndroidPcmFormatNumChannels";
+const char* kKeyPcmFormatSamplesPerSec = "AndroidPcmFormatSamplesPerSec";
+
 // When calculating play buffer size before pushing to audio player.
 const size_t kNumberOfBytesPerInt16 = 2;
 
@@ -58,11 +63,15 @@ const SLuint32 kPrefetchErrorCandidate =
 
 // Structure used when we perform a decoding callback.
 typedef struct CallbackContext_ {
-    SLMetadataExtractionItf decoderMetadata;
-    // Pointer to local storage buffers for decoded audio data.
-    int8_t* pDataBase;
-    // Pointer to the current buffer within local storage.
-    int8_t* pData;
+  // Pointer to local storage buffers for decoded audio data.
+  int8_t* pDataBase;
+  // Pointer to the current buffer within local storage.
+  int8_t* pData;
+  // Used to read the sample rate and channels from the decoding stream during
+  // the first decoding callback.
+  SLMetadataExtractionItf decoderMetadata;
+  // The play interface used for reading duration.
+  SLPlayItf playItf;
 } CallbackContext;
 
 // Local storage for decoded audio data.
@@ -144,57 +153,76 @@ static void DecodingEventCb(SLPlayItf caller, void*, SLuint32 event) {
 }
 
 // ****************************************************************************
+// Macros for making working with OpenSL easier.
+
+// #define LOG_OPENSL_API_CALL(string) LOGV(string)
+#define LOG_OPENSL_API_CALL(string) false
+
+// The regular macro: log an api call, make the api call, check the result.
+#define OpenSL(obj, method, ...) \
+{ \
+  LOG_OPENSL_API_CALL("OpenSL " #method "(" #obj ", " #__VA_ARGS__ ")"); \
+  SLresult result = (*obj)->method(obj, __VA_ARGS__); \
+  CheckSLResult("OpenSL " #method "(" #obj ", " #__VA_ARGS__ ")", result); \
+}
+
+// Special case call for api call that has void return value, can't be checked.
+#define VoidOpenSL(obj, method) \
+{ \
+  LOG_OPENSL_API_CALL("OpenSL (void) " #method "(" #obj ")"); \
+  (*obj)->method(obj); \
+}
+
+// Special case for api call with checked result but takes no arguments.
+#define OpenSL0(obj, method) \
+{ \
+  LOG_OPENSL_API_CALL("OpenSL " #method "(" #obj ")"); \
+  SLresult result = (*obj)->method(obj); \
+  CheckSLResult("OpenSL " #method "(" #obj ")", result); \
+}
+
+// Special case for api call whose result we want to store, not check.
+// We have to encapsulate the two calls in braces, so that this expression
+// evaluates to the last expression not the first.
+#define ReturnOpenSL(obj, method, ...) \
+( \
+    LOG_OPENSL_API_CALL("OpenSL (int) " \
+        #method "(" #obj ", " #__VA_ARGS__ ")"), \
+    (*obj)->method(obj, __VA_ARGS__) \
+) \
+
+// ****************************************************************************
 // Static utility methods.
 
-static void PausePlaying(SLPlayItf playItf) {
-  SLresult result = (*playItf)->SetPlayState(playItf, SL_PLAYSTATE_PAUSED);
-  CheckSLResult("pause playing", result);
-}
-
-static void StartPlaying(SLPlayItf playItf) {
-  SLresult result = (*playItf)->SetPlayState(playItf, SL_PLAYSTATE_PLAYING);
-  CheckSLResult("start playing", result);
-}
-
-static void StopPlaying(SLPlayItf playItf) {
-  SLresult result = (*playItf)->SetPlayState(playItf, SL_PLAYSTATE_STOPPED);
-  CheckSLResult("stop playing", result);
-}
-
-static void ExtractMetadataFromDecoder(
-    SLMetadataExtractionItf decoderMetadata) {
+// Must be called with callbackLock_ held.
+static void ReadSampleRateAndChannelCount(CallbackContext *pContext,
+    SLuint32 *sampleRateOut, SLuint32 *channelsOut) {
+  SLMetadataExtractionItf decoderMetadata = pContext->decoderMetadata;
   SLuint32 itemCount;
-  SLresult result = (*decoderMetadata)->GetItemCount(
-      decoderMetadata, &itemCount);
-  CheckSLResult("getting item count", result);
+  OpenSL(decoderMetadata, GetItemCount, &itemCount);
   SLuint32 i, keySize, valueSize;
   SLMetadataInfo *keyInfo, *value;
-  for (i = 0; i < itemCount ; ++i) {
-    keyInfo = NULL;
-    keySize = 0;
-    value = NULL;
-    valueSize = 0;
-    result = (*decoderMetadata)->GetKeySize(decoderMetadata, i, &keySize);
-    CheckSLResult("get key size", result);
+  for (i = 0; i < itemCount; ++i) {
+    keyInfo = value = NULL;
+    keySize = valueSize = 0;
+    OpenSL(decoderMetadata, GetKeySize, i, &keySize);
     keyInfo = static_cast<SLMetadataInfo*>(malloc(keySize));
     if (keyInfo) {
-      result = (*decoderMetadata)->GetKey(
-          decoderMetadata, i, keySize, keyInfo);
-      CheckSLResult("get key", result);
+      OpenSL(decoderMetadata, GetKey, i, keySize, keyInfo);
       if (keyInfo->encoding == SL_CHARACTERENCODING_ASCII
           || keyInfo->encoding == SL_CHARACTERENCODING_UTF8) {
-        result = (*decoderMetadata)->GetValueSize(
-            decoderMetadata, i, &valueSize);
-        CheckSLResult("get value size", result);
+        OpenSL(decoderMetadata, GetValueSize, i, &valueSize);
         value = static_cast<SLMetadataInfo*>(malloc(valueSize));
         if (value) {
-          result = (*decoderMetadata)->GetValue(
-              decoderMetadata, i, valueSize, value);
-          CheckSLResult("get value", result);
-          if (value->encoding == SL_CHARACTERENCODING_BINARY) {
-            LOGD("key[%d] size=%d, name=%s value size=%d value=%d",
-                i, keyInfo->size, keyInfo->data, value->size,
-                *(reinterpret_cast<SLuint32*>(value->data)));
+          OpenSL(decoderMetadata, GetValue, i, valueSize, value);
+          if (strcmp((char*) keyInfo->data, kKeyPcmFormatSamplesPerSec) == 0) {
+            SLuint32 sampleRate = *(reinterpret_cast<SLuint32*>(value->data));
+            LOGD("sample Rate: %d", sampleRate);
+            *sampleRateOut = sampleRate;
+          } else if (strcmp((char*) keyInfo->data, kKeyPcmFormatNumChannels) == 0) {
+            SLuint32 channels = *(reinterpret_cast<SLuint32*>(value->data));
+            LOGD("channels: %d", channels);
+            *channelsOut = channels;
           }
           free(value);
         }
@@ -204,35 +232,18 @@ static void ExtractMetadataFromDecoder(
   }
 }
 
-static void SeekToPosition(SLSeekItf seekItf, size_t startPositionMillis) {
-  SLresult result = (*seekItf)->SetPosition(
-      seekItf, startPositionMillis, SL_SEEKMODE_ACCURATE);
-  CheckSLResult("seek to position", result);
-}
-
+// Must be called with callbackLock_ held.
 static void RegisterCallbackContextAndAddEnqueueBuffersToDecoder(
-    SLAndroidSimpleBufferQueueItf decoderQueue,
-    SLMetadataExtractionItf decoderMetadata, android::Mutex &callbackLock,
-    CallbackContext* context) {
-  android::Mutex::Autolock autoLock(callbackLock);
-  // Initialize the callback structure, used during the decoding.
-  // Then register a callback on the decoder queue, so that we will be called
+    SLAndroidSimpleBufferQueueItf decoderQueue, CallbackContext* context) {
+  // Register a callback on the decoder queue, so that we will be called
   // throughout the decoding process (and can then extract the decoded audio
   // for the next bit of the pipeline).
-  context->decoderMetadata = decoderMetadata;
-  context->pDataBase = pcmData;
-  context->pData = pcmData;
-
-  SLresult result = (*decoderQueue)->RegisterCallback(
-      decoderQueue, DecodingBufferQueueCb, context);
-  CheckSLResult("decode callback", result);
+  OpenSL(decoderQueue, RegisterCallback, DecodingBufferQueueCb, context);
 
   // Enqueue buffers to map the region of memory allocated to store the
   // decoded data.
   for (size_t i = 0; i < kNumberOfBuffersInQueue; i++) {
-    SLresult result = (*decoderQueue)->Enqueue(
-        decoderQueue, context->pData, kBufferSizeInBytes);
-    CheckSLResult("enqueue something", result);
+    OpenSL(decoderQueue, Enqueue, context->pData, kBufferSizeInBytes);
     context->pData += kBufferSizeInBytes;
   }
   context->pData = context->pDataBase;
@@ -241,23 +252,20 @@ static void RegisterCallbackContextAndAddEnqueueBuffersToDecoder(
 // ****************************************************************************
 // Constructor and Destructor.
 
-AudioEngine::AudioEngine(size_t channels, size_t sampleRate,
-    size_t targetFrames, float windowDuration, float windowOverlapDuration,
-    size_t maxPlayBufferCount, float initialRate, size_t decodeInitialSize,
-    size_t decodeMaxSize, size_t startPositionMillis)
+AudioEngine::AudioEngine(size_t targetFrames, float windowDuration,
+    float windowOverlapDuration, size_t maxPlayBufferCount, float initialRate,
+    size_t decodeInitialSize, size_t decodeMaxSize, size_t startPositionMillis)
     : decodeBuffer_(decodeInitialSize, decodeMaxSize),
       playingBuffers_(), freeBuffers_(), timeScaler_(NULL),
       floatBuffer_(NULL), injectBuffer_(NULL),
-      channels_(channels), sampleRate_(sampleRate),
+      mSampleRate(0), mChannels(0),
       targetFrames_(targetFrames),
       windowDuration_(windowDuration),
       windowOverlapDuration_(windowOverlapDuration),
       maxPlayBufferCount_(maxPlayBufferCount), initialRate_(initialRate),
       startPositionMillis_(startPositionMillis),
-      totalDurationMs_(0), startRequested_(false),
+      totalDurationMs_(0), decoderCurrentPosition_(0), startRequested_(false),
       stopRequested_(false), finishedDecoding_(false) {
-  floatBuffer_ = new float[targetFrames_ * channels_];
-  injectBuffer_ = new float[targetFrames_ * channels_];
 }
 
 AudioEngine::~AudioEngine() {
@@ -288,6 +296,8 @@ AudioEngine::~AudioEngine() {
 // Regular AudioEngine class methods.
 
 void AudioEngine::SetVariableSpeed(float speed) {
+  // TODO: Add test, prove that this doesn't crash if called before playing.
+  // TODO: Mutex for shared time scaler accesses.
   GetTimeScaler()->set_speed(speed);
 }
 
@@ -314,8 +324,11 @@ void AudioEngine::RequestStop() {
 int AudioEngine::GetCurrentPosition() {
   android::Mutex::Autolock autoLock(decodeBufferLock_);
   double result = decodeBuffer_.GetTotalAdvancedCount();
+  // TODO: This is horrible, but should be removed soon once the outstanding
+  // issue with get current position on decoder is fixed.
+  android::Mutex::Autolock autoLock2(callbackLock_);
   return static_cast<int>(
-      (result * 1000) / sampleRate_ / channels_ + startPositionMillis_);
+      (result * 1000) / mSampleRate / mChannels + startPositionMillis_);
 }
 
 int AudioEngine::GetTotalDuration() {
@@ -325,44 +338,23 @@ int AudioEngine::GetTotalDuration() {
 
 video_editing::SolaTimeScaler* AudioEngine::GetTimeScaler() {
   if (timeScaler_ == NULL) {
+    CHECK(HasSampleRateAndChannels());
+    android::Mutex::Autolock autoLock(callbackLock_);
     timeScaler_ = new video_editing::SolaTimeScaler();
-    timeScaler_->Init(sampleRate_, channels_, initialRate_, windowDuration_,
+    timeScaler_->Init(mSampleRate, mChannels, initialRate_, windowDuration_,
         windowOverlapDuration_);
   }
   return timeScaler_;
 }
 
-void AudioEngine::PrefetchDurationSampleRateAndChannels(
-    SLPlayItf playItf, SLPrefetchStatusItf prefetchItf) {
-  // Set play state to pause, to begin the prefetching.
-  PausePlaying(playItf);
-
-  // Wait until the data has been prefetched.
-  {
-    SLuint32 prefetchStatus = SL_PREFETCHSTATUS_UNDERFLOW;
-    android::Mutex::Autolock autoLock(prefetchLock_);
-    while (prefetchStatus != SL_PREFETCHSTATUS_SUFFICIENTDATA) {
-      LOGI("waiting for condition");
-      // prefetchCondition_.waitRelative(prefetchLock, 1000 * 1000 * 10);
-      usleep(10 * 1000);
-      LOGI("getting the value");
-      (*prefetchItf)->GetPrefetchStatus(prefetchItf, &prefetchStatus);
-    }
-    LOGI("done with wait");
-  }
-
-  SLmillisecond durationInMsec = SL_TIME_UNKNOWN;
-  SLresult result = (*playItf)->GetDuration(playItf, &durationInMsec);
-  CheckSLResult("getting duration", result);
-  CHECK(durationInMsec != SL_TIME_UNKNOWN);
-  LOGD("duration: %d", static_cast<int>(durationInMsec));
-  android::Mutex::Autolock autoLock(lock_);
-  totalDurationMs_ = durationInMsec;
-}
-
 bool AudioEngine::EnqueueNextBufferOfAudio(
     SLAndroidSimpleBufferQueueItf audioPlayerQueue) {
-  size_t frameSizeInBytes = kSampleSizeInBytes * channels_;
+  size_t channels;
+  {
+    android::Mutex::Autolock autoLock(callbackLock_);
+    channels = mChannels;
+  }
+  size_t frameSizeInBytes = kSampleSizeInBytes * channels;
   size_t frameCount = 0;
   while (frameCount < targetFrames_) {
     size_t framesLeft = targetFrames_ - frameCount;
@@ -370,9 +362,9 @@ bool AudioEngine::EnqueueNextBufferOfAudio(
     if (GetTimeScaler()->available() > 0) {
       size_t retrieveCount = min(GetTimeScaler()->available(), framesLeft);
       int count = GetTimeScaler()->RetrieveSamples(
-          floatBuffer_ + frameCount * channels_, retrieveCount);
+          floatBuffer_ + frameCount * channels, retrieveCount);
       if (count <= 0) {
-        LOGD("ERROR: Count was %d", count);
+        LOGD("error: count was %d", count);
         break;
       }
       frameCount += count;
@@ -389,15 +381,15 @@ bool AudioEngine::EnqueueNextBufferOfAudio(
       // No more frames left to inject.
       break;
     }
-    for (size_t i = 0; i < framesToInject * channels_ ; ++i) {
+    for (size_t i = 0; i < framesToInject * channels; ++i) {
       injectBuffer_[i] = decodeBuffer_.GetAtIndex(i);
     }
     int count = GetTimeScaler()->InjectSamples(injectBuffer_, framesToInject);
     if (count <= 0) {
-      LOGD("ERROR: Count was %d", count);
+      LOGD("error: count was %d", count);
       break;
     }
-    decodeBuffer_.AdvanceHeadPointerShorts(count * channels_);
+    decodeBuffer_.AdvanceHeadPointerShorts(count * channels);
   }
   if (frameCount <= 0) {
     // We must have finished playback.
@@ -418,19 +410,18 @@ bool AudioEngine::EnqueueNextBufferOfAudio(
       freeBuffers_.pop();
     } else {
       // Otherwise allocate a new one.
-      playBuffer = new int16[targetFrames_ * channels_];
+      playBuffer = new int16[targetFrames_ * channels];
     }
   }
 
   // Try to play the buffer.
-  for (size_t i = 0; i < frameCount * channels_ ; ++i) {
+  for (size_t i = 0; i < frameCount * channels; ++i) {
     playBuffer[i] = floatBuffer_[i];
   }
   size_t sizeOfPlayBufferInBytes =
-      frameCount * channels_ * kNumberOfBytesPerInt16;
-  SLresult result = (*audioPlayerQueue)->Enqueue(audioPlayerQueue, playBuffer,
+      frameCount * channels * kNumberOfBytesPerInt16;
+  SLresult result = ReturnOpenSL(audioPlayerQueue, Enqueue, playBuffer,
       sizeOfPlayBufferInBytes);
-  CheckSLResult("enqueue prebuilt audio", result);
   if (result == SL_RESULT_SUCCESS) {
     android::Mutex::Autolock autoLock(playBufferLock_);
     playingBuffers_.push(playBuffer);
@@ -481,70 +472,71 @@ void AudioEngine::ClearDecodeBuffer() {
   decodeBuffer_.Clear();
 }
 
+static size_t ReadDuration(SLPlayItf playItf) {
+  SLmillisecond durationInMsec = SL_TIME_UNKNOWN;
+  OpenSL(playItf, GetDuration, &durationInMsec);
+  if (durationInMsec == SL_TIME_UNKNOWN) {
+    LOGE("can't get duration");
+    return 0;
+  }
+  LOGD("duration: %d", static_cast<int>(durationInMsec));
+  return durationInMsec;
+}
+
+static size_t ReadPosition(SLPlayItf playItf) {
+  SLmillisecond positionInMsec = SL_TIME_UNKNOWN;
+  OpenSL(playItf, GetPosition, &positionInMsec);
+  if (positionInMsec == SL_TIME_UNKNOWN) {
+    LOGE("can't get position");
+    return 0;
+  }
+  LOGW("decoder position: %d", static_cast<int>(positionInMsec));
+  return positionInMsec;
+}
+
 static void CreateAndRealizeEngine(SLObjectItf &engine,
     SLEngineItf &engineInterface) {
   SLEngineOption EngineOption[] = { {
       SL_ENGINEOPTION_THREADSAFE, SL_BOOLEAN_TRUE } };
   SLresult result = slCreateEngine(&engine, 1, EngineOption, 0, NULL, NULL);
   CheckSLResult("create engine", result);
-  result = (*engine)->Realize(engine, SL_BOOLEAN_FALSE);
-  CheckSLResult("realise engine", result);
-  result = (*engine)->GetInterface(engine, SL_IID_ENGINE, &engineInterface);
-  CheckSLResult("get interface", result);
+  OpenSL(engine, Realize, SL_BOOLEAN_FALSE);
+  OpenSL(engine, GetInterface, SL_IID_ENGINE, &engineInterface);
 }
 
-static void CreateAndRealizeOutputMix(SLEngineItf &engineInterface,
-    SLObjectItf &outputMix) {
-  SLresult result;
-  // Create the output mix for playing.
-  result = (*engineInterface)->CreateOutputMix(
-      engineInterface, &outputMix, 0, NULL, NULL);
-  CheckSLResult("create output mix", result);
-  result = (*outputMix)->Realize(outputMix, SL_BOOLEAN_FALSE);
-  CheckSLResult("realize", result);
+SLuint32 AudioEngine::GetSLSampleRate() {
+  android::Mutex::Autolock autoLock(callbackLock_);
+  return mSampleRate * 1000;
 }
 
-static void CreateAndRealizeAudioPlayer(size_t sampleRate, size_t channels,
-    SLObjectItf &outputMix, SLObjectItf &audioPlayer,
-    SLEngineItf &engineInterface) {
-  SLresult result;
-  SLuint32 slSampleRate;
-  SLuint32 slOutputChannels;
-  switch (sampleRate) {
-    case 44100:
-      slSampleRate = SL_SAMPLINGRATE_44_1;
-      break;
-    case 8000:
-      slSampleRate = SL_SAMPLINGRATE_8;
-      break;
-    case 11025:
-      slSampleRate = SL_SAMPLINGRATE_11_025;
-      break;
-    default:
-      LOGE("unknown sample rate, using SL_SAMPLINGRATE_44_1");
-      slSampleRate = SL_SAMPLINGRATE_44_1;
-      break;
-  }
-  switch (channels) {
+SLuint32 AudioEngine::GetSLChannels() {
+  android::Mutex::Autolock autoLock(callbackLock_);
+  switch (mChannels) {
     case 2:
-      slOutputChannels = SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT;
-      break;
+      return SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT;
     case 1:
-      slOutputChannels = SL_SPEAKER_FRONT_LEFT;
-      break;
+      return SL_SPEAKER_FRONT_CENTER;
     default:
-      LOGE("unknown channels, using 2");
-      slOutputChannels = SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT;
-      break;
+      LOGE("unknown channels %d, using 2", mChannels);
+      return SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT;
   }
+}
 
+SLuint32 AudioEngine::GetChannelCount() {
+  android::Mutex::Autolock autoLock(callbackLock_);
+  return mChannels;
+}
+
+static void CreateAndRealizeAudioPlayer(SLuint32 slSampleRate,
+    size_t channelCount, SLuint32 slChannels, SLObjectItf &outputMix,
+    SLObjectItf &audioPlayer, SLEngineItf &engineInterface) {
   // Define the source and sink for the audio player: comes from a buffer queue
   // and goes to the output mix.
   SLDataLocator_AndroidSimpleBufferQueue loc_bufq = {
       SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2 };
-  SLDataFormat_PCM format_pcm = {SL_DATAFORMAT_PCM, channels, slSampleRate,
+  SLDataFormat_PCM format_pcm = {SL_DATAFORMAT_PCM, channelCount, slSampleRate,
       SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
-      slOutputChannels, SL_BYTEORDER_LITTLEENDIAN};
+      slChannels, SL_BYTEORDER_LITTLEENDIAN};
   SLDataSource playingSrc = {&loc_bufq, &format_pcm};
   SLDataLocator_OutputMix loc_outmix = {SL_DATALOCATOR_OUTPUTMIX, outputMix};
   SLDataSink audioSnk = {&loc_outmix, NULL};
@@ -555,35 +547,18 @@ static void CreateAndRealizeAudioPlayer(size_t sampleRate, size_t channels,
   const SLInterfaceID iids[playerInterfaceCount] = {
       SL_IID_ANDROIDSIMPLEBUFFERQUEUE };
   const SLboolean reqs[playerInterfaceCount] = { SL_BOOLEAN_TRUE };
-  result = (*engineInterface)->CreateAudioPlayer(engineInterface, &audioPlayer,
-      &playingSrc, &audioSnk, playerInterfaceCount, iids, reqs);
-  CheckSLResult("create audio player", result);
-  result = (*audioPlayer)->Realize(audioPlayer, SL_BOOLEAN_FALSE);
-  CheckSLResult("realize buffer queue", result);
+  OpenSL(engineInterface, CreateAudioPlayer, &audioPlayer, &playingSrc,
+      &audioSnk, playerInterfaceCount, iids, reqs);
+  OpenSL(audioPlayer, Realize, SL_BOOLEAN_FALSE);
 }
 
-static void GetAudioPlayInterfacesAndRegisterCallback(SLObjectItf &audioPlayer,
-    SLPlayItf &audioPlayerPlay,
-    SLAndroidSimpleBufferQueueItf &audioPlayerQueue) {
-  SLresult result;
-  // Get the play interface from the player, as well as the buffer queue
-  // interface from its source.
-  // Register for callbacks during play.
-  result = (*audioPlayer)->GetInterface(
-      audioPlayer, SL_IID_PLAY, &audioPlayerPlay);
-  CheckSLResult("get interface", result);
-  result = (*audioPlayer)->GetInterface(audioPlayer,
-      SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &audioPlayerQueue);
-  CheckSLResult("get interface again", result);
-  result = (*audioPlayerQueue)->RegisterCallback(
-      audioPlayerQueue, PlayingBufferQueueCb, NULL);
-  CheckSLResult("register callback", result);
+bool AudioEngine::HasSampleRateAndChannels() {
+  android::Mutex::Autolock autoLock(callbackLock_);
+  return mChannels != 0 && mSampleRate != 0;
 }
 
 bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
   ClearDecodeBuffer();
-
-  SLresult result;
 
   SLObjectItf engine;
   SLEngineItf engineInterface;
@@ -609,61 +584,52 @@ bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
   const SLboolean decodePlayerRequired[decoderInterfaceCount] = {
       SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE };
   SLDataSource sourceCopy(audioSrc);
-  result = (*engineInterface)->CreateAudioPlayer(engineInterface, &decoder,
-      &sourceCopy, &decDest, decoderInterfaceCount, decodePlayerInterfaces,
-      decodePlayerRequired);
-  CheckSLResult("create audio player", result);
-  result = (*decoder)->Realize(decoder, SL_BOOLEAN_FALSE);
-  CheckSLResult("realize in sync mode", result);
+  OpenSL(engineInterface, CreateAudioPlayer, &decoder, &sourceCopy, &decDest,
+      decoderInterfaceCount, decodePlayerInterfaces, decodePlayerRequired);
+  OpenSL(decoder, Realize, SL_BOOLEAN_FALSE);
 
   // Get the play interface from the decoder, and register event callbacks.
   // Get the buffer queue, prefetch and seek interfaces.
   SLPlayItf decoderPlay = NULL;
-  result = (*decoder)->GetInterface(decoder, SL_IID_PLAY, &decoderPlay);
-  CheckSLResult("get play interface, implicit", result);
-  result = (*decoderPlay)->SetCallbackEventsMask(
-      decoderPlay, SL_PLAYEVENT_HEADATEND);
-  CheckSLResult("set the event mask", result);
-  result = (*decoderPlay)->RegisterCallback(
-      decoderPlay, DecodingEventCb, NULL);
-  CheckSLResult("register decoding event callback", result);
-  SLAndroidSimpleBufferQueueItf decoderQueue;
-  result = (*decoder)->GetInterface(
-      decoder, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &decoderQueue);
-  CheckSLResult("get decoder buffer queue", result);
-  SLPrefetchStatusItf decoderPrefetch;
-  result = (*decoder)->GetInterface(
-      decoder, SL_IID_PREFETCHSTATUS, &decoderPrefetch);
-  CheckSLResult("get prefetch status interface", result);
-  SLSeekItf decoderSeek;
-  result = (*decoder)->GetInterface(decoder, SL_IID_SEEK, &decoderSeek);
-  CheckSLResult("get seek interface", result);
+  SLAndroidSimpleBufferQueueItf decoderQueue = NULL;
+  SLPrefetchStatusItf decoderPrefetch = NULL;
+  SLSeekItf decoderSeek = NULL;
+  SLMetadataExtractionItf decoderMetadata = NULL;
+  OpenSL(decoder, GetInterface, SL_IID_PLAY, &decoderPlay);
+  OpenSL(decoderPlay, SetCallbackEventsMask, SL_PLAYEVENT_HEADATEND);
+  OpenSL(decoderPlay, RegisterCallback, DecodingEventCb, NULL);
+  OpenSL(decoder, GetInterface, SL_IID_PREFETCHSTATUS, &decoderPrefetch);
+  OpenSL(decoder, GetInterface, SL_IID_SEEK, &decoderSeek);
+  OpenSL(decoder, GetInterface, SL_IID_METADATAEXTRACTION, &decoderMetadata);
+  OpenSL(decoder, GetInterface, SL_IID_ANDROIDSIMPLEBUFFERQUEUE,
+      &decoderQueue);
 
-  // Get the metadata interface from the decoder.
-  SLMetadataExtractionItf decoderMetadata;
-  result = (*decoder)->GetInterface(decoder,
-      SL_IID_METADATAEXTRACTION, &decoderMetadata);
-  CheckSLResult("getting metadata interface", result);
-
+  // Initialize the callback structure, used during the decoding.
   CallbackContext callbackContext;
-  RegisterCallbackContextAndAddEnqueueBuffersToDecoder(
-      decoderQueue, decoderMetadata, callbackLock_, &callbackContext);
+  {
+    android::Mutex::Autolock autoLock(callbackLock_);
+    callbackContext.pDataBase = pcmData;
+    callbackContext.pData = pcmData;
+    callbackContext.decoderMetadata = decoderMetadata;
+    callbackContext.playItf = decoderPlay;
+    RegisterCallbackContextAndAddEnqueueBuffersToDecoder(
+        decoderQueue, &callbackContext);
+  }
 
   // Initialize the callback for prefetch errors, if we can't open the
   // resource to decode.
-  result = (*decoderPrefetch)->SetCallbackEventsMask(
-      decoderPrefetch, kPrefetchErrorCandidate);
-  CheckSLResult("set prefetch callback mask", result);
-  result = (*decoderPrefetch)->RegisterCallback(
-      decoderPrefetch, PrefetchEventCb, &decoderPrefetch);
-  CheckSLResult("set prefetch callback", result);
+  OpenSL(decoderPrefetch, SetCallbackEventsMask, kPrefetchErrorCandidate);
+  OpenSL(decoderPrefetch, RegisterCallback, PrefetchEventCb, &decoderPrefetch);
 
-  SeekToPosition(decoderSeek, startPositionMillis_);
+  // Seek to the start position.
+  OpenSL(decoderSeek, SetPosition, startPositionMillis_, SL_SEEKMODE_ACCURATE);
 
-  PrefetchDurationSampleRateAndChannels(decoderPlay, decoderPrefetch);
+  // Start decoding immediately.
+  OpenSL(decoderPlay, SetPlayState, SL_PLAYSTATE_PLAYING);
 
-  StartPlaying(decoderPlay);
-
+  // These variables hold the audio player and its output.
+  // They will only be constructed once the decoder has invoked the callback,
+  // and given us the correct sample rate, number of channels and duration.
   SLObjectItf outputMix = NULL;
   SLObjectItf audioPlayer = NULL;
   SLPlayItf audioPlayerPlay = NULL;
@@ -673,14 +639,21 @@ bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
   // out of the decoder, feed it through the time scaler.
   // As it comes out of the time scaler, feed it into the audio player.
   while (!Finished()) {
-    if (GetWasStartRequested()) {
-      CreateAndRealizeOutputMix(engineInterface, outputMix);
-      CreateAndRealizeAudioPlayer(sampleRate_, channels_, outputMix,
-          audioPlayer, engineInterface);
-      GetAudioPlayInterfacesAndRegisterCallback(audioPlayer, audioPlayerPlay,
-          audioPlayerQueue);
+    if (GetWasStartRequested() && HasSampleRateAndChannels()) {
+      // Build the audio player.
+      // TODO: What happens if I maliciously call start lots of times?
+      floatBuffer_ = new float[targetFrames_ * mChannels];
+      injectBuffer_ = new float[targetFrames_ * mChannels];
+      OpenSL(engineInterface, CreateOutputMix, &outputMix, 0, NULL, NULL);
+      OpenSL(outputMix, Realize, SL_BOOLEAN_FALSE);
+      CreateAndRealizeAudioPlayer(GetSLSampleRate(), GetChannelCount(),
+          GetSLChannels(), outputMix, audioPlayer, engineInterface);
+      OpenSL(audioPlayer, GetInterface, SL_IID_PLAY, &audioPlayerPlay);
+      OpenSL(audioPlayer, GetInterface, SL_IID_ANDROIDSIMPLEBUFFERQUEUE,
+          &audioPlayerQueue);
+      OpenSL(audioPlayerQueue, RegisterCallback, PlayingBufferQueueCb, NULL);
       ClearRequestStart();
-      StartPlaying(audioPlayerPlay);
+      OpenSL(audioPlayerPlay, SetPlayState, SL_PLAYSTATE_PLAYING);
     }
     EnqueueMoreAudioIfNecessary(audioPlayerQueue);
     usleep(kSleepTimeMicros);
@@ -688,14 +661,12 @@ bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
 
   // Delete the audio player and output mix, iff they have been created.
   if (audioPlayer != NULL) {
-    StopPlaying(audioPlayerPlay);
-    result = (*audioPlayerQueue)->Clear(audioPlayerQueue);
-    CheckSLResult("clear audio player queue", result);
-    result = (*audioPlayerQueue)->RegisterCallback(audioPlayerQueue, NULL, NULL);
-    CheckSLResult("clear callback", result);
-    (*audioPlayer)->AbortAsyncOperation(audioPlayer);
-    (*audioPlayer)->Destroy(audioPlayer);
-    (*outputMix)->Destroy(outputMix);
+    OpenSL(audioPlayerPlay, SetPlayState, SL_PLAYSTATE_STOPPED);
+    OpenSL0(audioPlayerQueue, Clear);
+    OpenSL(audioPlayerQueue, RegisterCallback, NULL, NULL);
+    VoidOpenSL(audioPlayer, AbortAsyncOperation);
+    VoidOpenSL(audioPlayer, Destroy);
+    VoidOpenSL(outputMix, Destroy);
     audioPlayer = NULL;
     audioPlayerPlay = NULL;
     audioPlayerQueue = NULL;
@@ -703,27 +674,23 @@ bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
   }
 
   // Delete the decoder.
-  StopPlaying(decoderPlay);
-  result = (*decoderPrefetch)->RegisterCallback(decoderPrefetch, NULL, NULL);
-  CheckSLResult("clearing prefetch error callback", result);
+  OpenSL(decoderPlay, SetPlayState, SL_PLAYSTATE_STOPPED);
+  OpenSL(decoderPrefetch, RegisterCallback, NULL, NULL);
   // This is returning slresult 13 if I do no playback.
   // Repro is to comment out all before this line, and all after enqueueing
   // my buffers.
-  // result = (*decoderQueue)->Clear(decoderQueue);
-  // CheckSLResult("clearing decode buffer queue", result);
-  result = (*decoderQueue)->RegisterCallback(decoderQueue, NULL, NULL);
-  CheckSLResult("clearing decode callback", result);
+  // OpenSL0(decoderQueue, Clear);
+  OpenSL(decoderQueue, RegisterCallback, NULL, NULL);
   decoderSeek = NULL;
   decoderPrefetch = NULL;
   decoderQueue = NULL;
-  result = (*decoderPlay)->RegisterCallback(decoderPlay, NULL, NULL);
-  CheckSLResult("clear decoding event callback", result);
-  (*decoder)->AbortAsyncOperation(decoder);
+  OpenSL(decoderPlay, RegisterCallback, NULL, NULL);
+  VoidOpenSL(decoder, AbortAsyncOperation);
+  VoidOpenSL(decoder, Destroy);
   decoderPlay = NULL;
-  (*decoder)->Destroy(decoder);
 
   // Delete the engine.
-  (*engine)->Destroy(engine);
+  VoidOpenSL(engine, Destroy);
   engineInterface = NULL;
 
   return true;
@@ -752,7 +719,8 @@ bool AudioEngine::GetHasReachedPlayingBuffersLimit() {
 void AudioEngine::EnqueueMoreAudioIfNecessary(
     SLAndroidSimpleBufferQueueItf audioPlayerQueue) {
   bool keepEnqueueing = true;
-  while (!GetWasStopRequested() &&
+  while (audioPlayerQueue != NULL &&
+         !GetWasStopRequested() &&
          !IsDecodeBufferEmpty() &&
          !GetHasReachedPlayingBuffersLimit() &&
          keepEnqueueing) {
@@ -781,15 +749,13 @@ void AudioEngine::PrefetchEventCallback(
     SLPrefetchStatusItf caller, SLuint32 event) {
   // If there was a problem during decoding, then signal the end.
   SLpermille level = 0;
-  SLresult result = (*caller)->GetFillLevel(caller, &level);
-  CheckSLResult("get fill level", result);
   SLuint32 status;
-  result = (*caller)->GetPrefetchStatus(caller, &status);
-  CheckSLResult("get prefetch status", result);
+  OpenSL(caller, GetFillLevel, &level);
+  OpenSL(caller, GetPrefetchStatus, &status);
   if ((kPrefetchErrorCandidate == (event & kPrefetchErrorCandidate)) &&
       (level == 0) &&
       (status == SL_PREFETCHSTATUS_UNDERFLOW)) {
-    LOGI("PrefetchEventCallback error while prefetching data");
+    LOGI("prefetcheventcallback error while prefetching data");
     SetEndOfDecoderReached();
   }
   if (SL_PREFETCHSTATUS_SUFFICIENTDATA == event) {
@@ -814,9 +780,19 @@ void AudioEngine::DecodingBufferQueueCallback(
     decodeBuffer_.AddData(pCntxt->pDataBase, kBufferSizeInBytes);
   }
 
-  // TODO: This call must be added back in to fix the bug relating to using
-  // the correct sample rate and channels.  I will do this in the follow-up.
-  // ExtractMetadataFromDecoder(pCntxt->decoderMetadata);
+  if (!HasSampleRateAndChannels()) {
+    android::Mutex::Autolock autoLock(callbackLock_);
+    ReadSampleRateAndChannelCount(pCntxt, &mSampleRate, &mChannels);
+  }
+
+  {
+    android::Mutex::Autolock autoLock(lock_);
+    if (totalDurationMs_ == 0) {
+      totalDurationMs_ = ReadDuration(pCntxt->playItf);
+    }
+    // TODO: This isn't working, it always reports zero.
+    // ReadPosition(pCntxt->playItf);
+  }
 
   // Increase data pointer by buffer size
   pCntxt->pData += kBufferSizeInBytes;
@@ -825,9 +801,7 @@ void AudioEngine::DecodingBufferQueueCallback(
     pCntxt->pData = pCntxt->pDataBase;
   }
 
-  SLresult result = (*queueItf)->Enqueue(
-      queueItf, pCntxt->pDataBase, kBufferSizeInBytes);
-  CheckSLResult("enqueue something else", result);
+  OpenSL(queueItf, Enqueue, pCntxt->pDataBase, kBufferSizeInBytes);
 
   // If we get too much data into the decoder,
   // sleep until the playback catches up.

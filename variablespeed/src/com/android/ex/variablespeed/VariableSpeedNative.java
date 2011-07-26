@@ -78,14 +78,14 @@ import java.lang.reflect.Field;
     /*package*/ static native int getTotalDuration();
 
     /*package*/ static void initializeEngine(EngineParameters params) {
-        initializeEngine(params.getChannels(), params.getSampleRate(), params.getTargetFrames(),
+        initializeEngine(params.getTargetFrames(),
                 params.getWindowDuration(), params.getWindowOverlapDuration(),
                 params.getMaxPlayBufferCount(), params.getInitialRate(),
                 params.getDecodeBufferInitialSize(), params.getDecodeBufferMaxSize(),
                 params.getStartPositionMillis());
     }
 
-    private static native void initializeEngine(int channels, int sampleRate, int targetFrames,
+    private static native void initializeEngine(int targetFrames,
             float windowDuration, float windowOverlapDuration, int maxPlayBufferCount,
             float initialRate, int decodeBufferInitialSize, int decodeBufferMaxSize,
             int startPositionMillis);

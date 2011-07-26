@@ -21,6 +21,7 @@ import com.google.common.base.Preconditions;
 import android.content.Context;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -44,9 +45,10 @@ import javax.annotation.concurrent.ThreadSafe;
  * (besides only ever accessing it from one thread) is to wrap it in a
  * {@link SingleThreadedMediaPlayerProxy}, designed just for this purpose.
  */
-// TODO: There are a couple of NYI still to iron out in this file.
 @ThreadSafe
 public class VariableSpeed implements MediaPlayerProxy {
+    private static final String TAG = "VariableSpeed";
+
     private final Executor mExecutor;
     private final Object lock = new Object();
     @GuardedBy("lock") private MediaPlayerDataSource mDataSource;
@@ -93,7 +95,7 @@ public class VariableSpeed implements MediaPlayerProxy {
     public void setOnErrorListener(MediaPlayer.OnErrorListener listener) {
         synchronized (lock) {
             check(!mHasBeenReleased, "has been released, reset before use");
-            // NYI
+            // TODO: I haven't actually added any error listener code.
         }
     }
 
@@ -270,8 +272,7 @@ public class VariableSpeed implements MediaPlayerProxy {
     }
 
     private void reportException(Exception e) {
-        // NYI
-        e.printStackTrace(System.err);
+        Log.e(TAG, "playback error:", e);
     }
 
     @Override
@@ -283,13 +284,13 @@ public class VariableSpeed implements MediaPlayerProxy {
             if (!mHasStartedPlayback) {
                 // Playback has not started. Start it.
                 mHasStartedPlayback = true;
-                // TODO: This will be dynamically calculated soon, waiting for a bugfix in media.
                 EngineParameters engineParameters = new EngineParameters.Builder()
-                        .sampleRate(11025).channels(1)
-//                        .sampleRate(44100).channels(2)
                         .initialRate(mCurrentPlaybackRate)
                         .startPositionMillis(mStartPosition).build();
-                mExecutor.execute(new PlaybackRunnable(mDataSource, engineParameters));
+                VariableSpeedNative.initializeEngine(engineParameters);
+                VariableSpeedNative.startPlayback();
+                mEngineInitializedLatch.countDown();
+                mExecutor.execute(new PlaybackRunnable(mDataSource));
             } else {
                 // Playback has already started. Restart it, without holding the
                 // lock.
@@ -304,24 +305,17 @@ public class VariableSpeed implements MediaPlayerProxy {
     /** A Runnable capable of driving the native audio playback methods. */
     private final class PlaybackRunnable implements Runnable {
         private final MediaPlayerDataSource mInnerSource;
-        private final EngineParameters mEngineParameters;
 
-        public PlaybackRunnable(MediaPlayerDataSource source, EngineParameters engineParameters) {
+        public PlaybackRunnable(MediaPlayerDataSource source) {
             mInnerSource = source;
-            mEngineParameters = engineParameters;
         }
 
         @Override
         public void run() {
-            synchronized (lock) {
-                VariableSpeedNative.initializeEngine(mEngineParameters);
-                mEngineInitializedLatch.countDown();
-            }
             try {
-                VariableSpeedNative.startPlayback();
                 mInnerSource.playNative();
             } catch (IOException e) {
-                // NYI exception handling.
+                Log.e(TAG, "error playing audio", e);
             }
             MediaPlayer.OnCompletionListener completionListener;
             boolean skipThisCompletionReport;
@@ -333,7 +327,6 @@ public class VariableSpeed implements MediaPlayerProxy {
             if (!skipThisCompletionReport && completionListener != null) {
                 completionListener.onCompletion(null);
             }
-            // NYI exception handling.
         }
     }
 
@@ -370,10 +363,12 @@ public class VariableSpeed implements MediaPlayerProxy {
     }
 
     public void setVariableSpeed(float rate) {
-        // NYI are there situations in which the engine has been destroyed, so
+        // TODO: are there situations in which the engine has been destroyed, so
         // that this will segfault?
         synchronized (lock) {
             check(!mHasBeenReleased, "has been released, reset before use");
+            // TODO: This too is wrong, once we've started preparing the variable speed set
+            // will not be enough.
             if (mHasStartedPlayback) {
                 VariableSpeedNative.setVariableSpeed(rate);
             }
