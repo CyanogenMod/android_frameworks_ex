@@ -370,7 +370,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // on the sides.
         int height = (int) mChipHeight;
         int iconWidth = height;
-        CharSequence ellipsizedText = ellipsizeText(contact.getDisplayName(), paint,
+        String displayText =
+            !TextUtils.isEmpty(contact.getDisplayName()) ? contact.getDisplayName() :
+            !TextUtils.isEmpty(contact.getDestination()) ? contact.getDestination() : "";
+        CharSequence ellipsizedText = ellipsizeText(displayText, paint,
                 calculateAvailableWidth(false) - iconWidth);
         // Make sure there is a minimum chip width so the user can ALWAYS
         // tap a chip without difficulty.
@@ -1103,7 +1106,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
         Editable editable = getText();
         QwertyKeyListener.markAsReplaced(editable, start, end, "");
-        editable.replace(start, end, createChip(entry, false));
+        CharSequence chip = createChip(entry, false);
+        if (chip != null) {
+            editable.replace(start, end, chip);
+        }
     }
 
     private RecipientEntry createValidatedEntry(RecipientEntry item) {
