@@ -631,29 +631,34 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             token = token.substring(0, token.length() - 1);
         }
         RecipientEntry entry = createTokenizedEntry(token);
-        String destText = entry.getDestination();
-        destText = (String) mTokenizer.terminateToken(destText);
-        // Always leave a blank space at the end of a chip.
-        int textLength = destText.length() - 1;
-        SpannableString chipText = new SpannableString(destText);
-        int end = getSelectionEnd();
-        int start = mTokenizer.findTokenStart(getText(), end);
-        RecipientChip chip = null;
-        try {
-            chip = constructChipSpan(entry, start, false);
-            chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        } catch (NullPointerException e) {
-            Log.e(TAG, e.getMessage(), e);
-        }
+        if (entry != null) {
+            String destText = entry.getDestination();
+            destText = (String) mTokenizer.terminateToken(destText);
+            // Always leave a blank space at the end of a chip.
+            int textLength = destText.length() - 1;
+            SpannableString chipText = new SpannableString(destText);
+            int end = getSelectionEnd();
+            int start = mTokenizer.findTokenStart(getText(), end);
+            RecipientChip chip = null;
+            try {
+                chip = constructChipSpan(entry, start, false);
+                chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } catch (NullPointerException e) {
+                Log.e(TAG, e.getMessage(), e);
+            }
 
-        editable.replace(tokenStart, tokenEnd, chipText);
-        // Add this chip to the list of entries "to replace"
-        if (chip != null) {
-            mTemporaryRecipients.add(chip);
+            editable.replace(tokenStart, tokenEnd, chipText);
+            // Add this chip to the list of entries "to replace"
+            if (chip != null) {
+                mTemporaryRecipients.add(chip);
+            }
         }
     }
 
     private RecipientEntry createTokenizedEntry(String token) {
+        if (TextUtils.isEmpty(token)) {
+            return null;
+        }
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
         if (isValid(token) && tokens != null && tokens.length > 0) {
@@ -671,7 +676,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mValidator != null && !mValidator.isValid(token)) {
             // Try fixing up the entry using the validator.
             token = mValidator.fixText(token).toString();
-            token = Rfc822Tokenizer.tokenize(token)[0].getAddress();
+            if (tokens != null && tokens.length > 0) {
+                token = Rfc822Tokenizer.tokenize(token)[0].getAddress();
+            }
         }
         return RecipientEntry.constructFakeEntry(token);
     }
@@ -817,9 +824,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             clearComposingText();
             if (text != null && text.length() > 0 && !text.equals(" ")) {
                 RecipientEntry entry = createTokenizedEntry(text);
-                QwertyKeyListener.markAsReplaced(editable, start, end, "");
-                CharSequence chipText = createChip(entry, false);
-                editable.replace(start, end, chipText);
+                if (entry != null) {
+                    QwertyKeyListener.markAsReplaced(editable, start, end, "");
+                    CharSequence chipText = createChip(entry, false);
+                    editable.replace(start, end, chipText);
+                }
                 dismissDropDown();
                 return true;
             }
