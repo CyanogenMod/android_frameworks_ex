@@ -26,13 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class VariableSpeedTest extends MediaPlayerProxyTestCase {
     private static final String TAG = "VariableSpeedTest";
 
-    private ScheduledExecutorService mExecutor;
-
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        mExecutor = Executors.newScheduledThreadPool(2);
-    }
+    private ScheduledExecutorService mExecutor = Executors.newScheduledThreadPool(2);
 
     @Override
     protected void tearDown() throws Exception {
@@ -40,7 +34,7 @@ public class VariableSpeedTest extends MediaPlayerProxyTestCase {
         // the media player before I can be confident that I can shut down the executor service.
         super.tearDown();
         mExecutor.shutdown();
-        if (mExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+        if (!mExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
             Log.e(TAG, "Couldn't shut down Executor during test, check your cleanup code!");
         }
         mExecutor = null;
