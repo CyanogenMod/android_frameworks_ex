@@ -26,12 +26,12 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
-import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.CommonDataKinds.Photo;
 import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.Directory;
@@ -471,10 +471,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      */
     private CharSequence mCurrentConstraint;
 
-    // TODO: need to find better way to manage the thread.
-    private static final HandlerThread sPhotoHandlerThread =
-            new HandlerThread("photo_handler");
-    private final Handler mPhotoHandler;
     private final LruCache<Uri, byte[]> mPhotoCacheMap;
 
     /**
@@ -516,10 +512,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mContentResolver = context.getContentResolver();
         mInflater = LayoutInflater.from(context);
         mPreferredMaxResultCount = preferredMaxResultCount;
-        if (!sPhotoHandlerThread.isAlive()) {
-            sPhotoHandlerThread.start();
-        }
-        mPhotoHandler = new Handler(sPhotoHandlerThread.getLooper());
         mPhotoCacheMap = new LruCache<Uri, byte[]>(PHOTO_CACHE_SIZE);
     }
 
@@ -728,9 +720,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     }
 
     private void fetchPhotoAsync(final RecipientEntry entry, final Uri photoThumbnailUri) {
-        mPhotoHandler.post(new Runnable() {
+        final AsyncTask<Void, Void, Void> photoLoadTask = new AsyncTask<Void, Void, Void>() {
             @Override
-            public void run() {
+            protected Void doInBackground(Void... params) {
                 final Cursor photoCursor = mContentResolver.query(
                         photoThumbnailUri, PhotoQuery.PROJECTION, null, null, null);
                 if (photoCursor != null) {
@@ -751,8 +743,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                         photoCursor.close();
                     }
                 }
+                return null;
             }
-        });
+        };
+        photoLoadTask.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
     }
 
     protected void fetchPhoto(final RecipientEntry entry, final Uri photoThumbnailUri) {
