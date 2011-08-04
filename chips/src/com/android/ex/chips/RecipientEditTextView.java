@@ -44,6 +44,7 @@ import android.text.util.Rfc822Tokenizer;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
+import android.view.ActionMode.Callback;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -51,7 +52,6 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
-import android.view.ActionMode.Callback;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Filterable;
@@ -62,12 +62,11 @@ import android.widget.MultiAutoCompleteTextView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-
-import java.util.ArrayList;
 
 /**
  * RecipientEditTextView is an auto complete text view for use with applications
@@ -100,7 +99,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private ImageSpan mMoreChip;
 
     private TextView mMoreItem;
-
 
     private final ArrayList<String> mPendingChips = new ArrayList<String>();
 
@@ -137,7 +135,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private ArrayList<RecipientChip> mRemovedSpans;
 
     /**
-     * Used with {@link mAlternatesPopup}. Handles clicks to alternate addresses for a selected chip.
+     * Used with {@link #mAlternatesPopup}. Handles clicks to alternate addresses for a
+     * selected chip.
      */
     private OnItemClickListener mAlternatesListener;
 
@@ -1014,6 +1013,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 .getEntry());
     }
 
+    @Override
     public void onCheckedItemChanged(int position) {
         ListView listView = mAlternatesPopup.getListView();
         if (listView != null && listView.getCheckedItemCount() == 0) {
