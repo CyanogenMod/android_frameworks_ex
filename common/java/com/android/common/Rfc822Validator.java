@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
  *             a full understanding of the syntax it claims to correct.
  * @hide
  */
+@Deprecated
 public class Rfc822Validator implements AutoCompleteTextView.Validator {
     /*
      * Regex.EMAIL_ADDRESS_PATTERN hardcodes the TLD that we accept, but we
@@ -48,6 +49,7 @@ public class Rfc822Validator implements AutoCompleteTextView.Validator {
             Pattern.compile("[^\\s@]+@([^\\s@\\.]+\\.)+[a-zA-z][a-zA-Z][a-zA-Z]*");
 
     private String mDomain;
+    private boolean mRemoveInvalid = false;
 
     /**
      * Constructs a new validator that uses the specified domain name as
@@ -66,6 +68,18 @@ public class Rfc822Validator implements AutoCompleteTextView.Validator {
         return tokens.length == 1 &&
                EMAIL_ADDRESS_PATTERN.
                    matcher(tokens[0].getAddress()).matches();
+    }
+
+    /**
+     * Specify if the validator should remove invalid tokens instead of trying
+     * to fix them. This can be used to strip results of incorrectly formatted
+     * tokens.
+     *
+     * @param remove true to remove tokens with the wrong format, false to
+     *            attempt to fix them
+     */
+    public void setRemoveInvalid(boolean remove) {
+        mRemoveInvalid = remove;
     }
 
     /**
@@ -112,15 +126,29 @@ public class Rfc822Validator implements AutoCompleteTextView.Validator {
 
         for (int i = 0; i < tokens.length; i++) {
             String text = tokens[i].getAddress();
+
+            if (mRemoveInvalid && !isValid(text)) {
+                continue;
+            }
             int index = text.indexOf('@');
             if (index < 0) {
-                // If there is no @, just append the domain of the account
-                tokens[i].setAddress(removeIllegalCharacters(text) + "@" + mDomain);
+                // append the domain of the account if it exists
+                if (mDomain != null) {
+                    tokens[i].setAddress(removeIllegalCharacters(text) + "@" + mDomain);
+                }
             } else {
                 // Otherwise, remove the illegal characters on both sides of the '@'
                 String fix = removeIllegalCharacters(text.substring(0, index));
+                if (TextUtils.isEmpty(fix)) {
+                    // if the address is empty after removing invalid chars
+                    // don't use it
+                    continue;
+                }
                 String domain = removeIllegalCharacters(text.substring(index + 1));
-                tokens[i].setAddress(fix + "@" + (domain.length() != 0 ? domain : mDomain));
+                boolean emptyDomain = domain.length() == 0;
+                if (!emptyDomain || mDomain != null) {
+                    tokens[i].setAddress(fix + "@" + (!emptyDomain ? domain : mDomain));
+                }
             }
 
             sb.append(tokens[i].toString());

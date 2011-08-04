@@ -49,6 +49,38 @@ public class Rfc822ValidatorTest extends TestCase {
         fixes.put("a", "<a@gmail.com>");
         fixes.put("a b", "<ab@gmail.com>");
         fixes.put("a@b", "<a@b>");
+        fixes.put("()~><@not.work", "");
+
+        for (Map.Entry<String, String> e : fixes.entrySet()) {
+            assertEquals(e.getValue(), validator.fixText(e.getKey()).toString());
+        }
+    }
+
+    @SmallTest
+    public void testEmailValidatorNullDomain() {
+        Rfc822Validator validator = new Rfc822Validator(null);
+
+        Map<String, String> fixes = new HashMap<String, String>();
+        fixes.put("a", "<a>");
+        fixes.put("a b", "<a b>");
+        fixes.put("a@b", "<a@b>");
+        fixes.put("a@b.com", "<a@b.com>"); // this one is correct
+
+        for (Map.Entry<String, String> e : fixes.entrySet()) {
+            assertEquals(e.getValue(), validator.fixText(e.getKey()).toString());
+        }
+    }
+
+    @SmallTest
+    public void testEmailValidatorRemoveInvalid() {
+        Rfc822Validator validator = new Rfc822Validator("google.com");
+        validator.setRemoveInvalid(true);
+
+        Map<String, String> fixes = new HashMap<String, String>();
+        fixes.put("a", "");
+        fixes.put("a b", "");
+        fixes.put("a@b", "");
+        fixes.put("a@b.com", "<a@b.com>"); // this one is correct
 
         for (Map.Entry<String, String> e : fixes.entrySet()) {
             assertEquals(e.getValue(), validator.fixText(e.getKey()).toString());

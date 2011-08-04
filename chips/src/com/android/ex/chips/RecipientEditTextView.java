@@ -675,8 +675,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mValidator != null && !mValidator.isValid(token)) {
             // Try fixing up the entry using the validator.
             token = mValidator.fixText(token).toString();
-            if (tokens != null && tokens.length > 0) {
-                token = Rfc822Tokenizer.tokenize(token)[0].getAddress();
+            if (!TextUtils.isEmpty(token)) {
+                // protect against the case of a validator with a null domain,
+                // which doesn't add a domain to the token
+                Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(token);
+                if (tokenized.length > 0) {
+                    token = tokenized[0].getAddress();
+                }
             }
         }
         return RecipientEntry.constructFakeEntry(token);
