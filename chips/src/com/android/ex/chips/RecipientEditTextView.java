@@ -1531,6 +1531,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return mPendingChipsCount > 0 || (mRemovedSpans != null && mRemovedSpans.size() > 0);
     }
 
+    @Override
+    public void removeTextChangedListener(TextWatcher watcher) {
+        mTextWatcher = null;
+        super.removeTextChangedListener(watcher);
+    }
+
     private class RecipientTextWatcher implements TextWatcher {
         @Override
         public void afterTextChanged(Editable s) {
