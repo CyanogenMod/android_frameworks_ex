@@ -674,11 +674,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
         if (isValid(token) && tokens != null && tokens.length > 0) {
+            // If we can get a name from tokenizing, then generate an entry from
+            // this.
             display = tokens[0].getName();
-            if (!TextUtils.isEmpty(display)) {
-                return RecipientEntry.constructGeneratedEntry(display, token);
-            }
-            display = tokens[0].getAddress();
             if (!TextUtils.isEmpty(display)) {
                 return RecipientEntry.constructGeneratedEntry(display, token);
             }
@@ -697,6 +695,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 }
             }
         }
+        // Otherwise, fallback to just creating an editable email address chip.
         return RecipientEntry.constructFakeEntry(token);
     }
 
