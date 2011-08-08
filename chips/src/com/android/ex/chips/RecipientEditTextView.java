@@ -134,6 +134,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ArrayList<RecipientChip> mRemovedSpans;
 
+    private boolean mShouldShrink = true;
+
     /**
      * Used with {@link #mAlternatesPopup}. Handles clicks to alternate addresses for a
      * selected chip.
@@ -505,6 +507,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mChipHeight = chipHeight;
         mChipFontSize = chipFontSize;
         mInvalidChipBackground = invalidChip;
+    }
+
+    /**
+     * Set whether to shrink the recipients field such that at most
+     * one line of recipients chips are shown when the field loses
+     * focus. By default, the number of displayed recipients will be
+     * limited and a "more" chip will be shown when focus is lost.
+     * @param shrink
+     */
+    public void setOnFocusListShrinkRecipients(boolean shrink) {
+        mShouldShrink = shrink;
     }
 
     @Override
@@ -1202,6 +1215,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * RecipientEditTextView loses focus.
      */
     private void createMoreChip() {
+        if (!mShouldShrink) {
+            return;
+        }
+
         RecipientChip[] recipients = getRecipients();
         if (recipients == null || recipients.length <= CHIP_LIMIT) {
             mMoreChip = null;
