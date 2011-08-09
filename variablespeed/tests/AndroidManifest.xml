@@ -29,5 +29,5 @@
         android:label="Android Variablespeed Library Tests"
     />
     <!-- The tests need these permissions to add test voicemail entries. -->
-    <uses-permission android:name="com.android.voicemail.permission.READ_WRITE_OWN_VOICEMAIL" />
+    <uses-permission android:name="com.android.voicemail.permission.ADD_VOICEMAIL" />
 </manifest>

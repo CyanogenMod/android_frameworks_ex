@@ -247,6 +247,18 @@ public abstract class MediaPlayerProxyTestCase extends InstrumentationTestCase {
         mCompletionListener.awaitOneCallback(10, TimeUnit.SECONDS);
     }
 
+    public void testHalfWaySeekWithStutteringAudio() throws Exception {
+        // The audio contained in this file has a stutter if we seek to half way and play.
+        // It shouldn't have.
+        setDataSourceFromContentProvider(mPlayer, "fake_voicemail2.mp3", "audio/mp3");
+        mPlayer.prepare();
+        assertTrue(mPlayer.getDuration() > 0);
+        mPlayer.seekTo(mPlayer.getDuration() / 2);
+        mPlayer.start();
+        mPlayer.setOnCompletionListener(mCompletionListener);
+        mCompletionListener.awaitOneCallback(10, TimeUnit.SECONDS);
+    }
+
     public void testResetWithoutReleaseAndThenReUse() throws Exception {
         setDataSourceFromContentProvider(mPlayer, "quick_test_recording.mp3", "audio/mp3");
         mPlayer.reset();
