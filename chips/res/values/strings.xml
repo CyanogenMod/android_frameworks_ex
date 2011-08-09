@@ -20,4 +20,7 @@
     <!-- Text displayed when there are remote directories not returning results.
          [CHAR LIMIT=50] -->
     <string name="chips_waiting_for_directory_result">Waiting for more contacts</string>
+    <!-- Text displayed when the user long presses on a chip to copy the recipients email address.
+         [CHAR LIMIT=200] -->
+    <string name="copy">Copy email address</string>
 </resources>

@@ -14,15 +14,10 @@
      limitations under the License.
 -->
 
-<resources>
-    <add-resource type="dimen" name="chip_padding" />
-    <add-resource type="dimen" name="chip_height" />
-    <add-resource type="dimen" name="chip_text_size" />
-    <add-resource type="color" name="default_chip_background" />
-    <add-resource type="color" name="list_item_selected" />
-    <add-resource type="color" name="chip_selected" />
-    <add-resource type="string" name="more_string" />
-    <add-resource type="string" name="chips_waiting_for_directory_result" />
-    <add-resource type="string" name="copy" />
-    <add-resource type="style" name="RecipientEditTextView" />
-</resources>
+<Button xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="@string/copy"
+    android:id="@+android:id/button1"
+    android:background="@null"
+    android:layout_gravity="left"/>

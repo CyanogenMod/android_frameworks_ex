@@ -16,7 +16,12 @@
 
 package com.android.ex.chips;
 
+import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnDismissListener;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -45,6 +50,8 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
+import android.view.View.OnClickListener;
+import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -73,7 +80,8 @@ import java.util.Set;
  * that use the new Chips UI for addressing a message to recipients.
  */
 public class RecipientEditTextView extends MultiAutoCompleteTextView implements
-        OnItemClickListener, Callback, RecipientAlternatesAdapter.OnCheckedItemChangedListener {
+        OnItemClickListener, Callback, RecipientAlternatesAdapter.OnCheckedItemChangedListener,
+        GestureDetector.OnGestureListener, OnDismissListener, OnClickListener {
 
     private static final String TAG = "RecipientEditTextView";
 
@@ -135,6 +143,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private ArrayList<RecipientChip> mRemovedSpans;
 
     private boolean mShouldShrink = true;
+
+    // Chip copy fields.
+    private GestureDetector mGestureDetector;
+
+    private Dialog mCopyDialog;
+
+    private int mCopyViewRes;
+
+    private String mCopyAddress;
 
     /**
      * Used with {@link #mAlternatesPopup}. Handles clicks to alternate addresses for a
@@ -205,6 +222,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         };
         mTextWatcher = new RecipientTextWatcher();
         addTextChangedListener(mTextWatcher);
+        mGestureDetector = new GestureDetector(context, this);
     }
 
     @Override
@@ -492,7 +510,26 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * @param alternatesLayout
      * @param chipHeight
      * @param padding Padding around the text in a chip
+     * @param chipFontSize
+     * @param copyViewRes
      */
+    public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
+            Drawable invalidChip, Drawable chipDelete, Bitmap defaultContact, int moreResource,
+            int alternatesLayout, float chipHeight, float padding,
+            float chipFontSize, int copyViewRes) {
+        mChipBackground = chipBackground;
+        mChipBackgroundPressed = chipBackgroundPressed;
+        mChipDelete = chipDelete;
+        mChipPadding = (int) padding;
+        mAlternatesLayout = alternatesLayout;
+        mDefaultContactPhoto = defaultContact;
+        mMoreItem = (TextView) LayoutInflater.from(getContext()).inflate(moreResource, null);
+        mChipHeight = chipHeight;
+        mChipFontSize = chipFontSize;
+        mInvalidChipBackground = invalidChip;
+        mCopyViewRes = copyViewRes;
+    }
+
     public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
             Drawable invalidChip, Drawable chipDelete, Bitmap defaultContact, int moreResource,
             int alternatesLayout, float chipHeight, float padding,
@@ -507,6 +544,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mChipHeight = chipHeight;
         mChipFontSize = chipFontSize;
         mInvalidChipBackground = invalidChip;
+        mCopyViewRes = -1;
     }
 
     /**
@@ -963,8 +1001,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         boolean handled = super.onTouchEvent(event);
         int action = event.getAction();
         boolean chipWasSelected = false;
-
-        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_DOWN) {
+        if (action == MotionEvent.ACTION_DOWN && mSelectedChip == null) {
+            mGestureDetector.onTouchEvent(event);
+        }
+        if (mCopyDialog == null && action == MotionEvent.ACTION_UP) {
             float x = event.getX();
             float y = event.getY();
             int offset = putOffsetInRange(getOffsetForPosition(x, y));
@@ -1743,5 +1783,75 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
             return null;
         }
+    }
+
+    @Override
+    public boolean onDown(MotionEvent e) {
+        return false;
+    }
+
+    @Override
+    public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        // Do nothing.
+        return false;
+    }
+
+    @Override
+    public void onLongPress(MotionEvent event) {
+        if (mSelectedChip != null) {
+            return;
+        }
+        float x = event.getX();
+        float y = event.getY();
+        int offset = putOffsetInRange(getOffsetForPosition(x, y));
+        RecipientChip currentChip = findChip(offset);
+        if (currentChip != null) {
+            // Copy the selected chip email address.
+            showCopyDialog(currentChip.getEntry().getDestination());
+        }
+    }
+
+    private void showCopyDialog(final String address) {
+        mCopyAddress = address;
+        mCopyDialog = new Dialog(getContext());
+        mCopyDialog.setTitle(address);
+        mCopyDialog.setContentView(mCopyViewRes);
+        mCopyDialog.setCancelable(true);
+        mCopyDialog.setCanceledOnTouchOutside(true);
+        mCopyDialog.findViewById(android.R.id.button1).setOnClickListener(this);
+        mCopyDialog.setOnDismissListener(this);
+        mCopyDialog.show();
+    }
+
+    @Override
+    public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+        // Do nothing.
+        return false;
+    }
+
+    @Override
+    public void onShowPress(MotionEvent e) {
+        // Do nothing.
+    }
+
+    @Override
+    public boolean onSingleTapUp(MotionEvent e) {
+        // Do nothing.
+        return false;
+    }
+
+    @Override
+    public void onDismiss(DialogInterface dialog) {
+        mCopyAddress = null;
+        mCopyDialog = null;
+    }
+
+    @Override
+    public void onClick(View v) {
+        // Copy this to the clipboard.
+        ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(
+                Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("", mCopyAddress));
+        mCopyDialog.dismiss();
     }
 }
