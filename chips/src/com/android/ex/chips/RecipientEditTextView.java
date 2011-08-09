@@ -679,6 +679,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             display = tokens[0].getName();
             if (!TextUtils.isEmpty(display)) {
                 return RecipientEntry.constructGeneratedEntry(display, token);
+            } else {
+                display = tokens[0].getAddress();
+                if (!TextUtils.isEmpty(display)) {
+                    return RecipientEntry.constructFakeEntry(display);
+                }
             }
         }
         // Unable to validate the token or to create a valid token from it.
