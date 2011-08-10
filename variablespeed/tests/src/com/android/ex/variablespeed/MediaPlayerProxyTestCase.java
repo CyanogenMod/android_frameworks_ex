@@ -463,6 +463,53 @@ public abstract class MediaPlayerProxyTestCase extends InstrumentationTestCase {
         mCompletionListener.awaitOneCallback(10, TimeUnit.SECONDS);
     }
 
+    public void testSeekToEndThenPlayThenRateChangeCrash() throws Exception {
+        // Unit test for this bug: http://b/5140693
+        // This test proves that the bug is fixed.
+        setDataSourceFromContentProvider(mPlayer, "fake_voicemail.mp3", "audio/mp3");
+        mPlayer.prepare();
+        mPlayer.seekTo(mPlayer.getDuration() - 1);
+        mPlayer.setOnCompletionListener(mCompletionListener);
+        mPlayer.start();
+        mCompletionListener.awaitOneCallback(10, TimeUnit.SECONDS);
+        // Prior to the fix, this next line was causing a crash.
+        // The reason behind this was due to our having seeked so close to the end of the file
+        // that insufficient data was being read, and thus we weren't able to yet determine the
+        // sample rate and number of channels, which was causing an assertion failure when trying
+        // to create the time scaler.
+        setVariableSpeedRateIfSupported(1.0f);
+    }
+
+    public void testVariableSpeedRateChangeAtDifferentTimes() throws Exception {
+        // Just check that we can set the rate at any point during playback.
+        setVariableSpeedRateIfSupported(1.05f);
+        setDataSourceFromContentProvider(mPlayer, "fake_voicemail.mp3", "audio/mp3");
+        setVariableSpeedRateIfSupported(1.10f);
+        mPlayer.prepare();
+        setVariableSpeedRateIfSupported(1.15f);
+        mPlayer.seekTo(mPlayer.getDuration() / 2);
+        setVariableSpeedRateIfSupported(1.20f);
+        mPlayer.setOnCompletionListener(mCompletionListener);
+        setVariableSpeedRateIfSupported(1.25f);
+        mPlayer.start();
+        setVariableSpeedRateIfSupported(1.30f);
+        mCompletionListener.awaitOneCallback(10, TimeUnit.SECONDS);
+        setVariableSpeedRateIfSupported(1.35f);
+    }
+
+    /**
+     * If we have a variable speed media player proxy, set the variable speed rate.
+     * <p>
+     * If we don't have a variable speed media player proxy, this method will be a no-op.
+     */
+    private void setVariableSpeedRateIfSupported(float rate) {
+        if (mPlayer instanceof SingleThreadedMediaPlayerProxy) {
+            ((SingleThreadedMediaPlayerProxy) mPlayer).setVariableSpeed(rate);
+        } else if (mPlayer instanceof VariableSpeed) {
+            ((VariableSpeed) mPlayer).setVariableSpeed(rate);
+        }
+    }
+
     /**
      * Gets the {@link Uri} for the test audio content we should play.
      * <p>

@@ -296,9 +296,15 @@ AudioEngine::~AudioEngine() {
 // Regular AudioEngine class methods.
 
 void AudioEngine::SetVariableSpeed(float speed) {
-  // TODO: Add test, prove that this doesn't crash if called before playing.
   // TODO: Mutex for shared time scaler accesses.
-  GetTimeScaler()->set_speed(speed);
+  if (HasSampleRateAndChannels()) {
+    GetTimeScaler()->set_speed(speed);
+  } else {
+    // This is being called at a point where we have not yet processed enough
+    // data to determine the sample rate and number of channels.
+    // Ignore the call.  See http://b/5140693.
+    LOGD("set varaible speed called, sample rate and channels not ready yet");
+  }
 }
 
 void AudioEngine::RequestStart() {
