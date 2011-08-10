@@ -530,23 +530,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mCopyViewRes = copyViewRes;
     }
 
-    public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
-            Drawable invalidChip, Drawable chipDelete, Bitmap defaultContact, int moreResource,
-            int alternatesLayout, float chipHeight, float padding,
-            float chipFontSize) {
-        mChipBackground = chipBackground;
-        mChipBackgroundPressed = chipBackgroundPressed;
-        mChipDelete = chipDelete;
-        mChipPadding = (int) padding;
-        mAlternatesLayout = alternatesLayout;
-        mDefaultContactPhoto = defaultContact;
-        mMoreItem = (TextView) LayoutInflater.from(getContext()).inflate(moreResource, null);
-        mChipHeight = chipHeight;
-        mChipFontSize = chipFontSize;
-        mInvalidChipBackground = invalidChip;
-        mCopyViewRes = -1;
-    }
-
     /**
      * Set whether to shrink the recipients field such that at most
      * one line of recipients chips are shown when the field loses
