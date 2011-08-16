@@ -34,6 +34,7 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -50,7 +51,6 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
-import android.view.View.OnClickListener;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -58,6 +58,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewParent;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -207,7 +208,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 clearComposingText();
             }
         };
-        setSuggestionsEnabled(false);
+        setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         setOnItemClickListener(this);
         setCustomSelectionActionModeCallback(this);
         mHandler = new Handler() {
