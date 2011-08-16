@@ -17,6 +17,7 @@
 package com.android.ex.chips;
 
 import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
 import android.text.style.ImageSpan;
 
 /**
@@ -36,9 +37,7 @@ import android.text.style.ImageSpan;
 
     private boolean mSelected = false;
 
-    private int mStart = -1;
-
-    private int mEnd = -1;
+    private CharSequence mOriginalText;
 
     public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
         super(drawable);
@@ -47,41 +46,6 @@ import android.text.style.ImageSpan;
         mContactId = entry.getContactId();
         mDataId = entry.getDataId();
         mEntry = entry;
-    }
-
-    /**
-     * Store the offset in the spannable where this RecipientChip is currently
-     * being displayed.
-     */
-    public void storeChipStart(int start) {
-        mStart = start;
-    }
-
-    /**
-     * Get the offset in the spannable where this RecipientChip was currently
-     * being displayed. Use this to determine where to place a RecipientChip
-     * that has been hidden when the RecipientEditTextView loses focus.
-     */
-    public int getStoredChipStart() {
-        return mStart;
-    }
-
-    /**
-     * Store the end offset in the spannable where this RecipientChip is
-     * currently being displayed.
-     */
-    public void storeChipEnd(int end) {
-        mEnd = end;
-    }
-
-    /**
-     * Get the end offset in the spannable where this RecipientChip was
-     * currently being displayed. Use this to determine where to place a
-     * RecipientChip that has been hidden when the RecipientEditTextView loses
-     * focus.
-     */
-    public int getStoredChipEnd() {
-        return mEnd;
     }
 
     /**
@@ -132,5 +96,16 @@ import android.text.style.ImageSpan;
      */
     public RecipientEntry getEntry() {
         return mEntry;
+    }
+
+    public void setOriginalText(String text) {
+        if (!TextUtils.isEmpty(text)) {
+            text = text.trim();
+        }
+        mOriginalText = text;
+    }
+
+    public CharSequence getOriginalText() {
+        return !TextUtils.isEmpty(mOriginalText) ? mOriginalText : mEntry.getDestination();
     }
 }
