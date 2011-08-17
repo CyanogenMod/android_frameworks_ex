@@ -58,6 +58,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.View.OnClickListener;
 import android.view.ViewParent;
 import android.widget.AdapterView;
@@ -371,9 +372,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mChipBackgroundPressed.setBounds(0, 0, width, height);
             mChipBackgroundPressed.draw(canvas);
             paint.setColor(sSelectedTextColor);
-            // Align the display text with where the user enters text.
-            canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding, height
-                    - Math.abs(height - mChipFontSize)/2, paint);
+            // Vertically center the text in the chip.
+            canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding,
+                    getTextYOffset((String) ellipsizedText, paint, height), paint);
             // Make the delete a square.
             mChipDelete.setBounds(width - deleteWidth, 0, width, height);
             mChipDelete.draw(canvas);
@@ -447,13 +448,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 iconWidth = 0;
             }
 
-            // Align the display text with where the user enters text.
+            // Vertically center the text in the chip.
             canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding,
-                    height - Math.abs(height - mChipFontSize) / 2, paint);
+                    getTextYOffset((String)ellipsizedText, paint, height), paint);
         } else {
             Log.w(TAG, "Unable to draw a background for the chips as it was never set");
         }
         return tmpBitmap;
+    }
+
+    private float getTextYOffset(String text, TextPaint paint, int height) {
+        Rect bounds = new Rect();
+        paint.getTextBounds((String)text, 0, text.length(), bounds);
+        int textHeight = bounds.bottom - bounds.top  - (int)paint.descent();
+        return height - ((height - textHeight) / 2);
     }
 
     public RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
@@ -495,7 +503,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private int calculateOffsetFromBottom(int line) {
         // Line offsets start at zero.
         int actualLine = getLineCount() - (line + 1);
-        return -((actualLine * ((int)mChipHeight) + getPaddingBottom()) + getPaddingTop());
+        return -((actualLine * ((int) mChipHeight) + getPaddingBottom()) + getPaddingTop())
+                + getDropDownVerticalOffset();
     }
 
     /**

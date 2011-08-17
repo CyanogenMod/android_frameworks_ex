@@ -18,6 +18,7 @@ package com.android.ex.chips;
 
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
+import android.text.style.DynamicDrawableSpan;
 import android.text.style.ImageSpan;
 
 /**
@@ -40,7 +41,7 @@ import android.text.style.ImageSpan;
     private CharSequence mOriginalText;
 
     public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
-        super(drawable);
+        super(drawable, DynamicDrawableSpan.ALIGN_BASELINE);
         mDisplay = entry.getDisplayName();
         mValue = entry.getDestination().trim();
         mContactId = entry.getContactId();
