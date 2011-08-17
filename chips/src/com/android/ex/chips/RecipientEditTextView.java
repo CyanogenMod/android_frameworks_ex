@@ -284,13 +284,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     @Override
     public void onFocusChanged(boolean hasFocus, int direction, Rect previous) {
+        super.onFocusChanged(hasFocus, direction, previous);
         if (!hasFocus) {
             shrink();
-            dismissDropDown();
         } else {
             expand();
             scrollLineIntoView(getLineCount());
         }
+    }
+
+    @Override
+    public void performValidation() {
+        // Do nothing. Chips handles its own validation.
     }
 
     private void shrink() {
