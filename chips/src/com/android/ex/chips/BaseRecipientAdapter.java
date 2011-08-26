@@ -852,10 +852,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     destination = null;
                 }
 
-                final CharSequence destinationType = Email.getTypeLabel(mContext.getResources(),
-                        entry.getDestinationType(), entry.getDestinationLabel()).toString()
-                        .toUpperCase();
-
                 final View itemView = convertView != null ? convertView
                         : mInflater.inflate(getItemLayout(), parent, false);
                 final TextView displayNameView =
@@ -871,7 +867,13 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 } else {
                     destinationView.setText(null);
                 }
-                destinationTypeView.setText(destinationType);
+                if (destinationTypeView != null) {
+                    final CharSequence destinationType = Email.getTypeLabel(mContext.getResources(),
+                            entry.getDestinationType(), entry.getDestinationLabel()).toString()
+                            .toUpperCase();
+
+                    destinationTypeView.setText(destinationType);
+                }
 
                 if (entry.isFirstLevel()) {
                     displayNameView.setVisibility(View.VISIBLE);
