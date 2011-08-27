@@ -783,7 +783,7 @@ void AudioEngine::DecodingBufferQueueCallback(
   }
   {
     android::Mutex::Autolock autoLock(decodeBufferLock_);
-    decodeBuffer_.AddData(pCntxt->pDataBase, kBufferSizeInBytes);
+    decodeBuffer_.AddData(pCntxt->pData, kBufferSizeInBytes);
   }
 
   if (!HasSampleRateAndChannels()) {
@@ -800,14 +800,14 @@ void AudioEngine::DecodingBufferQueueCallback(
     // ReadPosition(pCntxt->playItf);
   }
 
+  OpenSL(queueItf, Enqueue, pCntxt->pData, kBufferSizeInBytes);
+
   // Increase data pointer by buffer size
   pCntxt->pData += kBufferSizeInBytes;
   if (pCntxt->pData >= pCntxt->pDataBase +
       (kNumberOfBuffersInQueue * kBufferSizeInBytes)) {
     pCntxt->pData = pCntxt->pDataBase;
   }
-
-  OpenSL(queueItf, Enqueue, pCntxt->pDataBase, kBufferSizeInBytes);
 
   // If we get too much data into the decoder,
   // sleep until the playback catches up.
