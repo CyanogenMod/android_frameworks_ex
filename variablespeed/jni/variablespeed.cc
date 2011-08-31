@@ -194,6 +194,23 @@ static void DecodingEventCb(SLPlayItf caller, void*, SLuint32 event) {
 // ****************************************************************************
 // Static utility methods.
 
+// Set the audio stream type for the player.
+//
+// Must be called before it is realized.
+//
+// The caller must have requested the SL_IID_ANDROIDCONFIGURATION interface when
+// creating the player.
+static void setAudioStreamType(SLObjectItf audioPlayer, SLint32 audioStreamType) {
+  SLAndroidConfigurationItf playerConfig;
+  OpenSL(audioPlayer, GetInterface, SL_IID_ANDROIDCONFIGURATION, &playerConfig);
+  // The STREAM_XXX constants defined by android.media.AudioManager match the
+  // corresponding SL_ANDROID_STREAM_XXX constants defined by
+  // include/SLES/OpenSLES_AndroidConfiguration.h, so we can just pass the
+  // value across.
+  OpenSL(playerConfig, SetConfiguration, SL_ANDROID_KEY_STREAM_TYPE,
+         &audioStreamType, sizeof(audioStreamType));
+}
+
 // Must be called with callbackLock_ held.
 static void ReadSampleRateAndChannelCount(CallbackContext *pContext,
     SLuint32 *sampleRateOut, SLuint32 *channelsOut) {
@@ -254,7 +271,8 @@ static void RegisterCallbackContextAndAddEnqueueBuffersToDecoder(
 
 AudioEngine::AudioEngine(size_t targetFrames, float windowDuration,
     float windowOverlapDuration, size_t maxPlayBufferCount, float initialRate,
-    size_t decodeInitialSize, size_t decodeMaxSize, size_t startPositionMillis)
+    size_t decodeInitialSize, size_t decodeMaxSize, size_t startPositionMillis,
+    int audioStreamType)
     : decodeBuffer_(decodeInitialSize, decodeMaxSize),
       playingBuffers_(), freeBuffers_(), timeScaler_(NULL),
       floatBuffer_(NULL), injectBuffer_(NULL),
@@ -264,6 +282,7 @@ AudioEngine::AudioEngine(size_t targetFrames, float windowDuration,
       windowOverlapDuration_(windowOverlapDuration),
       maxPlayBufferCount_(maxPlayBufferCount), initialRate_(initialRate),
       startPositionMillis_(startPositionMillis),
+      audioStreamType_(audioStreamType),
       totalDurationMs_(0), decoderCurrentPosition_(0), startRequested_(false),
       stopRequested_(false), finishedDecoding_(false) {
 }
@@ -534,7 +553,7 @@ SLuint32 AudioEngine::GetChannelCount() {
 }
 
 static void CreateAndRealizeAudioPlayer(SLuint32 slSampleRate,
-    size_t channelCount, SLuint32 slChannels, SLObjectItf &outputMix,
+    size_t channelCount, SLuint32 slChannels, SLint32 audioStreamType, SLObjectItf &outputMix,
     SLObjectItf &audioPlayer, SLEngineItf &engineInterface) {
   // Define the source and sink for the audio player: comes from a buffer queue
   // and goes to the output mix.
@@ -549,12 +568,13 @@ static void CreateAndRealizeAudioPlayer(SLuint32 slSampleRate,
 
   // Create the audio player, which will play from the buffer queue and send to
   // the output mix.
-  const size_t playerInterfaceCount = 1;
+  const size_t playerInterfaceCount = 2;
   const SLInterfaceID iids[playerInterfaceCount] = {
-      SL_IID_ANDROIDSIMPLEBUFFERQUEUE };
+      SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_ANDROIDCONFIGURATION };
   const SLboolean reqs[playerInterfaceCount] = { SL_BOOLEAN_TRUE };
   OpenSL(engineInterface, CreateAudioPlayer, &audioPlayer, &playingSrc,
       &audioSnk, playerInterfaceCount, iids, reqs);
+  setAudioStreamType(audioPlayer, audioStreamType);
   OpenSL(audioPlayer, Realize, SL_BOOLEAN_FALSE);
 }
 
@@ -582,16 +602,18 @@ bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
   SLDataSink decDest = { &decBuffQueue, &pcm };
 
   // Create the decoder with the given source and sink.
-  const size_t decoderInterfaceCount = 4;
+  const size_t decoderInterfaceCount = 5;
   SLObjectItf decoder;
   const SLInterfaceID decodePlayerInterfaces[decoderInterfaceCount] = {
       SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_PREFETCHSTATUS, SL_IID_SEEK,
-      SL_IID_METADATAEXTRACTION };
+      SL_IID_METADATAEXTRACTION, SL_IID_ANDROIDCONFIGURATION };
   const SLboolean decodePlayerRequired[decoderInterfaceCount] = {
       SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE };
   SLDataSource sourceCopy(audioSrc);
   OpenSL(engineInterface, CreateAudioPlayer, &decoder, &sourceCopy, &decDest,
       decoderInterfaceCount, decodePlayerInterfaces, decodePlayerRequired);
+  // Not sure if this is necessary, but just in case.
+  setAudioStreamType(decoder, audioStreamType_);
   OpenSL(decoder, Realize, SL_BOOLEAN_FALSE);
 
   // Get the play interface from the decoder, and register event callbacks.
@@ -653,7 +675,8 @@ bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
       OpenSL(engineInterface, CreateOutputMix, &outputMix, 0, NULL, NULL);
       OpenSL(outputMix, Realize, SL_BOOLEAN_FALSE);
       CreateAndRealizeAudioPlayer(GetSLSampleRate(), GetChannelCount(),
-          GetSLChannels(), outputMix, audioPlayer, engineInterface);
+          GetSLChannels(), audioStreamType_, outputMix, audioPlayer,
+          engineInterface);
       OpenSL(audioPlayer, GetInterface, SL_IID_PLAY, &audioPlayerPlay);
       OpenSL(audioPlayer, GetInterface, SL_IID_ANDROIDSIMPLEBUFFERQUEUE,
           &audioPlayerQueue);

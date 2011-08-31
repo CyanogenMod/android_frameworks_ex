@@ -45,4 +45,5 @@ public interface MediaPlayerProxy {
     boolean isPlaying();
     int getCurrentPosition();
     void pause();
+    void setAudioStreamType(int streamType);
 }

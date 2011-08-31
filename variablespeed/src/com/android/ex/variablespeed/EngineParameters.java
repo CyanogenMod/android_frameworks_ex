@@ -16,6 +16,8 @@
 
 package com.android.ex.variablespeed;
 
+import android.media.AudioManager;
+
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -35,6 +37,7 @@ import javax.annotation.concurrent.NotThreadSafe;
     private final int mDecodeBufferInitialSize;
     private final int mDecodeBufferMaxSize;
     private final int mStartPositionMillis;
+    private final int mAudioStreamType;
 
     public int getTargetFrames() {
         return mTargetFrames;
@@ -68,9 +71,13 @@ import javax.annotation.concurrent.NotThreadSafe;
         return mStartPositionMillis;
     }
 
+    public int getAudioStreamType() {
+        return mAudioStreamType;
+    }
+
     private EngineParameters(int targetFrames, int maxPlayBufferCount, float windowDuration,
             float windowOverlapDuration, float initialRate, int decodeBufferInitialSize,
-            int decodeBufferMaxSize, int startPositionMillis) {
+            int decodeBufferMaxSize, int startPositionMillis, int audioStreamType) {
         mTargetFrames = targetFrames;
         mMaxPlayBufferCount = maxPlayBufferCount;
         mWindowDuration = windowDuration;
@@ -79,6 +86,7 @@ import javax.annotation.concurrent.NotThreadSafe;
         mDecodeBufferInitialSize = decodeBufferInitialSize;
         mDecodeBufferMaxSize = decodeBufferMaxSize;
         mStartPositionMillis = startPositionMillis;
+        mAudioStreamType = audioStreamType;
     }
 
     /**
@@ -98,11 +106,13 @@ import javax.annotation.concurrent.NotThreadSafe;
         private int mDecodeBufferInitialSize = 5 * 1024;
         private int mDecodeBufferMaxSize = 20 * 1024;
         private int mStartPositionMillis = 0;
+        private int mAudioStreamType = AudioManager.STREAM_MUSIC;
 
         public EngineParameters build() {
             return new EngineParameters(mTargetFrames, mMaxPlayBufferCount,
                     mWindowDuration, mWindowOverlapDuration, mInitialRate,
-                    mDecodeBufferInitialSize, mDecodeBufferMaxSize, mStartPositionMillis);
+                    mDecodeBufferInitialSize, mDecodeBufferMaxSize, mStartPositionMillis,
+                    mAudioStreamType);
         }
 
         public Builder maxPlayBufferCount(int maxPlayBufferCount) {
@@ -137,6 +147,11 @@ import javax.annotation.concurrent.NotThreadSafe;
 
         public Builder startPositionMillis(int startPositionMillis) {
             mStartPositionMillis = startPositionMillis;
+            return this;
+        }
+
+        public Builder audioStreamType(int audioStreamType) {
+            mAudioStreamType = audioStreamType;
             return this;
         }
     }

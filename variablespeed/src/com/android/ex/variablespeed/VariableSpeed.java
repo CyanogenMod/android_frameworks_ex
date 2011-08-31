@@ -64,6 +64,7 @@ public class VariableSpeed implements MediaPlayerProxy {
     @GuardedBy("lock") private float mCurrentPlaybackRate = 1.0f;
     @GuardedBy("lock") private int mDuration;
     @GuardedBy("lock") private MediaPlayer.OnCompletionListener mCompletionListener;
+    @GuardedBy("lock") private int mAudioStreamType;
 
     private VariableSpeed(Executor executor) throws UnsupportedOperationException {
         Preconditions.checkNotNull(executor);
@@ -213,15 +214,18 @@ public class VariableSpeed implements MediaPlayerProxy {
     @Override
     public void prepare() throws IOException {
         MediaPlayerDataSource dataSource;
+        int audioStreamType;
         synchronized (lock) {
             check(!mHasBeenReleased, "has been released, reset before use");
             check(mDataSource != null, "must setDataSource before you prepare");
             check(!mIsPrepared, "cannot prepare more than once");
             mIsPrepared = true;
             dataSource = mDataSource;
+            audioStreamType = mAudioStreamType;
         }
         // NYI This should become another executable that we can wait on.
         MediaPlayer mediaPlayer = new MediaPlayer();
+        mediaPlayer.setAudioStreamType(audioStreamType);
         dataSource.setAsSourceFor(mediaPlayer);
         mediaPlayer.prepare();
         synchronized (lock) {
@@ -286,7 +290,9 @@ public class VariableSpeed implements MediaPlayerProxy {
                 mHasStartedPlayback = true;
                 EngineParameters engineParameters = new EngineParameters.Builder()
                         .initialRate(mCurrentPlaybackRate)
-                        .startPositionMillis(mStartPosition).build();
+                        .startPositionMillis(mStartPosition)
+                        .audioStreamType(mAudioStreamType)
+                        .build();
                 VariableSpeedNative.initializeEngine(engineParameters);
                 VariableSpeedNative.startPlayback();
                 mEngineInitializedLatch.countDown();
@@ -385,6 +391,13 @@ public class VariableSpeed implements MediaPlayerProxy {
     private void checkNotNull(Object argument, String argumentName) {
         if (argument == null) {
             throw new IllegalArgumentException(argumentName + " must not be null");
+        }
+    }
+
+    @Override
+    public void setAudioStreamType(int audioStreamType) {
+        synchronized (lock) {
+            mAudioStreamType = audioStreamType;
         }
     }
 }

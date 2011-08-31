@@ -82,11 +82,11 @@ import java.lang.reflect.Field;
                 params.getWindowDuration(), params.getWindowOverlapDuration(),
                 params.getMaxPlayBufferCount(), params.getInitialRate(),
                 params.getDecodeBufferInitialSize(), params.getDecodeBufferMaxSize(),
-                params.getStartPositionMillis());
+                params.getStartPositionMillis(), params.getAudioStreamType());
     }
 
     private static native void initializeEngine(int targetFrames,
             float windowDuration, float windowOverlapDuration, int maxPlayBufferCount,
             float initialRate, int decodeBufferInitialSize, int decodeBufferMaxSize,
-            int startPositionMillis);
+            int startPositionMillis, int audioStreamType);
 }

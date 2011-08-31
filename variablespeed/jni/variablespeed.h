@@ -45,7 +45,7 @@ class AudioEngine {
   AudioEngine(size_t targetFrames, float windowDuration,
       float windowOverlapDuration, size_t maxPlayBufferCount,
       float initialRate, size_t decodeInitialSize, size_t decodeMaxSize,
-      size_t startPositionMillis);
+      size_t startPositionMillis, int audioStreamType);
   virtual ~AudioEngine();
 
   bool PlayUri(const char* uri);
@@ -123,6 +123,11 @@ class AudioEngine {
   size_t maxPlayBufferCount_;
   float initialRate_;
   size_t startPositionMillis_;
+  // The type of audio stream as defined by the STREAM_XXX constants in
+  // android.media.AudioManager. These constant values actually match the
+  // corresponding SL_ANDROID_STREAM_XXX constants defined by
+  // include/SLES/OpenSLES_AndroidConfiguration.h
+  int audioStreamType_;
 
   // The prefetch callback signal, for letting the prefetch callback method
   // indicate when it is done.

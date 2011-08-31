@@ -102,4 +102,9 @@ public class SingleThreadedMediaPlayerProxy implements MediaPlayerProxy {
     public synchronized void pause() {
         mDelegate.pause();
     }
+
+    @Override
+    public void setAudioStreamType(int streamType) {
+        mDelegate.setAudioStreamType(streamType);
+    }
 }
