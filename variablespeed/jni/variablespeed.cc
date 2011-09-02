@@ -26,6 +26,8 @@
 
 #include <vector>
 
+#include <sys/system_properties.h>
+
 // ****************************************************************************
 // Constants, utility methods, structures and other miscellany used throughout
 // this file.
@@ -89,6 +91,18 @@ void CheckSLResult_Real(const char* message, SLresult result, int line) {
         static_cast<int>(result), message, line);
   }
   CHECK(SL_RESULT_SUCCESS == result);
+}
+
+// Whether logging should be enabled. Only used if LOG_OPENSL_API_CALL is
+// defined to use it.
+bool gLogEnabled = false;
+// The property to set in order to enable logging.
+const char *const kLogTagVariableSpeed = "log.tag.VariableSpeed";
+
+bool ShouldLog() {
+  char buffer[PROP_VALUE_MAX];
+  __system_property_get(kLogTagVariableSpeed, buffer);
+  return strlen(buffer) > 0;
 }
 
 }  // namespace
@@ -155,8 +169,8 @@ static void DecodingEventCb(SLPlayItf caller, void*, SLuint32 event) {
 // ****************************************************************************
 // Macros for making working with OpenSL easier.
 
-// #define LOG_OPENSL_API_CALL(string) LOGV(string)
-#define LOG_OPENSL_API_CALL(string) false
+// Log based on the value of a property.
+#define LOG_OPENSL_API_CALL(string) (gLogEnabled && LOGV(string))
 
 // The regular macro: log an api call, make the api call, check the result.
 #define OpenSL(obj, method, ...) \
@@ -285,6 +299,8 @@ AudioEngine::AudioEngine(size_t targetFrames, float windowDuration,
       audioStreamType_(audioStreamType),
       totalDurationMs_(0), decoderCurrentPosition_(0), startRequested_(false),
       stopRequested_(false), finishedDecoding_(false) {
+  // Determine whether we should log calls.
+  gLogEnabled = ShouldLog();
 }
 
 AudioEngine::~AudioEngine() {
