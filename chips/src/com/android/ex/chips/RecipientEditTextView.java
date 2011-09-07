@@ -199,6 +199,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         mAlternatesPopup = new ListPopupWindow(context);
         mAddressPopup = new ListPopupWindow(context);
+        mCopyDialog = new Dialog(context);
         mAlternatesListener = new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView,View view, int position,
@@ -1006,7 +1007,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (action == MotionEvent.ACTION_DOWN && mSelectedChip == null) {
             mGestureDetector.onTouchEvent(event);
         }
-        if (mCopyDialog == null && action == MotionEvent.ACTION_UP) {
+        if (mCopyAddress == null && action == MotionEvent.ACTION_UP) {
             float x = event.getX();
             float y = event.getY();
             int offset = putOffsetInRange(getOffsetForPosition(x, y));
@@ -1847,7 +1848,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void showCopyDialog(final String address) {
         mCopyAddress = address;
-        mCopyDialog = new Dialog(getContext());
         mCopyDialog.setTitle(address);
         mCopyDialog.setContentView(mCopyViewRes);
         mCopyDialog.setCancelable(true);
@@ -1877,7 +1877,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public void onDismiss(DialogInterface dialog) {
         mCopyAddress = null;
-        mCopyDialog = null;
     }
 
     @Override
