@@ -1055,6 +1055,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         alternatesPopup.setVerticalOffset(bottom);
         alternatesPopup.setAdapter(createAlternatesAdapter(currentChip));
         alternatesPopup.setOnItemClickListener(mAlternatesListener);
+        // Clear the checked item.
+        mCheckedItem = -1;
         alternatesPopup.show();
         ListView listView = alternatesPopup.getListView();
         listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
@@ -1083,9 +1085,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         ListView listView = mAlternatesPopup.getListView();
         if (listView != null && listView.getCheckedItemCount() == 0) {
             listView.setItemChecked(position, true);
-        } else {
-            mCheckedItem = position;
         }
+        mCheckedItem = position;
     }
 
     // TODO: This algorithm will need a lot of tweaking after more people have used
