@@ -1005,7 +1005,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         boolean handled = super.onTouchEvent(event);
         int action = event.getAction();
         boolean chipWasSelected = false;
-        if (action == MotionEvent.ACTION_DOWN && mSelectedChip == null) {
+        if (mSelectedChip == null) {
             mGestureDetector.onTouchEvent(event);
         }
         if (mCopyAddress == null && action == MotionEvent.ACTION_UP) {
