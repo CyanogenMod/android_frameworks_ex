@@ -301,7 +301,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void shrink() {
-        if (mSelectedChip != null) {
+        if (mSelectedChip != null
+                && mSelectedChip.getEntry().getContactId() != RecipientEntry.INVALID_CONTACT) {
             clearSelectedChip();
         } else {
             // Reset any pending chips as they would have been handled
