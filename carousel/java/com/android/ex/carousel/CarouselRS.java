@@ -510,6 +510,10 @@ public class CarouselRS  {
         mScript.set_rowSpacing(spacing);
     }
 
+    public void setOverscrollSlots(float slots) {
+        mScript.set_overscrollSlots(slots);
+    }
+
     public void setFirstCardTop(boolean first) {
         mScript.set_firstCardTop(first);
     }
