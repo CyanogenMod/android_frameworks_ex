@@ -46,11 +46,6 @@ const size_t kNumberOfSamplesPerBuffer = 1152;
 const size_t kBufferSizeInBytes = 2 * kNumberOfSamplesPerBuffer;
 const size_t kSampleSizeInBytes = 4;
 
-// Keys used when extracting metadata from the decoder.
-// TODO: Remove these constants once they are part of OpenSLES_Android.h.
-const char* kKeyPcmFormatNumChannels = "AndroidPcmFormatNumChannels";
-const char* kKeyPcmFormatSamplesPerSec = "AndroidPcmFormatSamplesPerSec";
-
 // When calculating play buffer size before pushing to audio player.
 const size_t kNumberOfBytesPerInt16 = 2;
 
@@ -246,11 +241,11 @@ static void ReadSampleRateAndChannelCount(CallbackContext *pContext,
         value = static_cast<SLMetadataInfo*>(malloc(valueSize));
         if (value) {
           OpenSL(decoderMetadata, GetValue, i, valueSize, value);
-          if (strcmp((char*) keyInfo->data, kKeyPcmFormatSamplesPerSec) == 0) {
+          if (strcmp((char*) keyInfo->data, ANDROID_KEY_PCMFORMAT_SAMPLERATE) == 0) {
             SLuint32 sampleRate = *(reinterpret_cast<SLuint32*>(value->data));
             LOGD("sample Rate: %d", sampleRate);
             *sampleRateOut = sampleRate;
-          } else if (strcmp((char*) keyInfo->data, kKeyPcmFormatNumChannels) == 0) {
+          } else if (strcmp((char*) keyInfo->data, ANDROID_KEY_PCMFORMAT_NUMCHANNELS) == 0) {
             SLuint32 channels = *(reinterpret_cast<SLuint32*>(value->data));
             LOGD("channels: %d", channels);
             *channelsOut = channels;
