@@ -275,6 +275,13 @@ public abstract class CarouselView extends RSSurfaceView {
     }
 
     /**
+     * Sets the amount of allowed overscroll (in slots)
+     */
+    public void setOverscrollSlots(float slots) {
+        mController.setOverscrollSlots(slots);
+    }
+
+    /**
      * Set the number of detail textures that can be visible at one time.
      *
      * @param n the number of slots
