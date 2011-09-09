@@ -1365,6 +1365,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // Re-add the spans that were removed.
             if (mRemovedSpans != null && mRemovedSpans.size() > 0) {
                 // Recreate each removed span.
+                RecipientChip[] recipients = getRecipients();
+                // Start the search for tokens after the last currently visible
+                // chip.
+                int end = span.getSpanEnd(recipients[recipients.length - 1]);
                 Editable editable = getText();
                 for (RecipientChip chip : mRemovedSpans) {
                     int chipStart;
@@ -1372,9 +1376,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     String token;
                     // Need to find the location of the chip, again.
                     token = (String) chip.getOriginalText();
-                    chipStart = editable.toString().indexOf(token);
+                    // As we find the matching recipient for the remove spans,
+                    // reduce the size of the string we need to search.
+                    // That way, if there are duplicates, we always find the correct
+                    // recipient.
+                    chipStart = editable.toString().indexOf(token, end);
                     // -1 for the space!
-                    chipEnd = Math.min(editable.length(), chipStart + token.length());
+                    end = chipEnd = Math.min(editable.length(), chipStart + token.length());
                     // Only set the span if we found a matching token.
                     if (chipStart != -1) {
                         editable.setSpan(chip, chipStart, chipEnd,
