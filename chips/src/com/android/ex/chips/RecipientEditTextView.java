@@ -58,7 +58,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.View.OnClickListener;
 import android.view.ViewParent;
 import android.widget.AdapterView;
@@ -68,6 +67,7 @@ import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
 import android.widget.ListView;
 import android.widget.MultiAutoCompleteTextView;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -86,7 +86,8 @@ import java.util.Set;
  */
 public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         OnItemClickListener, Callback, RecipientAlternatesAdapter.OnCheckedItemChangedListener,
-        GestureDetector.OnGestureListener, OnDismissListener, OnClickListener {
+        GestureDetector.OnGestureListener, OnDismissListener, OnClickListener,
+        PopupWindow.OnDismissListener {
 
     private static final String TAG = "RecipientEditTextView";
 
@@ -198,13 +199,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             sSelectedTextColor = context.getResources().getColor(android.R.color.white);
         }
         mAlternatesPopup = new ListPopupWindow(context);
+        mAlternatesPopup.setOnDismissListener(this);
         mAddressPopup = new ListPopupWindow(context);
+        mAddressPopup.setOnDismissListener(this);
         mCopyDialog = new Dialog(context);
         mAlternatesListener = new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView,View view, int position,
                     long rowId) {
                 mAlternatesPopup.setOnItemClickListener(null);
+                setEnabled(true);
                 replaceChip(mSelectedChip, ((RecipientAlternatesAdapter) adapterView.getAdapter())
                         .getRecipientEntry(position));
                 Message delayed = Message.obtain(mHandler, DISMISS);
@@ -449,7 +453,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 // Don't leave any space for the icon. It isn't being drawn.
                 iconWidth = 0;
             }
-
+            paint.setColor(getContext().getResources().getColor(android.R.color.black));
             // Vertically center the text in the chip.
             canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding,
                     getTextYOffset((String)ellipsizedText, paint, height), paint);
@@ -1001,7 +1005,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // Ignore any chip taps until this view is focused.
             return super.onTouchEvent(event);
         }
-
         boolean handled = super.onTouchEvent(event);
         int action = event.getAction();
         boolean chipWasSelected = false;
@@ -1019,9 +1022,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         clearSelectedChip();
                         mSelectedChip = selectChip(currentChip);
                     } else if (mSelectedChip == null) {
-                        // Selection may have moved due to the tap event,
-                        // but make sure we correctly reset selection to the
-                        // end so that any unfinished chips are committed.
                         setSelection(getText().length());
                         commitDefault();
                         mSelectedChip = selectChip(currentChip);
@@ -1052,6 +1052,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
         alternatesPopup.setWidth(width);
+        setEnabled(false);
         alternatesPopup.setAnchorView(this);
         alternatesPopup.setVerticalOffset(bottom);
         alternatesPopup.setAdapter(createAlternatesAdapter(currentChip));
@@ -1069,6 +1070,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             listView.setItemChecked(mCheckedItem, true);
             mCheckedItem = -1;
         }
+    }
+
+    // Dismiss listener for alterns and single address popup.
+    @Override
+    public void onDismiss() {
+        setEnabled(true);
     }
 
     private ListAdapter createAlternatesAdapter(RecipientChip chip) {
@@ -1475,6 +1482,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int bottom = calculateOffsetFromBottom(line);
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
+        setEnabled(false);
         popup.setWidth(width);
         popup.setAnchorView(this);
         popup.setVerticalOffset(bottom);
