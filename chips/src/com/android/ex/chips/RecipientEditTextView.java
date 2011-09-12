@@ -382,14 +382,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             canvas.drawText(ellipsizedText, 0, ellipsizedText.length(), mChipPadding,
                     getTextYOffset((String) ellipsizedText, paint, height), paint);
             // Make the delete a square.
-            mChipDelete.setBounds(width - deleteWidth, 0, width, height);
+            Rect backgroundPadding = new Rect();
+            mChipBackgroundPressed.getPadding(backgroundPadding);
+            mChipDelete.setBounds(width - deleteWidth + backgroundPadding.left,
+                    0 + backgroundPadding.top,
+                    width - backgroundPadding.right,
+                    height - backgroundPadding.bottom);
             mChipDelete.draw(canvas);
         } else {
             Log.w(TAG, "Unable to draw a background for the chips as it was never set");
         }
         return tmpBitmap;
     }
-
 
     /**
      * Get the background drawable for a RecipientChip.
@@ -446,8 +450,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 // Draw the photo on the left side.
                 Matrix matrix = new Matrix();
                 RectF src = new RectF(0, 0, photo.getWidth(), photo.getHeight());
-                RectF dst = new RectF(width - iconWidth, 0, width, height);
-                matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
+                Rect backgroundPadding = new Rect();
+                mChipBackground.getPadding(backgroundPadding);
+                RectF dst = new RectF(width - iconWidth + backgroundPadding.left,
+                        0 + backgroundPadding.top,
+                        width - backgroundPadding.right,
+                        height - backgroundPadding.bottom);
+                matrix.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
                 canvas.drawBitmap(photo, matrix, paint);
             } else {
                 // Don't leave any space for the icon. It isn't being drawn.
