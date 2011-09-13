@@ -1045,6 +1045,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 }
                 chipWasSelected = true;
                 handled = true;
+            } else if (mSelectedChip != null
+                    && mSelectedChip.getContactId() == RecipientEntry.INVALID_CONTACT) {
+                chipWasSelected = true;
             }
         }
         if (action == MotionEvent.ACTION_UP && !chipWasSelected) {
@@ -1525,7 +1528,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Editable editable = getText();
         mSelectedChip = null;
         if (start == -1 || end == -1) {
-            Log.e(TAG, "The chip being unselected no longer exists.");
+            Log.w(TAG,
+                    "The chip doesn't exist or may be a chip a user was editing");
+            setSelection(editable.length());
+            commitDefault();
         } else {
             getSpannable().removeSpan(chip);
             QwertyKeyListener.markAsReplaced(editable, start, end, "");
@@ -1543,7 +1549,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mAlternatesPopup.dismiss();
         }
     }
-
 
     /**
      * Return whether this chip contains the position passed in.
@@ -1679,7 +1684,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (chipsPending()) {
                 return;
             }
-            if (mSelectedChip != null) {
+            // If the user is editing a chip, don't clear it.
+            if (mSelectedChip != null
+                    && mSelectedChip.getContactId() != RecipientEntry.INVALID_CONTACT) {
                 setCursorVisible(true);
                 setSelection(getText().length());
                 clearSelectedChip();
