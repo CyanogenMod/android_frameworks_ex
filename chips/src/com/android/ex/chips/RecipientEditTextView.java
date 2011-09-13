@@ -925,6 +925,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void handleEdit(int start, int end) {
+        if (start == -1 || end == -1) {
+            // This chip no longer exists in the field.
+            dismissDropDown();
+            return;
+        }
         // This is in the middle of a chip, so select out the whole chip
         // and commit it.
         Editable editable = getText();
