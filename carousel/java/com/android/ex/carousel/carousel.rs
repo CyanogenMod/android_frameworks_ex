@@ -152,7 +152,6 @@ static const int ANIMATION_DELAY_TIME = 125; // hold off scale animation until t
 static const int ANIMATION_SCALE_UP_TIME = 200; // Time it takes to animate selected card, in ms
 static const int ANIMATION_SCALE_DOWN_TIME = 200; // Time it takes to animate selected card, in ms
 static const float3 SELECTED_SCALE_FACTOR = { 0.1f, 0.1f, 0.1f }; // increase by this %
-static const float OVERSCROLL_SLOTS = 1.0f; // amount of allowed overscroll (in slots)
 static const int VELOCITY_HISTORY_MAX = 10; // # recent velocity samples used to calculate average
 static const int VISIBLE_SLOT_PADDING = 2;  // # slots to draw on either side of visible slots
 
@@ -190,6 +189,7 @@ float4 backgroundColor;
 int rowCount;  // number of rows of cards in a given slot, default 1
 float rowSpacing;  // spacing between rows of cards
 bool firstCardTop; // set true for first card on top row when multiple rows used
+float overscrollSlots; // amount of allowed overscroll (in slots)
 
 int dragModel = DRAG_MODEL_SCREEN_DELTA;
 int fillDirection; // the order in which to lay out cards: +1 for CCW (default), -1 for CW
@@ -1202,8 +1202,8 @@ void doMotion(float x, float y, long eventTime)
     float deltaOmega = dragFunction(x, y);
     if (!enableSelection) {
         bias += deltaOmega;
-        bias = clamp(bias, lowBias - wedgeAngle(OVERSCROLL_SLOTS),
-                highBias + wedgeAngle(OVERSCROLL_SLOTS));
+        bias = clamp(bias, lowBias - wedgeAngle(overscrollSlots),
+                highBias + wedgeAngle(overscrollSlots));
     }
     const float2 delta = (float2) { x, y } - touchPosition;
     float distance = sqrt(dot(delta, delta));
@@ -1606,8 +1606,8 @@ static bool updateNextPosition(int64_t currentTime)
             velocity = 0.0f; // prevent bouncing due to v > 0 after overscroll animation.
         }
     }
-    float newbias = clamp(bias, lowBias - wedgeAngle(OVERSCROLL_SLOTS),
-            highBias + wedgeAngle(OVERSCROLL_SLOTS));
+    float newbias = clamp(bias, lowBias - wedgeAngle(overscrollSlots),
+            highBias + wedgeAngle(overscrollSlots));
     if (newbias != bias) { // we clamped
         velocity = 0.0f;
         isOverScrolling = true;
