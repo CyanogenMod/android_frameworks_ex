@@ -34,5 +34,16 @@ public class Search {
      */
     public final static String SOURCE = "source";
 
+    /**
+     * Column name for suggestions cursor. <i>Optional.</i> This column may be
+     * used to specify the time in {@link System#currentTimeMillis
+     * System.currentTimeMillis()} (wall time in UTC) when an item was last
+     * accessed within the results-providing application. If set, this may be
+     * used to show more-recently-used items first.
+     *
+     * See {@code SearchManager.SUGGEST_COLUMN_LAST_ACCESS_HINT} in ICS.
+     */
+    public final static String SUGGEST_COLUMN_LAST_ACCESS_HINT = "suggest_last_access_hint";
+
     private Search() { }   // don't instantiate
 }

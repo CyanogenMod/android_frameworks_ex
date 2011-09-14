@@ -39,6 +39,7 @@ public class CarouselController {
     private final int DEFAULT_VISIBLE_DETAIL_COUNT = 3;
     private final int DEFAULT_PREFETCH_CARD_COUNT = 2;
     private final int DEFAULT_ROW_COUNT = 1;
+    private final float DEFAULT_OVERSCROLL_SLOTS = 1.0f;
     private final float DEFAULT_ROW_SPACING = 0.0f;
     private final float DEFAULT_SWAY_SENSITIVITY = 0.0f;
     private final float DEFAULT_FRICTION_COEFFICIENT = 10.0f;
@@ -72,6 +73,7 @@ public class CarouselController {
     private float mRadius = DEFAULT_RADIUS;
     private float mCardRotation = 0.0f;
     private boolean mCardsFaceTangent = false;
+    private float mOverscrollSlots = DEFAULT_OVERSCROLL_SLOTS;
     private float mSwaySensitivity = DEFAULT_SWAY_SENSITIVITY;
     private float mFrictionCoefficient = DEFAULT_FRICTION_COEFFICIENT;
     private float mDragFactor = DEFAULT_DRAG_FACTOR;
@@ -109,6 +111,7 @@ public class CarouselController {
         setVisibleSlots(mVisibleSlots);
         setVisibleDetails(mVisibleDetails);
         setPrefetchCardCount(mPrefetchCardCount);
+        setOverscrollSlots(mOverscrollSlots);
         setRowCount(mRowCount);
         setRowSpacing(mRowSpacing);
         setFirstCardTop(mFirstCardTop);
@@ -272,6 +275,16 @@ public class CarouselController {
         mFirstCardTop = f;
         if (mRenderScript != null) {
             mRenderScript.setFirstCardTop(f);
+        }
+    }
+
+    /**
+     * Sets the amount of allowed overscroll (in slots)
+     */
+    public void setOverscrollSlots(float slots) {
+        mOverscrollSlots = slots;
+        if (mRenderScript != null) {
+            mRenderScript.setOverscrollSlots(slots);
         }
     }
 
