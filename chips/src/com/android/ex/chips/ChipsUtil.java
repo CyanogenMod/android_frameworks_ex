@@ -35,8 +35,7 @@ public class ChipsUtil {
      * @return true when the caller can use Chips UI in its environment.
      */
     public static boolean supportsChipsUi() {
-        // TODO: should use Build.VERSION_SDK_INT when it is determined.
-        return TextUtils.equals("IceCreamSandwich", Build.VERSION.RELEASE);
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH;
     }
 
     public static boolean tryUpdateRecencyInfo(MultiAutoCompleteTextView... views) {
