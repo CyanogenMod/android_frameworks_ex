@@ -200,12 +200,9 @@ public class DataUsageStatUpdater {
 
         boolean successful = false;
 
-        // From ICS we can use per-contact-method structure. We'll check if the device supports it
-        // and call the API.
-        //
-        // STOPSHIP: Use Build.VERSION.SDK_INT when we're sure ICS has correct SDK version
-        // (bug 5047678)
-        if (TextUtils.equals("IceCreamSandwich", Build.VERSION.RELEASE)) {
+        // From ICS (SDK_INT 14) we can use per-contact-method structure. We'll check if the device
+        // supports it and call the API.
+        if (Build.VERSION.SDK_INT >= 14) {
             if (dataIds.isEmpty()) {
                 if (Log.isLoggable(TAG, Log.DEBUG)) {
                     Log.d(TAG, "Given list for data IDs is null. Ignoring.");
