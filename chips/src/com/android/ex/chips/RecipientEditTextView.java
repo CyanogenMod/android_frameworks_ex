@@ -903,7 +903,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (entry != null) {
                     QwertyKeyListener.markAsReplaced(editable, start, end, "");
                     CharSequence chipText = createChip(entry, false);
-                    editable.replace(start, end, chipText);
+                    if (chipText != null) {
+                        editable.replace(start, end, chipText);
+                    }
                 }
                 dismissDropDown();
                 return true;
