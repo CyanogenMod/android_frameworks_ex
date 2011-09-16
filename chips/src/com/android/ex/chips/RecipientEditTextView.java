@@ -937,10 +937,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Editable editable = getText();
         setSelection(end);
         String text = getText().toString().substring(start, end);
-        RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
-        QwertyKeyListener.markAsReplaced(editable, start, end, "");
-        CharSequence chipText = createChip(entry, false);
-        editable.replace(start, getSelectionEnd(), chipText);
+        if (!TextUtils.isEmpty(text)) {
+            RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
+            QwertyKeyListener.markAsReplaced(editable, start, end, "");
+            CharSequence chipText = createChip(entry, false);
+            editable.replace(start, getSelectionEnd(), chipText);
+        }
         dismissDropDown();
     }
 
@@ -1714,7 +1716,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     int tokenStart = mTokenizer.findTokenStart(text, getSelectionEnd());
                     String sub = text.substring(tokenStart, mTokenizer.findTokenEnd(text,
                             tokenStart));
-                    if (mValidator != null && mValidator.isValid(sub)) {
+                    if (!TextUtils.isEmpty(sub) && mValidator != null && mValidator.isValid(sub)) {
                         commitByCharacter();
                     }
                 }
