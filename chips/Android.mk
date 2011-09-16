@@ -16,7 +16,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := android-common-chips
-LOCAL_SDK_VERSION := current
+LOCAL_SDK_VERSION := 14
 LOCAL_SRC_FILES := \
      $(call all-java-files-under, src) \
      $(call all-logtags-files-under, src)
