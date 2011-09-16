@@ -743,20 +743,29 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         // Unable to validate the token or to create a valid token from it.
         // Just create a chip the user can edit.
+        String validatedToken = null;
         if (mValidator != null && !mValidator.isValid(token)) {
             // Try fixing up the entry using the validator.
-            token = mValidator.fixText(token).toString();
-            if (!TextUtils.isEmpty(token)) {
-                // protect against the case of a validator with a null domain,
-                // which doesn't add a domain to the token
-                Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(token);
-                if (tokenized.length > 0) {
-                    token = tokenized[0].getAddress();
+            validatedToken = mValidator.fixText(token).toString();
+            if (!TextUtils.isEmpty(validatedToken)) {
+                if (validatedToken.contains(token)) {
+                    // protect against the case of a validator with a null domain,
+                    // which doesn't add a domain to the token
+                    Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(validatedToken);
+                    if (tokenized.length > 0) {
+                        validatedToken = tokenized[0].getAddress();
+                    }
+                } else {
+                    // We ran into a case where the token was invalid and removed
+                    // by the validator. In this case, just use the original token
+                    // and let the user sort out the error chip.
+                    validatedToken = null;
                 }
             }
         }
         // Otherwise, fallback to just creating an editable email address chip.
-        return RecipientEntry.constructFakeEntry(token);
+        return RecipientEntry
+                .constructFakeEntry(!TextUtils.isEmpty(validatedToken) ? validatedToken : token);
     }
 
     private boolean isValid(String text) {
