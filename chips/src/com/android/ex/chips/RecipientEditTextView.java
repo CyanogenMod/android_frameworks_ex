@@ -927,10 +927,34 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     }
                 }
                 dismissDropDown();
+                sanitizeBetween();
                 return true;
             }
         }
         return false;
+    }
+
+    private void sanitizeBetween() {
+        // Find the last chip.
+        RecipientChip[] recips = this.getSortedRecipients();
+        if (recips != null && recips.length > 0) {
+            RecipientChip last = recips[recips.length - 1];
+            RecipientChip beforeLast = null;
+            if (recips.length > 1) {
+                beforeLast = recips[recips.length - 2];
+            }
+            int startLooking = 0;
+            int end = getSpannable().getSpanStart(last);
+            if (beforeLast != null) {
+                startLooking = getSpannable().getSpanEnd(beforeLast);
+                if (getText().charAt(startLooking) == ' ') {
+                    startLooking++;
+                }
+            }
+            if (startLooking != end) {
+                getText().delete(startLooking, end);
+            }
+        }
     }
 
     private boolean shouldCreateChip(int start, int end) {
@@ -1253,6 +1277,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (chip != null) {
             editable.replace(start, end, chip);
         }
+        sanitizeBetween();
     }
 
     private RecipientEntry createValidatedEntry(RecipientEntry item) {
