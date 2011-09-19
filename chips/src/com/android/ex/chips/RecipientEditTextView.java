@@ -1178,9 +1178,22 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return null;
     }
 
+    private String createDisplayText(RecipientEntry entry) {
+        String display = entry.getDisplayName();
+        String address = entry.getDestination();
+        if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
+            display = null;
+        }
+        Rfc822Token token = new Rfc822Token(display, address, null);
+        String displayText = token.toString();
+        String trimmedDisplayText = displayText.trim();
+        int index = trimmedDisplayText.indexOf(",");
+        return index < trimmedDisplayText.length() - 1 ? (String) mTokenizer
+                .terminateToken(displayText) : displayText;
+    }
+
     private CharSequence createChip(RecipientEntry entry, boolean pressed) {
-        String displayText = entry.getDestination();
-        displayText = (String) mTokenizer.terminateToken(displayText);
+        String displayText = createDisplayText(entry);
         // Always leave a blank space at the end of a chip.
         int textLength = displayText.length()-1;
         SpannableString chipText = new SpannableString(displayText);
@@ -1744,10 +1757,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private class RecipientReplacementTask extends AsyncTask<Void, Void, Void> {
         private RecipientChip createFreeChip(RecipientEntry entry) {
-            String displayText = entry.getDestination();
-            if (displayText.indexOf(",") == -1) {
-                displayText = (String) mTokenizer.terminateToken(displayText);
-            }
             try {
                 return constructChipSpan(entry, -1, false);
             } catch (NullPointerException e) {
@@ -1774,7 +1783,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
             String[] addresses = new String[originalRecipients.size()];
             for (int i = 0; i < originalRecipients.size(); i++) {
-                addresses[i] = originalRecipients.get(i).getEntry().getDestination();
+                addresses[i] = createDisplayText(originalRecipients.get(i).getEntry());
             }
             HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
                     .getMatchingRecipients(getContext(), addresses);
@@ -1837,7 +1846,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 (ArrayList<RecipientChip>) params[0];
             String[] addresses = new String[originalRecipients.size()];
             for (int i = 0; i < originalRecipients.size(); i++) {
-                addresses[i] = originalRecipients.get(i).getEntry().getDestination();
+                addresses[i] = createDisplayText(originalRecipients.get(i).getEntry());
             }
             HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
                     .getMatchingRecipients(getContext(), addresses);
