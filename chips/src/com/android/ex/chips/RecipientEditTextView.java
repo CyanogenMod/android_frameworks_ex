@@ -707,8 +707,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         RecipientEntry entry = createTokenizedEntry(token);
         if (entry != null) {
-            String destText = entry.getDestination();
-            destText = (String) mTokenizer.terminateToken(destText);
+            String destText = createDisplayText(entry);
             // Always leave a blank space at the end of a chip.
             int textLength = destText.length() - 1;
             SpannableString chipText = new SpannableString(destText);
@@ -1194,6 +1193,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         String address = entry.getDestination();
         if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
             display = null;
+        }
+        if (address != null) {
+            // Tokenize out the address in case the address already
+            // contained the username as well.
+            address = Rfc822Tokenizer.tokenize(address)[0].getAddress();
         }
         Rfc822Token token = new Rfc822Token(display, address, null);
         String displayText = token.toString();
