@@ -22,6 +22,6 @@ import android.widget.ArrayAdapter;
 public class ChipsTest extends AndroidTestCase {
 
     public void testSomething() {
-
+        
     }
 }
