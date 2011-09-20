@@ -27,9 +27,9 @@ import com.android.ex.chips.RecipientEntry;
 
 
 public class ChipsTest extends AndroidTestCase {
-    private RecipientChip[] mMockRecips = new RecipientChip[5];
+    private RecipientChip[] mMockRecips;
 
-    private RecipientEntry[] mMockEntries = new RecipientEntry[5];
+    private RecipientEntry[] mMockEntries;
 
     private Rfc822Tokenizer mTokenizer;
 
@@ -41,13 +41,6 @@ public class ChipsTest extends AndroidTestCase {
             super(context, null);
             mTokenizer = new Rfc822Tokenizer();
             setTokenizer(mTokenizer);
-            for (int i = 0; i < mMockRecips.length; i++) {
-                mMockEntries[i] = RecipientEntry.constructGeneratedEntry("user",
-                        "user@username.com");
-            }
-            for (int i = 0; i < mMockRecips.length; i++) {
-                mMockRecips[i] = new RecipientChip(null, mMockEntries[i], i);
-            }
         }
 
         @Override
@@ -100,6 +93,7 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testSanitizeBetween() {
+        populateMocks(2);
         MockRecipientEditTextView view = createViewForTesting();
         String first = (String) mTokenizer.terminateToken("FIRST");
         String second = (String) mTokenizer.terminateToken("SECOND");
@@ -119,11 +113,27 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(editableString, (first + second));
 
         mEditable = new SpannableStringBuilder();
+        populateMocks(1);
+        mEditable.append(extra);
         mEditable.append(first);
         firstStart = mEditable.toString().indexOf(first);
         firstEnd = firstStart + first.length();
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], firstStart, firstEnd, 0);
         view.sanitizeBetween();
         assertEquals(mEditable.toString(), first);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 1]), firstStart
+                - extra.length());
+    }
+
+    private void populateMocks(int size) {
+        mMockEntries = new RecipientEntry[size];
+        for (int i = 0; i < size; i++) {
+            mMockEntries[i] = RecipientEntry.constructGeneratedEntry("user",
+                    "user@username.com");
+        }
+        mMockRecips = new RecipientChip[size];
+        for (int i = 0; i < size; i++) {
+            mMockRecips[i] = new RecipientChip(null, mMockEntries[i], i);
+        }
     }
 }
