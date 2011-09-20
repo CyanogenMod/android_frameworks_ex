@@ -63,8 +63,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         AccountSpecifier {
     private static final String TAG = "BaseRecipientAdapter";
 
-    // TODO: set to false after we fix performance issue.
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     /**
      * The preferred number of results to be retrieved. This number may be
