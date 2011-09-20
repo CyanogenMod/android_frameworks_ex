@@ -17,11 +17,10 @@
 package com.android.ex.chips;
 
 import android.test.AndroidTestCase;
-import android.widget.ArrayAdapter;
 
 public class ChipsTest extends AndroidTestCase {
 
     public void testSomething() {
-        
+
     }
 }

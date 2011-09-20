@@ -947,7 +947,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             int end = getSpannable().getSpanStart(last);
             if (beforeLast != null) {
                 startLooking = getSpannable().getSpanEnd(beforeLast);
-                if (getText().charAt(startLooking) == ' ') {
+                Editable text = getText();
+                if (startLooking > text.length() - 1) {
+                    // There is nothing after this chip.
+                    return;
+                }
+                if (text.charAt(startLooking) == ' ') {
                     startLooking++;
                 }
             }
