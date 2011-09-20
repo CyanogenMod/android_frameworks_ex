@@ -1221,7 +1221,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (address != null) {
             // Tokenize out the address in case the address already
             // contained the username as well.
-            address = Rfc822Tokenizer.tokenize(address)[0].getAddress();
+            Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(address);
+            if (tokenized != null && tokenized.length > 0) {
+                address = tokenized[0].getAddress();
+            }
         }
         Rfc822Token token = new Rfc822Token(display, address, null);
         String displayText = token.toString();
@@ -1466,9 +1469,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // Re-add the spans that were removed.
             if (mRemovedSpans != null && mRemovedSpans.size() > 0) {
                 // Recreate each removed span.
-                RecipientChip[] recipients = getRecipients();
+                RecipientChip[] recipients = getSortedRecipients();
                 // Start the search for tokens after the last currently visible
                 // chip.
+                if (recipients == null || recipients.length == 0) {
+                    return;
+                }
                 int end = span.getSpanEnd(recipients[recipients.length - 1]);
                 Editable editable = getText();
                 for (RecipientChip chip : mRemovedSpans) {
