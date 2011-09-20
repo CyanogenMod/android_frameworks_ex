@@ -685,11 +685,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
         if (showMessageIfDirectoryLoadRemaining && mRemainingDirectoryCount > 0) {
             entries.add(RecipientEntry.WAITING_FOR_DIRECTORY_SEARCH);
-        } else {
-            // Remove last divider
-            if (entries.size() > 1) {
-                entries.remove(entries.size() - 1);
-            }
         }
 
         return entries;
