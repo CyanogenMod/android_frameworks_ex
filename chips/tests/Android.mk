@@ -11,18 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-LOCAL_PATH := $(call my-dir)
-
+LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
-LOCAL_CERTIFICATE := vendor/unbundled_google/libraries/certs/app
-LOCAL_JAVA_LIBRARIES := android.test.runner
-LOCAL_MODULE_TAGS := tests
-LOCAL_PACKAGE_NAME := ChipsTests
-LOCAL_SDK_VERSION := current
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
-LOCAL_STATIC_JAVA_LIBRARIES := android-common-chips
 
-LOCAL_PROGUARD_ENABLED := disabled
+LOCAL_SRC_FILES := $(call all-java-files-under, src)
+
+LOCAL_PACKAGE_NAME := ChipsTests
+LOCAL_MODULE_TAGS := tests
+LOCAL_SDK_VERSION := current
+LOCAL_CERTIFICATE := platform
+LOCAL_JAVA_LIBRARIES := android.test.runner
+LOCAL_STATIC_JAVA_LIBRARIES += android-common-chips
+LOCAL_RESOURCE_DIR := frameworks/ex/chips/res/
 
 include $(BUILD_PACKAGE)
+

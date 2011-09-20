@@ -934,9 +934,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return false;
     }
 
-    private void sanitizeBetween() {
+    // Visible for testing.
+    /* package */ void sanitizeBetween() {
         // Find the last chip.
-        RecipientChip[] recips = this.getSortedRecipients();
+        RecipientChip[] recips = getSortedRecipients();
         if (recips != null && recips.length > 0) {
             RecipientChip last = recips[recips.length - 1];
             RecipientChip beforeLast = null;
@@ -948,7 +949,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (beforeLast != null) {
                 startLooking = getSpannable().getSpanEnd(beforeLast);
                 Editable text = getText();
-                if (startLooking > text.length() - 1) {
+                if (startLooking == -1 || startLooking > text.length() - 1) {
                     // There is nothing after this chip.
                     return;
                 }
@@ -1014,7 +1015,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return super.onKeyDown(keyCode, event);
     }
 
-    private Spannable getSpannable() {
+    // Visible for testing.
+    /* package */ Spannable getSpannable() {
         return getText();
     }
 
@@ -1217,7 +1219,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return null;
     }
 
-    private String createDisplayText(RecipientEntry entry) {
+    // Visible for testing.
+    /* package */ String createDisplayText(RecipientEntry entry) {
         String display = entry.getDisplayName();
         String address = entry.getDestination();
         if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
@@ -1323,7 +1326,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return getSpannable().getSpans(0, getText().length(), RecipientChip.class);
     }
 
-    private RecipientChip[] getSortedRecipients() {
+    // Visible for testing.
+    /* package */ RecipientChip[] getSortedRecipients() {
         ArrayList<RecipientChip> recipientsList = new ArrayList<RecipientChip>(Arrays
                 .asList(getRecipients()));
         final Spannable spannable = getSpannable();
