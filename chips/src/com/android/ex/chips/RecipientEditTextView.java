@@ -351,7 +351,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     Editable text = getText();
                     int whatEnd = mTokenizer.findTokenEnd(text, start);
                     // This token was already tokenized, so skip past the ending token.
-                    if (text.charAt(whatEnd) == ',') {
+                    if (whatEnd < text.length() && text.charAt(whatEnd) == ',') {
                         whatEnd++;
                     }
                     // In the middle of chip; treat this as an edit
