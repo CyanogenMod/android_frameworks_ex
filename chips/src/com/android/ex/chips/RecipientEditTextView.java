@@ -194,6 +194,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     };
 
+    private Runnable mDelayedShrink = new Runnable() {
+
+        @Override
+        public void run() {
+            shrink();
+        }
+
+    };
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         if (sSelectedTextColor == -1) {
@@ -319,6 +328,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 && mSelectedChip.getEntry().getContactId() != RecipientEntry.INVALID_CONTACT) {
             clearSelectedChip();
         } else {
+            if (getWidth() <= 0) {
+                // We don't have the width yet which means the view hasn't been drawn yet
+                // and there is no reason to attempt to commit chips yet.
+                // This focus lost must be the result of an orientation change
+                // or an initial rendering.
+                // Re-post the shrink for later.
+                mHandler.removeCallbacks(mDelayedShrink);
+                mHandler.post(mDelayedShrink);
+                return;
+            }
             // Reset any pending chips as they would have been handled
             // when the field lost focus.
             if (mPendingChipsCount > 0) {
@@ -329,10 +348,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 int start = mTokenizer.findTokenStart(editable, end);
                 RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
                 if ((chips == null || chips.length == 0)) {
-                    int whatEnd = mTokenizer.findTokenEnd(getText(), start);
+                    Editable text = getText();
+                    int whatEnd = mTokenizer.findTokenEnd(text, start);
+                    // This token was already tokenized, so skip past the ending token.
+                    if (text.charAt(whatEnd) == ',') {
+                        whatEnd++;
+                    }
                     // In the middle of chip; treat this as an edit
                     // and commit the whole token.
-                    if (whatEnd != getSelectionEnd()) {
+                    int selEnd = getSelectionEnd();
+                    if (whatEnd != selEnd && whatEnd != editable.toString().trim().length()) {
                         handleEdit(start, whatEnd);
                     } else {
                         commitChip(start, end, editable);
@@ -571,6 +596,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mChipFontSize = chipFontSize;
         mInvalidChipBackground = invalidChip;
         mCopyViewRes = copyViewRes;
+    }
+
+    // Visible for testing.
+    /* package */ void setMoreItem(TextView moreItem) {
+        mMoreItem = moreItem;
     }
 
     /**
@@ -915,6 +945,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return true;
         } else {
             int tokenEnd = mTokenizer.findTokenEnd(editable, start);
+            if (editable.length() > tokenEnd && editable.charAt(tokenEnd) == ',') {
+                tokenEnd++;
+            }
             String text = editable.toString().substring(start, tokenEnd).trim();
             clearComposingText();
             if (text != null && text.length() > 0 && !text.equals(" ")) {
@@ -1384,8 +1417,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return false;
     }
 
-
-    private ImageSpan getMoreChip() {
+    // Visible for testing.
+    /* package */ImageSpan getMoreChip() {
         MoreImageSpan[] moreSpans = getSpannable().getSpans(0, getText().length(),
                 MoreImageSpan.class);
         return moreSpans != null && moreSpans.length > 0 ? moreSpans[0] : null;
@@ -1396,7 +1429,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * do not fit in the pre-defined available space when the
      * RecipientEditTextView loses focus.
      */
-    private void createMoreChip() {
+    // Visible for testing.
+    /* package */ void createMoreChip() {
         if (!mShouldShrink) {
             return;
         }
@@ -1470,7 +1504,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * Replace the more chip, if it exists, with all of the recipient chips it had
      * replaced when the RecipientEditTextView gains focus.
      */
-    private void removeMoreChip() {
+    // Visible for testing.
+    /*package*/ void removeMoreChip() {
         if (mMoreChip != null) {
             Spannable span = getSpannable();
             span.removeSpan(mMoreChip);
@@ -1497,7 +1532,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     // That way, if there are duplicates, we always find the correct
                     // recipient.
                     chipStart = editable.toString().indexOf(token, end);
-                    // -1 for the space!
                     end = chipEnd = Math.min(editable.length(), chipStart + token.length());
                     // Only set the span if we found a matching token.
                     if (chipStart != -1) {
