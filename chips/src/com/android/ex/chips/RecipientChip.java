@@ -16,6 +16,7 @@
 
 package com.android.ex.chips;
 
+import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.text.style.DynamicDrawableSpan;
@@ -41,7 +42,7 @@ import android.text.style.ImageSpan;
     private CharSequence mOriginalText;
 
     public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
-        super(drawable, DynamicDrawableSpan.ALIGN_BASELINE);
+        super(drawable, DynamicDrawableSpan.ALIGN_BOTTOM);
         mDisplay = entry.getDisplayName();
         mValue = entry.getDestination().trim();
         mContactId = entry.getContactId();
@@ -100,13 +101,16 @@ import android.text.style.ImageSpan;
     }
 
     public void setOriginalText(String text) {
-        if (!TextUtils.isEmpty(text)) {
-            text = text.trim();
-        }
         mOriginalText = text;
     }
 
     public CharSequence getOriginalText() {
         return !TextUtils.isEmpty(mOriginalText) ? mOriginalText : mEntry.getDestination();
+    }
+
+    @Override
+    public int getSize(Paint paint, CharSequence text, int start, int end,
+            Paint.FontMetricsInt fm) {
+        return super.getSize(paint, text, start, end, fm) + (int) paint.measureText(" ");
     }
 }
