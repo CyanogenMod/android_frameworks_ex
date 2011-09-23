@@ -108,9 +108,9 @@ public class ChipsTest extends AndroidTestCase {
         mEditable = new SpannableStringBuilder();
         mEditable.append(first + extra + second);
         int firstStart = mEditable.toString().indexOf(first);
-        int firstEnd = firstStart + first.trim().length();
+        int firstEnd = firstStart + first.length();
         int secondStart = mEditable.toString().indexOf(second);
-        int secondEnd = secondStart + second.trim().length();
+        int secondEnd = secondStart + second.length();
         mEditable.setSpan(mMockRecips[mMockRecips.length - 2], firstStart, firstEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], secondStart, secondEnd, 0);
         view.sanitizeBetween();
@@ -144,11 +144,11 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append(first+second+third);
 
         int firstStart = mEditable.toString().indexOf(first);
-        int firstEnd = firstStart + first.trim().length();
+        int firstEnd = firstStart + first.length();
         int secondStart = mEditable.toString().indexOf(second);
-        int secondEnd = secondStart + second.trim().length();
+        int secondEnd = secondStart + second.length();
         int thirdStart = mEditable.toString().indexOf(third);
-        int thirdEnd = thirdStart + third.trim().length();
+        int thirdEnd = thirdStart + third.length();
         mEditable.setSpan(mMockRecips[mMockRecips.length - 3], firstStart, firstEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 2], secondStart, secondEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
@@ -211,25 +211,25 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append(first+second+third+fourth+fifth+sixth+seventh+eigth+ninth+tenth);
 
         int firstStart = mEditable.toString().indexOf(first);
-        int firstEnd = firstStart + first.trim().length();
+        int firstEnd = firstStart + first.length();
         int secondStart = mEditable.toString().indexOf(second);
-        int secondEnd = secondStart + second.trim().length();
+        int secondEnd = secondStart + second.length();
         int thirdStart = mEditable.toString().indexOf(third);
-        int thirdEnd = thirdStart + third.trim().length();
+        int thirdEnd = thirdStart + third.length();
         int fourthStart = mEditable.toString().indexOf(fourth);
-        int fourthEnd = fourthStart + fourth.trim().length();
+        int fourthEnd = fourthStart + fourth.length();
         int fifthStart = mEditable.toString().indexOf(fifth);
-        int fifthEnd = fifthStart + fifth.trim().length();
+        int fifthEnd = fifthStart + fifth.length();
         int sixthStart = mEditable.toString().indexOf(sixth);
-        int sixthEnd = sixthStart + sixth.trim().length();
+        int sixthEnd = sixthStart + sixth.length();
         int seventhStart = mEditable.toString().indexOf(seventh);
-        int seventhEnd = seventhStart + seventh.trim().length();
+        int seventhEnd = seventhStart + seventh.length();
         int eighthStart = mEditable.toString().indexOf(eigth);
-        int eighthEnd = eighthStart + eigth.trim().length();
+        int eighthEnd = eighthStart + eigth.length();
         int ninthStart = mEditable.toString().indexOf(ninth);
-        int ninthEnd = ninthStart + ninth.trim().length();
+        int ninthEnd = ninthStart + ninth.length();
         int tenthStart = mEditable.toString().indexOf(tenth);
-        int tenthEnd = tenthStart + tenth.trim().length();
+        int tenthEnd = tenthStart + tenth.length();
         mEditable.setSpan(mMockRecips[mMockRecips.length - 10], firstStart, firstEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 9], secondStart, secondEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 8], thirdStart, thirdEnd, 0);
@@ -281,11 +281,11 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append(first+second+third);
 
         int firstStart = mEditable.toString().indexOf(first);
-        int firstEnd = firstStart + first.trim().length();
+        int firstEnd = firstStart + first.length();
         int secondStart = mEditable.toString().indexOf(second);
-        int secondEnd = secondStart + second.trim().length();
+        int secondEnd = secondStart + second.length();
         int thirdStart = mEditable.toString().indexOf(third);
-        int thirdEnd = thirdStart + third.trim().length();
+        int thirdEnd = thirdStart + third.length();
         mEditable.setSpan(mMockRecips[mMockRecips.length - 3], firstStart, firstEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 2], secondStart, secondEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
@@ -306,6 +306,51 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 2]), secondStart);
         assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 1]), thirdStart);
         assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), thirdEnd);
+        moreChip = view.getMoreChip();
+        assertEquals(mEditable.getSpanStart(moreChip), -1);
+    }
+
+    public void testMoreChipDupes() {
+        populateMocks(4);
+        MockRecipientEditTextView view = createViewForTesting();
+        view.setMoreItem(createTestMoreItem());
+        String first = (String) mTokenizer.terminateToken("FIRST");
+        String second = (String) mTokenizer.terminateToken("SECOND");
+        String third = (String) mTokenizer.terminateToken("THIRD");
+        mEditable = new SpannableStringBuilder();
+        mEditable.append(first+second+third+third);
+
+        int firstStart = mEditable.toString().indexOf(first);
+        int firstEnd = firstStart + first.length();
+        int secondStart = mEditable.toString().indexOf(second);
+        int secondEnd = secondStart + second.length();
+        int thirdStart = mEditable.toString().indexOf(third);
+        int thirdEnd = thirdStart + third.length();
+        int thirdNextStart = mEditable.toString().indexOf(third, thirdEnd);
+        int thirdNextEnd = thirdNextStart + third.length();
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 4], firstStart, firstEnd, 0);
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 3], secondStart, secondEnd, 0);
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 2], thirdStart, thirdEnd, 0);
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdNextStart, thirdNextEnd, 0);
+
+        view.createMoreChip();
+        assertEquals(mEditable.toString(), first+second+third+third);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 4]), firstStart);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 3]), secondStart);
+        // Find the more chip.
+        ImageSpan moreChip = view.getMoreChip();
+        assertEquals(mEditable.getSpanStart(moreChip), thirdStart);
+        assertEquals(mEditable.getSpanEnd(moreChip), thirdNextEnd);
+
+        view.removeMoreChip();
+        assertEquals(mEditable.toString(), first+second+third+third);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 4]), firstStart);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 4]), firstEnd);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 3]), secondStart);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 2]), thirdStart);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 2]), thirdEnd);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 1]), thirdNextStart);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), thirdNextEnd);
         moreChip = view.getMoreChip();
         assertEquals(mEditable.getSpanStart(moreChip), -1);
     }
