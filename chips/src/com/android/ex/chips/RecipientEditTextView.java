@@ -484,16 +484,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     photo = mDefaultContactPhoto;
                 }
                 // Draw the photo on the left side.
-                Matrix matrix = new Matrix();
-                RectF src = new RectF(0, 0, photo.getWidth(), photo.getHeight());
-                Rect backgroundPadding = new Rect();
-                mChipBackground.getPadding(backgroundPadding);
-                RectF dst = new RectF(width - iconWidth + backgroundPadding.left,
-                        0 + backgroundPadding.top,
-                        width - backgroundPadding.right,
-                        height - backgroundPadding.bottom);
-                matrix.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
-                canvas.drawBitmap(photo, matrix, paint);
+                if (photo != null) {
+                    RectF src = new RectF(0, 0, photo.getWidth(), photo.getHeight());
+                    Rect backgroundPadding = new Rect();
+                    mChipBackground.getPadding(backgroundPadding);
+                    RectF dst = new RectF(width - iconWidth + backgroundPadding.left,
+                            0 + backgroundPadding.top,
+                            width - backgroundPadding.right,
+                            height - backgroundPadding.bottom);
+                    Matrix matrix = new Matrix();
+                    matrix.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
+                    canvas.drawBitmap(photo, matrix, paint);
+                }
             } else {
                 // Don't leave any space for the icon. It isn't being drawn.
                 iconWidth = 0;
@@ -602,6 +604,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     // Visible for testing.
     /* package */ void setMoreItem(TextView moreItem) {
         mMoreItem = moreItem;
+    }
+
+
+    // Visible for testing.
+    /* package */ void setChipBackground(Drawable chipBackground) {
+        mChipBackground = chipBackground;
+    }
+
+    // Visible for testing.
+    /* package */ void setChipHeight(int height) {
+        mChipHeight = height;
     }
 
     /**
@@ -1704,6 +1717,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     public boolean matchesChip(RecipientChip chip, int offset) {
         int start = getChipStart(chip);
         int end = getChipEnd(chip);
+
         if (start == -1 || end == -1) {
             return false;
         }
@@ -1729,23 +1743,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     /**
      * Remove the chip and any text associated with it from the RecipientEditTextView.
      */
-    private void removeChip(RecipientChip chip) {
+    // Visible for testing.
+    /*pacakge*/ void removeChip(RecipientChip chip) {
         Spannable spannable = getSpannable();
         int spanStart = spannable.getSpanStart(chip);
         int spanEnd = spannable.getSpanEnd(chip);
         Editable text = getText();
-        int toDelete = spanEnd;
         boolean wasSelected = chip == mSelectedChip;
         // Clear that there is a selected chip before updating any text.
         if (wasSelected) {
             mSelectedChip = null;
         }
-        // Always remove trailing spaces when removing a chip.
-        while (toDelete >= 0 && toDelete < text.length() && text.charAt(toDelete) == ' ') {
-            toDelete++;
-        }
         spannable.removeSpan(chip);
-        text.delete(spanStart, toDelete);
+        text.delete(spanStart, spanEnd);
         if (wasSelected) {
             clearSelectedChip();
         }
@@ -1769,14 +1779,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             Log.e(TAG, "The chip to replace does not exist but should.");
             editable.insert(0, chipText);
         } else {
-            // There may be a space to replace with this chip's new associated
-            // space. Check for it.
-            int toReplace = end;
-            while (toReplace >= 0 && toReplace < editable.length()
-                    && editable.charAt(toReplace) == ' ') {
-                toReplace++;
+            if (!TextUtils.isEmpty(chipText)) {
+                editable.replace(start, end, chipText);
             }
-            editable.replace(start, toReplace, chipText);
         }
         setCursorVisible(true);
         if (wasSelected) {
