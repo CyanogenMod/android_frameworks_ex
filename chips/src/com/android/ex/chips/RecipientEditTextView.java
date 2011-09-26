@@ -618,8 +618,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public void onSizeChanged(int width, int height, int oldw, int oldh) {
         super.onSizeChanged(width, height, oldw, oldh);
-        if (width != 0 && height != 0 && mPendingChipsCount > 0) {
-            postHandlePendingChips();
+        if (width != 0 && height != 0) {
+            if (mPendingChipsCount > 0) {
+                postHandlePendingChips();
+            } else {
+                checkChipWidths();
+            }
         }
         // Try to find the scroll view parent, if it exists.
         if (mScrollView == null && !mTried) {
@@ -639,16 +643,33 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mHandler.post(mHandlePendingChips);
     }
 
-    private void handlePendingChips() {
-        if (mPendingChipsCount <= 0) {
-            return;
+    private void checkChipWidths() {
+        // Check the widths of the associated chips.
+        RecipientChip[] chips = getSortedRecipients();
+        if (chips != null) {
+            Rect bounds;
+            for (RecipientChip chip : chips) {
+                bounds = chip.getDrawable().getBounds();
+                if (getWidth() > 0 && bounds.right - bounds.left > getWidth()) {
+                    // Need to redraw that chip.
+                    replaceChip(chip, chip.getEntry());
+                }
+            }
         }
+    }
+
+    private void handlePendingChips() {
         if (getWidth() <= 0) {
             // The widget has not been sized yet.
             // This will be called as a result of onSizeChanged
             // at a later point.
             return;
         }
+
+        if (mPendingChipsCount <= 0) {
+            return;
+        }
+
         synchronized (mPendingChips) {
             Editable editable = getText();
             // Tokenize!
