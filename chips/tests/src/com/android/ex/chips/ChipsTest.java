@@ -21,6 +21,7 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 import android.text.Editable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ImageSpan;
@@ -30,7 +31,7 @@ import android.widget.TextView;
 import com.android.ex.chips.RecipientEditTextView;
 import com.android.ex.chips.RecipientEntry;
 
-
+@SmallTest
 public class ChipsTest extends AndroidTestCase {
     private RecipientChip[] mMockRecips;
 
@@ -107,6 +108,8 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testSanitizeBetween() {
+        // First, add 2 chips and then make sure we remove
+        // the extra content between them correctly.
         populateMocks(2);
         MockRecipientEditTextView view = createViewForTesting();
         String first = (String) mTokenizer.terminateToken("FIRST");
@@ -127,6 +130,7 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(editableString.indexOf(second), secondStart - extra.length());
         assertEquals(editableString, (first + second));
 
+        // Add 1 chip and make sure that we remove the extra stuff before it correctly.
         mEditable = new SpannableStringBuilder();
         populateMocks(1);
         mEditable.append(extra);
@@ -141,6 +145,9 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testMoreChip() {
+        // Add 3 chips: this is the trigger point at which the more chip will be created.
+        // Test that adding the chips and then creating and removing the more chip, as if
+        // the user were focusing/ removing focus from the chips field.
         populateMocks(3);
         MockRecipientEditTextView view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -201,6 +208,7 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testMoreChipLotsOfUsers() {
+        // Test adding and removing the more chip in the case where we have a lot of users.
         populateMocks(10);
         MockRecipientEditTextView view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -278,6 +286,8 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testMoreChipSpecialChars() {
+        // Make sure the more chip correctly handles extra tokenizer characters in the middle
+        // of chip text.
         populateMocks(3);
         MockRecipientEditTextView view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -318,6 +328,7 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testMoreChipDupes() {
+        // Make sure the more chip is correctly added and removed when we have duplicate chips.
         populateMocks(4);
         MockRecipientEditTextView view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -363,6 +374,8 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testMatchesChip() {
+        // Test the logic for checking if we have found the chip
+        // that matches a particular offset in chips field.
         populateMocks(3);
         MockRecipientEditTextView view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -389,6 +402,7 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testRemoveChip() {
+        // Create 3 chips to start and test removing chips in various postions.
         populateMocks(3);
         MockRecipientEditTextView view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -408,6 +422,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.setSpan(mMockRecips[mMockRecips.length - 2], secondStart, secondEnd, 0);
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
         assertEquals(mEditable.toString(), first + second + third);
+        // Test removing the middle chip.
         view.removeChip(mMockRecips[mMockRecips.length - 2]);
         assertEquals(mEditable.toString(), first + third);
         assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 3]), firstStart);
@@ -419,6 +434,7 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), newThirdStart
                 + third.length());
 
+        // Test removing the first chip.
         populateMocks(3);
         view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -446,6 +462,7 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), newThirdStart
                 + third.length());
 
+        // Test removing the last chip.
         populateMocks(3);
         view = createViewForTesting();
         view.setMoreItem(createTestMoreItem());
@@ -484,6 +501,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable = new SpannableStringBuilder();
         mEditable.append(first + second + third);
 
+        // Test replacing the first chip with a new chip.
         int firstStart = mEditable.toString().indexOf(first);
         int firstEnd = firstStart + first.length();
         int secondStart = mEditable.toString().indexOf(second);
@@ -515,6 +533,71 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(spans.length, 3);
         spans = mEditable
                 .getSpans(0, mEditable.toString().indexOf(second) - 1, RecipientChip.class);
+        assertEquals((String) spans[0].getDisplay(), "replacement");
+
+
+        // Test replacing the middle chip with a new chip.
+        mEditable = new SpannableStringBuilder();
+        mEditable.append(first + second + third);
+        firstStart = mEditable.toString().indexOf(first);
+        firstEnd = firstStart + first.length();
+        secondStart = mEditable.toString().indexOf(second);
+        secondEnd = secondStart + second.length();
+        thirdStart = mEditable.toString().indexOf(third);
+        thirdEnd = thirdStart + third.length();
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 3], firstStart, firstEnd, 0);
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 2], secondStart, secondEnd, 0);
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
+        assertEquals(mEditable.toString(), first + second + third);
+        view.replaceChip(mMockRecips[mMockRecips.length - 2], RecipientEntry
+                .constructGeneratedEntry("replacement", "replacement@replacement.com"));
+        assertEquals(mEditable.toString(), mTokenizer
+                .terminateToken("replacement <replacement@replacement.com>")
+                + second + third);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 3]), firstStart);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 3]), firstEnd);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 2]), -1);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 2]), -1);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 1]), mEditable
+                .toString().indexOf(third));
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), mEditable
+                .toString().indexOf(third)
+                + third.length());
+        spans = mEditable.getSpans(0, mEditable.length(), RecipientChip.class);
+        assertEquals(spans.length, 3);
+        spans = mEditable
+                .getSpans(firstEnd, mEditable.toString().indexOf(third) - 1, RecipientChip.class);
+        assertEquals((String) spans[0].getDisplay(), "replacement");
+
+
+        // Test replacing the last chip with a new chip.
+        mEditable = new SpannableStringBuilder();
+        mEditable.append(first + second + third);
+        firstStart = mEditable.toString().indexOf(first);
+        firstEnd = firstStart + first.length();
+        secondStart = mEditable.toString().indexOf(second);
+        secondEnd = secondStart + second.length();
+        thirdStart = mEditable.toString().indexOf(third);
+        thirdEnd = thirdStart + third.length();
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 3], firstStart, firstEnd, 0);
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 2], secondStart, secondEnd, 0);
+        mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
+        assertEquals(mEditable.toString(), first + second + third);
+        view.replaceChip(mMockRecips[mMockRecips.length - 1], RecipientEntry
+                .constructGeneratedEntry("replacement", "replacement@replacement.com"));
+        assertEquals(mEditable.toString(), mTokenizer
+                .terminateToken("replacement <replacement@replacement.com>")
+                + second + third);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 3]), firstStart);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 3]), firstEnd);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 2]), secondStart);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 2]), secondEnd);
+        assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 1]), -1);
+        assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), -1);
+        spans = mEditable.getSpans(0, mEditable.length(), RecipientChip.class);
+        assertEquals(spans.length, 3);
+        spans = mEditable
+                .getSpans(secondEnd, mEditable.length(), RecipientChip.class);
         assertEquals((String) spans[0].getDisplay(), "replacement");
     }
 
