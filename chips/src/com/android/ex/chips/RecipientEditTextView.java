@@ -989,7 +989,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (entry != null) {
                     QwertyKeyListener.markAsReplaced(editable, start, end, "");
                     CharSequence chipText = createChip(entry, false);
-                    if (chipText != null) {
+                    if (chipText != null && start > -1 && end > -1) {
                         editable.replace(start, end, chipText);
                     }
                 }
