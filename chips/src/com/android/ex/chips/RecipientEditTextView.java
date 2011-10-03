@@ -278,6 +278,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+
+    public Parcelable onSaveInstanceState() {
+        // If the user changes orientation while they are editing, just roll back the selection.
+        clearSelectedChip();
+        return super.onSaveInstanceState();
+    }
+
     /**
      * Convenience method: Append the specified text slice to the TextView's
      * display buffer, upgrading it to BufferType.EDITABLE if it was
