@@ -434,9 +434,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * Get the background drawable for a RecipientChip.
      */
     public Drawable getChipBackground(RecipientEntry contact) {
-        String destination = contact.getDestination();
-        return (mValidator != null && !TextUtils.isEmpty(destination) && mValidator
-                .isValid(destination)) ? mChipBackground : mInvalidChipBackground;
+        return (mValidator != null && mValidator.isValid(contact.getDestination())) ?
+                mChipBackground : mInvalidChipBackground;
     }
 
     private Bitmap createUnselectedChip(RecipientEntry contact, TextPaint paint, Layout layout) {
@@ -774,7 +773,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (entry != null) {
             String destText = createDisplayText(entry);
             // Always leave a blank space at the end of a chip.
-            int textLength = destText.length();
+            int textLength = destText.length() - 1;
             SpannableString chipText = new SpannableString(destText);
             int end = getSelectionEnd();
             int start = mTokenizer.findTokenStart(getText(), end);
@@ -983,7 +982,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (editable.length() > tokenEnd && editable.charAt(tokenEnd) == ',') {
                 tokenEnd++;
             }
-            String text = editable.toString().substring(start, tokenEnd);
+            String text = editable.toString().substring(start, tokenEnd).trim();
             clearComposingText();
             if (text != null && text.length() > 0 && !text.equals(" ")) {
                 RecipientEntry entry = createTokenizedEntry(text);
@@ -1313,7 +1312,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private CharSequence createChip(RecipientEntry entry, boolean pressed) {
         String displayText = createDisplayText(entry);
         // Always leave a blank space at the end of a chip.
-        int textLength = displayText.length();
+        int textLength = displayText.length()-1;
         SpannableString chipText = new SpannableString(displayText);
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(getText(), end);
@@ -1749,13 +1748,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int spanStart = spannable.getSpanStart(chip);
         int spanEnd = spannable.getSpanEnd(chip);
         Editable text = getText();
+        int toDelete = spanEnd;
         boolean wasSelected = chip == mSelectedChip;
         // Clear that there is a selected chip before updating any text.
         if (wasSelected) {
             mSelectedChip = null;
         }
+        // Always remove trailing spaces when removing a chip.
+        while (toDelete >= 0 && toDelete < text.length() && text.charAt(toDelete) == ' ') {
+            toDelete++;
+        }
         spannable.removeSpan(chip);
-        text.delete(spanStart, spanEnd);
+        text.delete(spanStart, toDelete);
         if (wasSelected) {
             clearSelectedChip();
         }
@@ -1780,7 +1784,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             editable.insert(0, chipText);
         } else {
             if (!TextUtils.isEmpty(chipText)) {
-                editable.replace(start, end, chipText);
+                // There may be a space to replace with this chip's new
+                // associated
+                // space. Check for it
+                int toReplace = end;
+                while (toReplace >= 0 && toReplace < editable.length()
+                        && editable.charAt(toReplace) == ' ') {
+                    toReplace++;
+                }
+                editable.replace(start, toReplace, chipText);
             }
         }
         setCursorVisible(true);
