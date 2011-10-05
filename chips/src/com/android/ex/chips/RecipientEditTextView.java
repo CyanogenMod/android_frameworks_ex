@@ -1064,7 +1064,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
             QwertyKeyListener.markAsReplaced(editable, start, end, "");
             CharSequence chipText = createChip(entry, false);
-            editable.replace(start, getSelectionEnd(), chipText);
+            if (chipText != null) {
+                editable.replace(start, getSelectionEnd(), chipText);
+            }
         }
         dismissDropDown();
     }
@@ -1318,6 +1320,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private CharSequence createChip(RecipientEntry entry, boolean pressed) {
         String displayText = createDisplayText(entry);
+        if (TextUtils.isEmpty(displayText)) {
+            return null;
+        }
         // Always leave a blank space at the end of a chip.
         int textLength = displayText.length()-1;
         SpannableString chipText = new SpannableString(displayText);
@@ -1786,20 +1791,22 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         getSpannable().removeSpan(chip);
         Editable editable = getText();
         CharSequence chipText = createChip(entry, false);
-        if (start == -1 || end == -1) {
-            Log.e(TAG, "The chip to replace does not exist but should.");
-            editable.insert(0, chipText);
-        } else {
-            if (!TextUtils.isEmpty(chipText)) {
-                // There may be a space to replace with this chip's new
-                // associated
-                // space. Check for it
-                int toReplace = end;
-                while (toReplace >= 0 && toReplace < editable.length()
-                        && editable.charAt(toReplace) == ' ') {
-                    toReplace++;
+        if (chipText != null) {
+            if (start == -1 || end == -1) {
+                Log.e(TAG, "The chip to replace does not exist but should.");
+                editable.insert(0, chipText);
+            } else {
+                if (!TextUtils.isEmpty(chipText)) {
+                    // There may be a space to replace with this chip's new
+                    // associated
+                    // space. Check for it
+                    int toReplace = end;
+                    while (toReplace >= 0 && toReplace < editable.length()
+                            && editable.charAt(toReplace) == ' ') {
+                        toReplace++;
+                    }
+                    editable.replace(start, toReplace, chipText);
                 }
-                editable.replace(start, toReplace, chipText);
             }
         }
         setCursorVisible(true);
