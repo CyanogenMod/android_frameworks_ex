@@ -1979,8 +1979,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             i++;
                         }
                         Editable editable = getText();
-                        editable.clear();
-                        editable.insert(0, text);
+                        editable.clearSpans();
+                        editable.replace(0, editable.length(), text);
                         originalRecipients.clear();
                     }
                 });
