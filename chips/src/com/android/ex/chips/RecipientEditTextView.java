@@ -1969,7 +1969,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             start = oldText.getSpanStart(chip);
                             if (start != -1) {
                                 end = oldText.getSpanEnd(chip);
-                                text.removeSpan(chip);
+                                oldText.removeSpan(chip);
                                 // Leave a spot for the space!
                                 RecipientChip replacement = replacements.get(i);
                                 text.setSpan(replacement, start, end,
@@ -1978,10 +1978,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             }
                             i++;
                         }
-                        Editable editable = getText();
-                        editable.clearSpans();
-                        editable.replace(0, editable.length(), text);
                         originalRecipients.clear();
+                        setText(text);
                     }
                 });
             }
