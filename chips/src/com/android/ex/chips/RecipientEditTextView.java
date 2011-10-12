@@ -27,6 +27,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
@@ -53,6 +54,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
+import android.view.DragEvent;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -176,6 +178,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private ScrollView mScrollView;
 
     private boolean mTriedGettingScrollView;
+
+    private boolean mDragEnabled = false;
 
     private final Runnable mAddTextWatcher = new Runnable() {
         @Override
@@ -518,7 +522,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private float getTextYOffset(String text, TextPaint paint, int height) {
         Rect bounds = new Rect();
-        paint.getTextBounds((String)text, 0, text.length(), bounds);
+        paint.getTextBounds(text, 0, text.length(), bounds);
         int textHeight = bounds.bottom - bounds.top  - (int)paint.descent();
         return height - ((height - textHeight) / 2);
     }
@@ -1948,31 +1952,38 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    /**
+     * Handles pasting a {@link ClipData} to this {@link RecipientEditTextView}.
+     */
+    private void handlePasteClip(ClipData clip) {
+        removeTextChangedListener(mTextWatcher);
+
+        if (clip != null && clip.getDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)){
+            for (int i = 0; i < clip.getItemCount(); i++) {
+                CharSequence paste = clip.getItemAt(i).getText();
+                if (paste != null) {
+                    int start = getSelectionStart();
+                    int end = getSelectionEnd();
+                    Editable editable = getText();
+                    if (start >= 0 && end >= 0 && start != end) {
+                        editable.append(paste, start, end);
+                    } else {
+                        editable.insert(end, paste);
+                    }
+                    handlePasteAndReplace();
+                }
+            }
+        }
+
+        mHandler.post(mAddTextWatcher);
+    }
+
     @Override
     public boolean onTextContextMenuItem(int id) {
         if (id == android.R.id.paste) {
-            removeTextChangedListener(mTextWatcher);
             ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(
                     Context.CLIPBOARD_SERVICE);
-            ClipData clip = clipboard.getPrimaryClip();
-            if (clip != null
-                    && clip.getDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
-                for (int i = 0; i < clip.getItemCount(); i++) {
-                    CharSequence paste = clip.getItemAt(i).getText();
-                    if (paste != null) {
-                        int start = getSelectionStart();
-                        int end = getSelectionEnd();
-                        Editable editable = getText();
-                        if (start >= 0 && end >= 0 && start != end) {
-                            editable.append(paste, start, end);
-                        } else {
-                            editable.insert(end, paste);
-                        }
-                        handlePasteAndReplace();
-                    }
-                }
-            }
-            mHandler.post(mAddTextWatcher);
+            handlePasteClip(clipboard.getPrimaryClip());
             return true;
         }
         return super.onTextContextMenuItem(id);
@@ -2192,8 +2203,77 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int offset = putOffsetInRange(getOffsetForPosition(x, y));
         RecipientChip currentChip = findChip(offset);
         if (currentChip != null) {
-            // Copy the selected chip email address.
-            showCopyDialog(currentChip.getEntry().getDestination());
+            if (mDragEnabled) {
+                // Start drag-and-drop for the selected chip.
+                startDrag(currentChip);
+            } else {
+                // Copy the selected chip email address.
+                showCopyDialog(currentChip.getEntry().getDestination());
+            }
+        }
+    }
+
+    /**
+     * Enables drag-and-drop for chips.
+     */
+    public void enableDrag() {
+        mDragEnabled = true;
+    }
+
+    /**
+     * Starts drag-and-drop for the selected chip.
+     */
+    private void startDrag(RecipientChip currentChip) {
+        String address = currentChip.getEntry().getDestination();
+        ClipData data = ClipData.newPlainText(address, address + COMMIT_CHAR_COMMA);
+
+        // Start drag mode.
+        startDrag(data, new RecipientChipShadow(currentChip), null, 0);
+
+        // Remove the current chip, so drag-and-drop will result in a move.
+        // TODO (phamm): consider readd this chip if it's dropped outside a target.
+        removeChip(currentChip);
+    }
+
+    /**
+     * Handles drag event.
+     */
+    @Override
+    public boolean onDragEvent(DragEvent event) {
+        switch (event.getAction()) {
+            case DragEvent.ACTION_DRAG_STARTED:
+                // Only handle plain text drag and drop.
+                return event.getClipDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN);
+            case DragEvent.ACTION_DRAG_ENTERED:
+                requestFocus();
+                return true;
+            case DragEvent.ACTION_DROP:
+                handlePasteClip(event.getClipData());
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Drag shadow for a {@link RecipientChip}.
+     */
+    private final class RecipientChipShadow extends DragShadowBuilder {
+        private final RecipientChip mChip;
+
+        public RecipientChipShadow(RecipientChip chip) {
+            mChip = chip;
+        }
+
+        @Override
+        public void onProvideShadowMetrics(Point shadowSize, Point shadowTouchPoint) {
+            Rect rect = mChip.getDrawable().getBounds();
+            shadowSize.set(rect.width(), rect.height());
+            shadowTouchPoint.set(rect.centerX(), rect.centerY());
+        }
+
+        @Override
+        public void onDrawShadow(Canvas canvas) {
+            mChip.getDrawable().draw(canvas);
         }
     }
 
