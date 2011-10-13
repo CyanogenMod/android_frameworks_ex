@@ -18,6 +18,7 @@ package com.android.ex.chips;
 
 import android.app.Dialog;
 import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -979,15 +980,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private boolean commitChip(int start, int end, Editable editable) {
-        if (getAdapter().getCount() > 0 && enoughToFilter()) {
+        ListAdapter adapter = getAdapter();
+        if (adapter != null && adapter.getCount() > 0 && enoughToFilter()
+                && end == getSelectionEnd()) {
             // choose the first entry.
             submitItemAtPosition(0);
             dismissDropDown();
             return true;
         } else {
             int tokenEnd = mTokenizer.findTokenEnd(editable, start);
-            if (editable.length() > tokenEnd && editable.charAt(tokenEnd) == ',') {
-                tokenEnd++;
+            if (editable.length() > tokenEnd + 1) {
+                char charAt = editable.charAt(tokenEnd + 1);
+                if (charAt == COMMIT_CHAR_COMMA || charAt == COMMIT_CHAR_SEMICOLON) {
+                    tokenEnd++;
+                }
             }
             String text = editable.toString().substring(start, tokenEnd).trim();
             clearComposingText();
@@ -1000,7 +1006,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         editable.replace(start, end, chipText);
                     }
                 }
-                dismissDropDown();
+                // Only dismiss the dropdown if it is related to the text we
+                // just committed.
+                // For paste, it may not be as there are possibly multiple
+                // tokens being added.
+                if (end == getSelectionEnd()) {
+                    dismissDropDown();
+                }
                 sanitizeBetween();
                 return true;
             }
@@ -1113,7 +1125,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     @Override
     protected void performFiltering(CharSequence text, int keyCode) {
-        if (enoughToFilter()) {
+        if (enoughToFilter() && !isCompletedToken(text)) {
             int end = getSelectionEnd();
             int start = mTokenizer.findTokenStart(text, end);
             // If this is a RecipientChip, don't filter
@@ -1125,6 +1137,22 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
         }
         super.performFiltering(text, keyCode);
+    }
+
+    // Visible for testing.
+    /*package*/ boolean isCompletedToken(CharSequence text) {
+        if (TextUtils.isEmpty(text)) {
+            return false;
+        }
+        // Check to see if this is a completed token before filtering.
+        int end = text.length();
+        int start = mTokenizer.findTokenStart(text, end);
+        String token = text.toString().substring(start, end).trim();
+        if (!TextUtils.isEmpty(token)) {
+            char atEnd = token.charAt(token.length() - 1);
+            return atEnd == COMMIT_CHAR_COMMA || atEnd == COMMIT_CHAR_SEMICOLON;
+        }
+        return false;
     }
 
     private void clearSelectedChip() {
@@ -1907,6 +1935,92 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             // Do nothing.
         }
+    }
+
+    @Override
+    public boolean onTextContextMenuItem(int id) {
+        if (id == android.R.id.paste) {
+            removeTextChangedListener(mTextWatcher);
+            ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(
+                    Context.CLIPBOARD_SERVICE);
+            ClipData clip = clipboard.getPrimaryClip();
+            if (clip != null
+                    && clip.getDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
+                for (int i = 0; i < clip.getItemCount(); i++) {
+                    CharSequence paste = clip.getItemAt(i).getText();
+                    if (paste != null) {
+                        int start = getSelectionStart();
+                        int end = getSelectionEnd();
+                        Editable editable = getText();
+                        if (start >= 0 && end >= 0 && start != end) {
+                            editable.append(paste, start, end);
+                        } else {
+                            editable.insert(end, paste);
+                        }
+                        handlePaste();
+                    }
+                }
+            }
+            mHandler.post(mAddTextWatcher);
+            return true;
+        }
+        return super.onTextContextMenuItem(id);
+    }
+
+    // Visible for testing.
+    /* package */void handlePaste() {
+        String text = getText().toString();
+        int originalTokenStart = mTokenizer.findTokenStart(text, getSelectionEnd());
+        String lastAddress = text.substring(originalTokenStart);
+        int tokenStart = originalTokenStart;
+        int prevTokenStart = tokenStart;
+        RecipientChip findChip = null;
+        if (tokenStart != 0) {
+            // There are things before this!
+            while (tokenStart != 0 && findChip == null) {
+                prevTokenStart = tokenStart;
+                tokenStart = mTokenizer.findTokenStart(text, tokenStart);
+                findChip = findChip(tokenStart);
+            }
+            if (tokenStart != originalTokenStart) {
+                if (findChip != null) {
+                    tokenStart = prevTokenStart;
+                }
+                int tokenEnd;
+                RecipientChip createdChip;
+                while (tokenStart < originalTokenStart) {
+                    tokenEnd = movePastTerminators(mTokenizer.findTokenEnd(text, tokenStart));
+                    commitChip(tokenStart, tokenEnd, getText());
+                    createdChip = findChip(tokenStart);
+                    // +1 for the space at the end.
+                    tokenStart = getSpannable().getSpanEnd(createdChip) + 1;
+                }
+            }
+        }
+        // Take a look at the last token. If the token has been completed with a
+        // commit character, create a chip.
+        if (isCompletedToken(lastAddress)) {
+            Editable editable = getText();
+            commitChip(editable.toString().indexOf(lastAddress, originalTokenStart), editable
+                    .length(), editable);
+        }
+    }
+
+    // Visible for testing.
+    /* package */int movePastTerminators(int tokenEnd) {
+        if (tokenEnd >= length()) {
+            return tokenEnd;
+        }
+        char atEnd = getText().toString().charAt(tokenEnd);
+        if (atEnd == COMMIT_CHAR_COMMA || atEnd == COMMIT_CHAR_SEMICOLON) {
+            tokenEnd++;
+        }
+        // This token had not only an end token character, but also a space
+        // separating it from the next token.
+        if (tokenEnd < length() && getText().toString().charAt(tokenEnd) == ' ') {
+            tokenEnd++;
+        }
+        return tokenEnd;
     }
 
     private class RecipientReplacementTask extends AsyncTask<Void, Void, Void> {
