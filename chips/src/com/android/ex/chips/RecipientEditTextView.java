@@ -1432,9 +1432,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // valid contact, but the destination is invalid, then make this a fake
         // recipient that is editable.
         String destination = item.getDestination();
-        if (TextUtils.isEmpty(item.getDisplayName())
-                || TextUtils.equals(item.getDisplayName(), destination)
-                || (mValidator != null && !mValidator.isValid(destination))) {
+        if (RecipientEntry.isCreatedRecipient(item.getContactId())
+                && (TextUtils.isEmpty(item.getDisplayName())
+                        || TextUtils.equals(item.getDisplayName(), destination)
+                        || (mValidator != null && !mValidator.isValid(destination)))) {
             entry = RecipientEntry.constructFakeEntry(destination);
         } else {
             entry = item;
@@ -1967,7 +1968,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         } else {
                             editable.insert(end, paste);
                         }
-                        handlePaste();
+                        handlePasteAndReplace();
                     }
                 }
             }
@@ -1977,14 +1978,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return super.onTextContextMenuItem(id);
     }
 
+    private void handlePasteAndReplace() {
+        ArrayList<RecipientChip> created = handlePaste();
+        if (created != null && created.size() > 0) {
+            // Perform reverse lookups on the pasted contacts.
+            IndividualReplacementTask replace = new IndividualReplacementTask();
+            replace.execute(created);
+        }
+    }
+
     // Visible for testing.
-    /* package */void handlePaste() {
+    /* package */ArrayList<RecipientChip> handlePaste() {
         String text = getText().toString();
         int originalTokenStart = mTokenizer.findTokenStart(text, getSelectionEnd());
         String lastAddress = text.substring(originalTokenStart);
         int tokenStart = originalTokenStart;
         int prevTokenStart = tokenStart;
         RecipientChip findChip = null;
+        ArrayList<RecipientChip> created = new ArrayList<RecipientChip>();
         if (tokenStart != 0) {
             // There are things before this!
             while (tokenStart != 0 && findChip == null) {
@@ -2004,6 +2015,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     createdChip = findChip(tokenStart);
                     // +1 for the space at the end.
                     tokenStart = getSpannable().getSpanEnd(createdChip) + 1;
+                    created.add(createdChip);
                 }
             }
         }
@@ -2011,9 +2023,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // commit character, create a chip.
         if (isCompletedToken(lastAddress)) {
             Editable editable = getText();
-            commitChip(editable.toString().indexOf(lastAddress, originalTokenStart), editable
-                    .length(), editable);
+            tokenStart = editable.toString().indexOf(lastAddress, originalTokenStart);
+            commitChip(tokenStart, editable.length(), editable);
+            created.add(findChip(tokenStart));
         }
+        return created;
     }
 
     // Visible for testing.
@@ -2131,7 +2145,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         && getSpannable().getSpanStart(temp) != -1) {
                     // Replace this.
                     final RecipientEntry entry = createValidatedEntry(entries
-                            .get(tokenizeAddress(temp.getEntry().getDestination())));
+                            .get(tokenizeAddress(temp.getEntry().getDestination()).toLowerCase()));
                     if (entry != null) {
                         mHandler.post(new Runnable() {
                             @Override
