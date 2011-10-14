@@ -63,7 +63,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         StringBuilder bindString = new StringBuilder();
         // Create the "?" string and set up arguments.
         for (int i = 0; i < addressesSize; i++) {
-            Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(inAddresses[i]);
+            Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(inAddresses[i].toLowerCase());
             addresses[i] = (tokens.length > 0 ? tokens[0].getAddress() : inAddresses[i]);
             bindString.append("?");
             if (i < addressesSize - 1) {
