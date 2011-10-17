@@ -409,8 +409,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // on the sides.
         int height = (int) mChipHeight;
         int deleteWidth = height;
+        float[] widths = new float[1];
+        paint.getTextWidths(" ", widths);
         CharSequence ellipsizedText = ellipsizeText(createChipDisplayText(contact), paint,
-                calculateAvailableWidth(true) - deleteWidth);
+                calculateAvailableWidth(true) - deleteWidth - widths[0]);
 
         // Make sure there is a minimum chip width so the user can ALWAYS
         // tap a chip without difficulty.
@@ -449,8 +451,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // on the sides.
         int height = (int) mChipHeight;
         int iconWidth = height;
+        float[] widths = new float[1];
+        paint.getTextWidths(" ", widths);
         CharSequence ellipsizedText = ellipsizeText(createChipDisplayText(contact), paint,
-                calculateAvailableWidth(false) - iconWidth);
+                calculateAvailableWidth(false) - iconWidth - widths[0]);
         // Make sure there is a minimum chip width so the user can ALWAYS
         // tap a chip without difficulty.
         int width = Math.max(iconWidth * 2, (int) Math.floor(paint.measureText(ellipsizedText, 0,
