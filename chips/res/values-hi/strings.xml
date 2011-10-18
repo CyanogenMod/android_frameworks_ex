@@ -16,7 +16,7 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="more_string" msgid="8971577924280885648">"еще <xliff:g id="COUNT">%1$s</xliff:g>..."</string>
-    <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"Ожидание ответов"</string>
-    <string name="copy" msgid="7946975650226308595">"Скопировать адрес эл. почты"</string>
+    <string name="more_string" msgid="8971577924280885648">"<xliff:g id="COUNT">%1$s</xliff:g> अधिक..."</string>
+    <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"अधिक संपर्कों के लिए प्रतीक्षा कर रहा है"</string>
+    <string name="copy" msgid="7946975650226308595">"ईमेल पते की प्रतिलिपि बनाएं"</string>
 </resources>
