@@ -1084,8 +1084,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
             QwertyKeyListener.markAsReplaced(editable, start, end, "");
             CharSequence chipText = createChip(entry, false);
-            if (chipText != null) {
-                editable.replace(start, getSelectionEnd(), chipText);
+            int selEnd = getSelectionEnd();
+            if (chipText != null && start > -1 && selEnd > -1) {
+                editable.replace(start, selEnd, chipText);
             }
         }
         dismissDropDown();
