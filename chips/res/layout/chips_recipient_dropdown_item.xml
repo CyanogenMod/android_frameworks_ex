@@ -21,7 +21,7 @@
     android:minHeight="48dip"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:background="@drawable/list_item_background">
+    android:background="?android:attr/activatedBackgroundIndicator">
     <LinearLayout
         android:layout_width="0dip"
         android:layout_height="wrap_content"

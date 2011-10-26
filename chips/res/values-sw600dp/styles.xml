@@ -14,7 +14,7 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <style name="RecipientEditTextView"  parent="@android:style/Widget.AutoCompleteTextView">
+    <style name="RecipientEditTextView" parent="@android:attr/autoCompleteTextViewStyle">
         <item name="android:paddingLeft">8dip</item>
         <item name="android:paddingRight">4dip</item>
         <item name="android:inputType">textEmailAddress|textMultiLine</item>
