@@ -43,7 +43,8 @@
                   android:layout_height="wrap_content"
                   android:paddingLeft="16dip"
                   android:singleLine="true"
-                  android:ellipsize="end" />
+                  android:ellipsize="end"
+                  android:layout_marginTop="-4dip" />
     </LinearLayout>
     <ImageView
         android:id="@android:id/icon"
