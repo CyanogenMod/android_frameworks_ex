@@ -24,6 +24,8 @@ LOCAL_SRC_FILES := \
      $(call all-logtags-files-under, java) \
      $(call all-renderscript-files-under, java)
 
+LOCAL_SDK_VERSION := 14
+
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
 # Include this library in the build server's output directory
