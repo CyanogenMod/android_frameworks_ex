@@ -41,10 +41,39 @@ public class ChipsTest extends AndroidTestCase {
 
     private Editable mEditable;
 
-    class MockRecipientEditTextView extends RecipientEditTextView {
+    class BaseMockRecipientEditTextView extends RecipientEditTextView {
+
+        public BaseMockRecipientEditTextView(Context context) {
+            super(context, null);
+            mTokenizer = new Rfc822Tokenizer();
+            setTokenizer(mTokenizer);
+        }
+
+        @Override
+        public RecipientChip[] getSortedRecipients() {
+            return mMockRecips;
+        }
+
+        @Override
+        public int getLineHeight() {
+            return 48;
+        }
+
+        @Override
+        Drawable getChipBackground(RecipientEntry contact) {
+            return createChipBackground();
+        }
+
+        @Override
+        public int getViewWidth() {
+            return 100;
+        }
+    }
+
+    class MockRecipientEditTextView extends BaseMockRecipientEditTextView {
 
         public MockRecipientEditTextView(Context context) {
-            super(context, null);
+            super(context);
             mTokenizer = new Rfc822Tokenizer();
             setTokenizer(mTokenizer);
         }
@@ -82,6 +111,11 @@ public class ChipsTest extends AndroidTestCase {
         @Override
         public String toString() {
             return mEditable != null ? mEditable.toString() : "";
+        }
+
+        @Override
+        public int getViewWidth() {
+            return 100;
         }
     }
 
@@ -191,6 +225,53 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(mEditable.toString(), (first + second));
     }
 
+    public void testMoreChipPlainText() {
+        MockRecipientEditTextView view = createViewForTesting();
+        view.setMoreItem(createTestMoreItem());
+        String first = (String) mTokenizer.terminateToken("FIRST");
+        String second = (String) mTokenizer.terminateToken("SECOND");
+        String third = (String) mTokenizer.terminateToken("THIRD");
+        mEditable = new SpannableStringBuilder();
+        mEditable.append(first+second+third);
+        int thirdStart = mEditable.toString().indexOf(third);
+        int thirdEnd = thirdStart + third.trim().length();
+        view.createMoreChipPlainText();
+        ImageSpan moreChip = view.getMoreChip();
+        assertEquals(mEditable.getSpanStart(moreChip), thirdStart);
+        assertEquals(mEditable.getSpanEnd(moreChip), thirdEnd + 1);
+    }
+
+    public void testCountTokens() {
+        MockRecipientEditTextView view = createViewForTesting();
+        view.setMoreItem(createTestMoreItem());
+        String first = (String) mTokenizer.terminateToken("FIRST");
+        String second = (String) mTokenizer.terminateToken("SECOND");
+        String third = (String) mTokenizer.terminateToken("THIRD");
+        String fourth = (String) ("FOURTH,");
+        String fifth = (String) ("FIFTH,");
+        mEditable = new SpannableStringBuilder();
+        mEditable.append(first+second+third+fourth+fifth);
+        assertEquals(view.countTokens(mEditable), 5);
+    }
+
+    public void testTooManyRecips() {
+        BaseMockRecipientEditTextView view = new BaseMockRecipientEditTextView(getContext());
+        view.setMoreItem(createTestMoreItem());
+        for (int i = 0; i < 100; i++) {
+            view.append(mTokenizer.terminateToken(i + ""));
+        }
+        assertEquals(view.countTokens(view.getText()), 100);
+        view.handlePendingChips();
+        view.createMoreChip();
+        ImageSpan moreChip = view.getMoreChip();
+        // We show 2 chips then place a more chip.
+        int secondStart = view.getText().toString().indexOf(
+                (String) mTokenizer.terminateToken(RecipientEditTextView.CHIP_LIMIT + ""));
+        assertEquals(view.getText().getSpanStart(moreChip), secondStart);
+        assertEquals(view.getText().getSpanEnd(moreChip), view.length());
+        assertEquals(view.getSortedRecipients(), null);
+    }
+
     public void testMoreChip() {
         // Add 3 chips: this is the trigger point at which the more chip will be created.
         // Test that adding the chips and then creating and removing the more chip, as if
@@ -221,7 +302,7 @@ public class ChipsTest extends AndroidTestCase {
         // Find the more chip.
         ImageSpan moreChip = view.getMoreChip();
         assertEquals(mEditable.getSpanStart(moreChip), thirdStart);
-        assertEquals(mEditable.getSpanEnd(moreChip), thirdEnd);
+        assertEquals(mEditable.getSpanEnd(moreChip), thirdEnd + 1);
 
         view.removeMoreChip();
         assertEquals(mEditable.toString(), first+second+third);
@@ -241,7 +322,7 @@ public class ChipsTest extends AndroidTestCase {
         // Find the more chip.
         moreChip = view.getMoreChip();
         assertEquals(mEditable.getSpanStart(moreChip), thirdStart);
-        assertEquals(mEditable.getSpanEnd(moreChip), thirdEnd);
+        assertEquals(mEditable.getSpanEnd(moreChip), thirdEnd + 1);
 
         view.removeMoreChip();
         assertEquals(mEditable.toString(), first+second+third);
@@ -311,7 +392,7 @@ public class ChipsTest extends AndroidTestCase {
         // Find the more chip.
         ImageSpan moreChip = view.getMoreChip();
         assertEquals(mEditable.getSpanStart(moreChip), thirdStart);
-        assertEquals(mEditable.getSpanEnd(moreChip), tenthEnd);
+        assertEquals(mEditable.getSpanEnd(moreChip), tenthEnd + 1);
 
         view.removeMoreChip();
         assertEquals(mEditable.toString(), first + second + third + fourth + fifth + sixth
@@ -361,7 +442,7 @@ public class ChipsTest extends AndroidTestCase {
         // Find the more chip.
         ImageSpan moreChip = view.getMoreChip();
         assertEquals(mEditable.getSpanStart(moreChip), thirdStart);
-        assertEquals(mEditable.getSpanEnd(moreChip), thirdEnd);
+        assertEquals(mEditable.getSpanEnd(moreChip), thirdEnd + 1);
 
         view.removeMoreChip();
         assertEquals(mEditable.toString(), first+second+third);
@@ -405,7 +486,7 @@ public class ChipsTest extends AndroidTestCase {
         // Find the more chip.
         ImageSpan moreChip = view.getMoreChip();
         assertEquals(mEditable.getSpanStart(moreChip), thirdStart);
-        assertEquals(mEditable.getSpanEnd(moreChip), thirdNextEnd);
+        assertEquals(mEditable.getSpanEnd(moreChip), thirdNextEnd + 1);
 
         view.removeMoreChip();
         assertEquals(mEditable.toString(), first+second+third+third);
