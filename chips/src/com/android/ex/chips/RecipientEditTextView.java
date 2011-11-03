@@ -105,7 +105,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private static final long DISMISS_DELAY = 300;
 
     // TODO: get correct number/ algorithm from with UX.
-    private static final int CHIP_LIMIT = 2;
+    // Visible for testing.
+    /*package*/ static final int CHIP_LIMIT = 2;
+
+    private static final int MAX_CHIPS_PARSED = 50;
 
     private static int sSelectedTextColor = -1;
 
@@ -143,6 +146,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private Handler mHandler;
 
     private int mPendingChipsCount = 0;
+
+    private boolean mNoChips = false;
 
     private ListPopupWindow mAlternatesPopup;
 
@@ -267,7 +272,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // When selection changes, see if it is inside the chips area.
         // If so, move the cursor back after the chips again.
         RecipientChip last = getLastChip();
-        if (last != null) {
+        if (last != null && start < getSpannable().getSpanEnd(last)) {
             // Grab the last chip and set the cursor to after it.
             setSelection(Math.min(getSpannable().getSpanEnd(last) + 1, getText().length()));
         }
@@ -685,14 +690,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
-    private void handlePendingChips() {
-        if (getWidth() <= 0) {
+    // Visible for testing.
+    /*package*/ void handlePendingChips() {
+        if (getViewWidth() <= 0) {
             // The widget has not been sized yet.
             // This will be called as a result of onSizeChanged
             // at a later point.
             return;
         }
-
         if (mPendingChipsCount <= 0) {
             return;
         }
@@ -700,22 +705,27 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         synchronized (mPendingChips) {
             Editable editable = getText();
             // Tokenize!
-            for (int i = 0; i < mPendingChips.size(); i++) {
-                String current = mPendingChips.get(i);
-                int tokenStart = editable.toString().indexOf(current);
-                int tokenEnd = tokenStart + current.length();
-                if (tokenStart >= 0) {
-                    // When we have a valid token, include it with the token
-                    // to the left.
-                    if (tokenEnd < editable.length() - 2
-                            && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
-                        tokenEnd++;
+            if (mPendingChipsCount <= MAX_CHIPS_PARSED) {
+                for (int i = 0; i < mPendingChips.size(); i++) {
+                    String current = mPendingChips.get(i);
+                    int tokenStart = editable.toString().indexOf(current);
+                    int tokenEnd = tokenStart + current.length();
+                    if (tokenStart >= 0) {
+                        // When we have a valid token, include it with the token
+                        // to the left.
+                        if (tokenEnd < editable.length() - 2
+                                && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
+                            tokenEnd++;
+                        }
+                        createReplacementChip(tokenStart, tokenEnd, editable);
                     }
-                    createReplacementChip(tokenStart, tokenEnd, editable);
+                    mPendingChipsCount--;
                 }
-                mPendingChipsCount--;
+                sanitizeEnd();
+            } else {
+                mNoChips = true;
             }
-            sanitizeEnd();
+
             if (mTemporaryRecipients != null && mTemporaryRecipients.size() > 0
                     && mTemporaryRecipients.size() <= RecipientAlternatesAdapter.MAX_LOOKUPS) {
                 if (hasFocus() || mTemporaryRecipients.size() < CHIP_LIMIT) {
@@ -738,6 +748,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mPendingChipsCount = 0;
             mPendingChips.clear();
         }
+    }
+
+    // Visible for testing.
+    /*package*/ int getViewWidth() {
+        return getWidth();
     }
 
     /**
@@ -795,8 +810,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             int start = mTokenizer.findTokenStart(getText(), end);
             RecipientChip chip = null;
             try {
-                chip = constructChipSpan(entry, start, false);
-                chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (!mNoChips) {
+                    chip = constructChipSpan(entry, start, false);
+                    chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
             }
@@ -1058,10 +1075,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private boolean shouldCreateChip(int start, int end) {
-        return hasFocus() && enoughToFilter() && !alreadyHasChip(start, end);
+        return !mNoChips && hasFocus() && enoughToFilter() && !alreadyHasChip(start, end);
     }
 
     private boolean alreadyHasChip(int start, int end) {
+        if (mNoChips) {
+            return true;
+        }
         RecipientChip[] chips = getSpannable().getSpans(start, end, RecipientChip.class);
         if ((chips == null || chips.length == 0)) {
             return false;
@@ -1385,21 +1405,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (TextUtils.isEmpty(displayText)) {
             return null;
         }
+        SpannableString chipText = null;
         // Always leave a blank space at the end of a chip.
-        int textLength = displayText.length()-1;
-        SpannableString chipText = new SpannableString(displayText);
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(getText(), end);
-        try {
-            RecipientChip chip = constructChipSpan(entry, start, pressed);
-            chipText.setSpan(chip, 0, textLength,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            chip.setOriginalText(chipText.toString());
-        } catch (NullPointerException e) {
-            Log.e(TAG, e.getMessage(), e);
-            return null;
+        int textLength = displayText.length()-1;
+        chipText = new SpannableString(displayText);
+        if (!mNoChips) {
+            try {
+                RecipientChip chip = constructChipSpan(entry, start, pressed);
+                chipText.setSpan(chip, 0, textLength,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                chip.setOriginalText(chipText.toString());
+            } catch (NullPointerException e) {
+                Log.e(TAG, e.getMessage(), e);
+                return null;
+            }
         }
-
         return chipText;
     }
 
@@ -1531,30 +1553,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return moreSpans != null && moreSpans.length > 0 ? moreSpans[0] : null;
     }
 
-    /**
-     * Create the more chip. The more chip is text that replaces any chips that
-     * do not fit in the pre-defined available space when the
-     * RecipientEditTextView loses focus.
-     */
-    // Visible for testing.
-    /* package */ void createMoreChip() {
-        if (!mShouldShrink) {
-            return;
-        }
-
-        ImageSpan[] tempMore = getSpannable().getSpans(0, getText().length(), MoreImageSpan.class);
-        if (tempMore.length > 0) {
-            getSpannable().removeSpan(tempMore[0]);
-        }
-        RecipientChip[] recipients = getSortedRecipients();
-        if (recipients == null || recipients.length <= CHIP_LIMIT) {
-            mMoreChip = null;
-            return;
-        }
-        Spannable spannable = getSpannable();
-        int numRecipients = recipients.length;
-        int overage = numRecipients - CHIP_LIMIT;
-        String moreText = String.format(mMoreItem.getText().toString(), overage);
+    private MoreImageSpan createMoreSpan(int count) {
+        String moreText = String.format(mMoreItem.getText().toString(), count);
         TextPaint morePaint = new TextPaint(getPaint());
         morePaint.setTextSize(mMoreItem.getTextSize());
         morePaint.setColor(mMoreItem.getCurrentTextColor());
@@ -1572,14 +1572,73 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
         Drawable result = new BitmapDrawable(getResources(), drawable);
         result.setBounds(0, 0, width, height);
-        MoreImageSpan moreSpan = new MoreImageSpan(result);
-        // Remove the overage chips.
-        if (recipients == null || recipients.length == 0) {
-            Log.w(TAG,
-                    "We have recipients. Tt should not be possible to have zero RecipientChips.");
+        return new MoreImageSpan(result);
+    }
+
+    // Visible for testing.
+    /*package*/ void createMoreChipPlainText() {
+        // Take the first <= CHIP_LIMIT addresses and get to the end of the second one.
+        Editable text = getText();
+        int start = 0;
+        int end = start;
+        for (int i = 0; i < CHIP_LIMIT; i++) {
+            end = movePastTerminators(mTokenizer.findTokenEnd(text, start));
+            start = end; // move to the next token and get its end.
+        }
+        // Now, count total addresses.
+        start = 0;
+        int tokenCount = countTokens(text);
+        MoreImageSpan moreSpan = createMoreSpan(tokenCount - CHIP_LIMIT);
+        SpannableString chipText = new SpannableString(text.subSequence(end, text.length()));
+        chipText.setSpan(moreSpan, 0, chipText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        text.replace(end, text.length(), chipText);
+        mMoreChip = moreSpan;
+    }
+
+    // Visible for testing.
+    /* package */int countTokens(Editable text) {
+        int tokenCount = 0;
+        int start = 0;
+        while (start < text.length()) {
+            start = movePastTerminators(mTokenizer.findTokenEnd(text, start));
+            tokenCount++;
+            if (start >= text.length()) {
+                break;
+            }
+        }
+        return tokenCount;
+    }
+
+    /**
+     * Create the more chip. The more chip is text that replaces any chips that
+     * do not fit in the pre-defined available space when the
+     * RecipientEditTextView loses focus.
+     */
+    // Visible for testing.
+    /* package */ void createMoreChip() {
+        if (mNoChips) {
+            createMoreChipPlainText();
+            return;
+        }
+
+        if (!mShouldShrink) {
+            return;
+        }
+
+        ImageSpan[] tempMore = getSpannable().getSpans(0, getText().length(), MoreImageSpan.class);
+        if (tempMore.length > 0) {
+            getSpannable().removeSpan(tempMore[0]);
+        }
+        RecipientChip[] recipients = getSortedRecipients();
+
+        if (recipients == null || recipients.length <= CHIP_LIMIT) {
             mMoreChip = null;
             return;
         }
+        Spannable spannable = getSpannable();
+        int numRecipients = recipients.length;
+        int overage = numRecipients - CHIP_LIMIT;
+        MoreImageSpan moreSpan = createMoreSpan(overage);
         mRemovedSpans = new ArrayList<RecipientChip>();
         int totalReplaceStart = 0;
         int totalReplaceEnd = 0;
@@ -1598,6 +1657,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 recipients[i].setOriginalText(text.toString().substring(spanStart, spanEnd));
             }
             spannable.removeSpan(recipients[i]);
+        }
+        if (totalReplaceEnd < text.length()) {
+            totalReplaceEnd = text.length();
         }
         int end = Math.max(totalReplaceStart, totalReplaceEnd);
         int start = Math.min(totalReplaceStart, totalReplaceEnd);
@@ -1678,6 +1740,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             getSpannable().removeSpan(currentChip);
             RecipientChip newChip;
             try {
+                if (mNoChips) {
+                    return null;
+                }
                 newChip = constructChipSpan(currentChip.getEntry(), start, true);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
@@ -1752,8 +1817,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     /**
      * Remove selection from this chip. Unselecting a RecipientChip will render
-     * the chip without a delete icon and with an unfocused background. This
-     * is called when the RecipientChip no longer has focus.
+     * the chip without a delete icon and with an unfocused background. This is
+     * called when the RecipientChip no longer has focus.
      */
     private void unselectChip(RecipientChip chip) {
         int start = getChipStart(chip);
@@ -1761,8 +1826,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Editable editable = getText();
         mSelectedChip = null;
         if (start == -1 || end == -1) {
-            Log.w(TAG,
-                    "The chip doesn't exist or may be a chip a user was editing");
+            Log.w(TAG, "The chip doesn't exist or may be a chip a user was editing");
             setSelection(editable.length());
             commitDefault();
         } else {
@@ -1770,8 +1834,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             QwertyKeyListener.markAsReplaced(editable, start, end, "");
             editable.removeSpan(chip);
             try {
-                editable.setSpan(constructChipSpan(chip.getEntry(), start, false), start, end,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (!mNoChips) {
+                    editable.setSpan(constructChipSpan(chip.getEntry(), start, false), start, end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
             }
@@ -2066,6 +2132,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private class RecipientReplacementTask extends AsyncTask<Void, Void, Void> {
         private RecipientChip createFreeChip(RecipientEntry entry) {
             try {
+                if (mNoChips) {
+                    return null;
+                }
                 return constructChipSpan(entry, -1, false);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
