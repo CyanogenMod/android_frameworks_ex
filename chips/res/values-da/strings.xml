@@ -18,5 +18,5 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="more_string" msgid="8971577924280885648">"<xliff:g id="COUNT">%1$s</xliff:g> flere..."</string>
     <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"Venter på flere kontaktpersoner"</string>
-    <string name="copy" msgid="7946975650226308595">"Kopier e-mail-adresse"</string>
+    <string name="copy" msgid="7946975650226308595">"Kopier e-mailadresse"</string>
 </resources>
