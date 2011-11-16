@@ -374,7 +374,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     // In the middle of chip; treat this as an edit
                     // and commit the whole token.
                     int selEnd = getSelectionEnd();
-                    if (whatEnd != selEnd && whatEnd != editable.toString().trim().length()) {
+                    if (whatEnd != selEnd) {
                         handleEdit(start, whatEnd);
                     } else {
                         commitChip(start, end, editable);
