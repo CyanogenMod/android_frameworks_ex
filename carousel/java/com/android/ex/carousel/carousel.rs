@@ -155,6 +155,13 @@ static const float3 SELECTED_SCALE_FACTOR = { 0.1f, 0.1f, 0.1f }; // increase by
 static const int VELOCITY_HISTORY_MAX = 10; // # recent velocity samples used to calculate average
 static const int VISIBLE_SLOT_PADDING = 2;  // # slots to draw on either side of visible slots
 
+// Constants affecting tilt overscroll.  Some of these should be parameters.
+static const int TILT_SLOT_NUMBER = 5;
+static const float TILT_MIN_ANGLE = M_PI / 315.0f;
+static const float TILT_MAX_BIAS = M_PI / 8.0f;
+static const float TILT_MAX_ANGLE = M_PI / 8.0f;
+static const float MAX_DELTA_BIAS = 0.008f;
+
 // Debug flags
 const bool debugCamera = false; // dumps ray/camera coordinate stuff
 const bool debugSelection = false; // logs selection events
@@ -217,6 +224,7 @@ rs_sampler linearClamp;
 
 // Local variables
 static float bias; // rotation bias, in radians. Used for animation and dragging.
+static float overscrollBias; // Track overscroll bias separately for tilt effect.
 static bool updateCamera;    // force a recompute of projection and lookat matrices
 static const float FLT_MAX = 1.0e37;
 static int animatedSelection = -1;
@@ -231,6 +239,7 @@ static bool isAutoScrolling = false; // whether we're in the autoscroll animatio
 static bool isDragging = false; // true while the user is dragging the carousel
 static float selectionRadius = 50.0f; // movement greater than this will result in no selection
 static bool enableSelection = false; // enabled until the user drags outside of selectionRadius
+static float tiltAngle = 0.0f;
 
 // Default plane of the carousel. Used for angular motion estimation in view.
 static Plane carouselPlane = {
@@ -280,6 +289,7 @@ static float deltaTimeInSeconds(int64_t current);
 static bool rayPlaneIntersect(Ray* ray, Plane* plane, float* tout);
 static bool rayCylinderIntersect(Ray* ray, Cylinder* cylinder, float* tout);
 static void stopAutoscroll();
+static bool tiltOverscroll();
 
 void init() {
     // initializers currently have a problem when the variables are exported, so initialize
@@ -290,6 +300,8 @@ void init() {
     visibleSlotCount = 1;
     visibleDetailCount = 3;
     bias = 0.0f;
+    overscrollBias = 0.0f;
+    tiltAngle = 0.0f;
     radius = carouselCylinder.radius = 1.0f;
     cardRotation = 0.0f;
     cardsFaceTangent = false;
@@ -613,6 +625,21 @@ static float getSwayAngleForVelocity(float v, bool enableSway)
     return sway;
 }
 
+static float getCardTiltAngle(int i) {
+    i /= rowCount;
+    int totalSlots = (cardCount + rowCount - 1) / rowCount;
+    float tiltSlotNumber = TILT_SLOT_NUMBER;
+    float deltaTilt = tiltAngle / tiltSlotNumber;
+    float cardTiltAngle = 0;
+    if (tiltAngle > 0 && i < tiltSlotNumber) {
+        // Overscroll for the front cards.
+        cardTiltAngle = deltaTilt * (tiltSlotNumber - i);
+    } else if (tiltAngle < 0 && i > (totalSlots - tiltSlotNumber)) {
+        cardTiltAngle = deltaTilt * (i - totalSlots + tiltSlotNumber + 1);
+    }
+    return cardTiltAngle;
+}
+
 // Returns the vertical offset for a card in its slot,
 // depending on the number of rows configured.
 static float getVerticalOffsetForCard(int i) {
@@ -646,7 +673,8 @@ static bool getMatrixForCard(rs_matrix4x4* matrix, int i, bool enableSway, bool 
     float swayAngle = getSwayAngleForVelocity(velocity, enableSway);
     rsMatrixRotate(matrix, degrees(theta), 0, 1, 0);
     rsMatrixTranslate(matrix, radius, getVerticalOffsetForCard(i), 0);
-    float rotation = cardRotation + swayAngle;
+    float tiltAngle = getCardTiltAngle(i);
+    float rotation = cardRotation + swayAngle + tiltAngle;
     if (!cardsFaceTangent) {
       rotation -= theta;
     }
@@ -1121,6 +1149,9 @@ void doStart(float x, float y, long eventTime)
     touchBias = bias;
     isDragging = true;
     isOverScrolling = false;
+    tiltAngle = 0;
+    overscrollBias = bias;
+
     animatedSelection = doSelection(x, y); // used to provide visual feedback on touch
     stopAutoscroll();
 }
@@ -1200,11 +1231,12 @@ void doMotion(float x, float y, long eventTime)
     const float highBias = maximumBias();
     const float lowBias = minimumBias();
     float deltaOmega = dragFunction(x, y);
-    if (!enableSelection) {
-        bias += deltaOmega;
-        bias = clamp(bias, lowBias - wedgeAngle(overscrollSlots),
-                highBias + wedgeAngle(overscrollSlots));
-    }
+    overscrollBias += deltaOmega;
+    overscrollBias = clamp(overscrollBias, lowBias - TILT_MAX_BIAS,
+            highBias + TILT_MAX_BIAS);
+    bias = clamp(overscrollBias, lowBias, highBias);
+    isOverScrolling = tiltOverscroll();
+
     const float2 delta = (float2) { x, y } - touchPosition;
     float distance = sqrt(dot(delta, delta));
     bool inside = (distance < selectionRadius);
@@ -1218,6 +1250,21 @@ void doMotion(float x, float y, long eventTime)
     }
     velocity = computeAverageVelocityFromHistory();
     lastTime = eventTime;
+}
+
+bool tiltOverscroll() {
+    if (overscrollBias == bias) {
+        // No overscroll required.
+        return false;
+    }
+
+    // How much we deviate from the maximum bias.
+    float deltaBias = overscrollBias - bias;
+    // We clamped, that means we need overscroll.
+    tiltAngle = (deltaBias / TILT_MAX_BIAS)
+            * TILT_MAX_ANGLE * fillDirection;
+
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1576,43 +1623,32 @@ static bool updateNextPosition(int64_t currentTime)
         return true;
     }
 
-    const float highBias = maximumBias();
-    const float lowBias = minimumBias();
+    const float firstBias = maximumBias();
+    const float lastBias = minimumBias();
     bool stillAnimating = false;
     if (isOverScrolling) {
-        if (bias > highBias) {
-            bias -= 4.0f * dt * easeOut((bias - highBias) * 2.0f);
-            if (fabs(bias - highBias) < biasMin) {
-                bias = highBias;
-            } else {
-                stillAnimating = true;
-            }
-        } else if (bias < lowBias) {
-            bias += 4.0f * dt * easeOut((lowBias - bias) * 2.0f);
-            if (fabs(bias - lowBias) < biasMin) {
-                bias = lowBias;
-            } else {
-                stillAnimating = true;
-            }
+        if (tiltAngle > TILT_MIN_ANGLE) {
+            tiltAngle -= dt * TILT_MAX_ANGLE;
+            stillAnimating = true;
+        } else if (tiltAngle < -TILT_MIN_ANGLE) {
+            tiltAngle += dt * TILT_MAX_ANGLE;
+            stillAnimating = true;
         } else {
-            isOverScrolling = false;
+           isOverScrolling = false;
+           tiltAngle = false;
+           velocity = 0.0f;
         }
     } else if (isAutoScrolling) {
         stillAnimating = doAutoscroll(currentTime);
     } else {
         stillAnimating = doPhysics(dt);
-        isOverScrolling = bias > highBias || bias < lowBias;
+        isOverScrolling = tiltAngle != 0;
         if (isOverScrolling) {
             velocity = 0.0f; // prevent bouncing due to v > 0 after overscroll animation.
+            stillAnimating = true;
         }
     }
-    float newbias = clamp(bias, lowBias - wedgeAngle(overscrollSlots),
-            highBias + wedgeAngle(overscrollSlots));
-    if (newbias != bias) { // we clamped
-        velocity = 0.0f;
-        isOverScrolling = true;
-    }
-    bias = newbias;
+    bias = clamp(bias, lastBias, firstBias);
     return stillAnimating;
 }
 
