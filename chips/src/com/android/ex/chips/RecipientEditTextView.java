@@ -1068,7 +1068,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     startLooking++;
                 }
             }
-            if (startLooking >= 0 && end >= 0 && startLooking != end) {
+            if (startLooking >= 0 && end >= 0 && startLooking < end) {
                 getText().delete(startLooking, end);
             }
         }
