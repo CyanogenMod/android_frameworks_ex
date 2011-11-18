@@ -28,7 +28,6 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Message;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Email;
@@ -404,6 +403,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             // overwritten so shouldn't be touched here anymore.
             if (TextUtils.equals(constraint, mCurrentConstraint)) {
                 if (results.count > 0) {
+                    @SuppressWarnings("unchecked")
                     final ArrayList<TemporaryEntry> tempEntries =
                             (ArrayList<TemporaryEntry>) results.values;
 
@@ -517,6 +517,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     /**
      * Set the account when known. Causes the search to prioritize contacts from that account.
      */
+    @Override
     public void setAccount(Account account) {
         mAccount = account;
     }
