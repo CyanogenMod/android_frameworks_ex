@@ -2159,8 +2159,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 originalRecipients.addAll(mRemovedSpans);
             }
             String[] addresses = new String[originalRecipients.size()];
+            RecipientChip chip;
             for (int i = 0; i < originalRecipients.size(); i++) {
-                addresses[i] = createAddressText(originalRecipients.get(i).getEntry());
+                chip = originalRecipients.get(i);
+                if (chip != null) {
+                    addresses[i] = createAddressText(chip.getEntry());
+                }
             }
             HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
                     .getMatchingRecipients(getContext(), addresses);
@@ -2220,8 +2224,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             final ArrayList<RecipientChip> originalRecipients =
                 (ArrayList<RecipientChip>) params[0];
             String[] addresses = new String[originalRecipients.size()];
+            RecipientChip chip;
             for (int i = 0; i < originalRecipients.size(); i++) {
-                addresses[i] = createAddressText(originalRecipients.get(i).getEntry());
+                chip = originalRecipients.get(i);
+                if (chip != null) {
+                    addresses[i] = createAddressText(chip.getEntry());
+                }
             }
             HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
                     .getMatchingRecipients(getContext(), addresses);
