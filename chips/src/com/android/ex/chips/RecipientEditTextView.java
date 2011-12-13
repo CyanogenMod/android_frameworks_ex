@@ -341,6 +341,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void shrink() {
+        if (mTokenizer == null) {
+            return;
+        }
         if (mSelectedChip != null
                 && mSelectedChip.getEntry().getContactId() != RecipientEntry.INVALID_CONTACT) {
             clearSelectedChip();
