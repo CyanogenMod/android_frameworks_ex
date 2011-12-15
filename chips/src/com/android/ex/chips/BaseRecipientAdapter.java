@@ -901,18 +901,24 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * (for photo). Ids for those should be available via {@link #getDisplayNameId()},
      * {@link #getDestinationId()}, and {@link #getPhotoId()}.
      */
-    protected abstract int getItemLayout();
+    protected int getItemLayout() {
+        return R.layout.chips_recipient_dropdown_item;
+    }
 
     /**
      * Returns a layout id for a view showing "waiting for more contacts".
      */
-    protected abstract int getWaitingForDirectorySearchLayout();
+    protected int getWaitingForDirectorySearchLayout() {
+        return R.layout.chips_recipient_dropdown_item;
+    }
 
     /**
      * Returns a resource ID representing an image which should be shown when ther's no relevant
      * photo is available.
      */
-    protected abstract int getDefaultPhotoResource();
+    protected int getDefaultPhotoResource() {
+        return R.drawable.ic_contact_picture;
+    }
 
     /**
      * Returns an id for TextView in an item View for showing a display name. By default

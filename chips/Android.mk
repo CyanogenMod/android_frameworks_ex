@@ -20,4 +20,5 @@ LOCAL_SDK_VERSION := 14
 LOCAL_SRC_FILES := \
      $(call all-java-files-under, src) \
      $(call all-logtags-files-under, src)
+LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 include $(BUILD_STATIC_JAVA_LIBRARY)

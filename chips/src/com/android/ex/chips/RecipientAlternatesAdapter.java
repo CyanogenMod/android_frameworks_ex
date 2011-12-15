@@ -37,8 +37,6 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     static final int MAX_LOOKUPS = 50;
     private final LayoutInflater mLayoutInflater;
 
-    private final int mLayoutId;
-
     private final long mCurrentId;
 
     private int mCheckedItemPosition = -1;
@@ -114,7 +112,6 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                     String.valueOf(contactId)
                 }, null), 0);
         mLayoutInflater = LayoutInflater.from(context);
-        mLayoutId = viewId;
         mCurrentId = currentId;
         mCheckedItemChangedListener = listener;
     }
@@ -192,7 +189,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     }
 
     private View newView() {
-        return mLayoutInflater.inflate(mLayoutId, null);
+        return mLayoutInflater.inflate(R.layout.chips_recipient_dropdown_item, null);
     }
 
     /*package*/ static interface OnCheckedItemChangedListener {
