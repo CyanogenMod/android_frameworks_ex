@@ -596,22 +596,49 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
 
     private void setChipDimensions(Context context, AttributeSet attrs) {
-        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.RecipientEditTextView, 0, 0);
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.RecipientEditTextView, 0,
+                0);
         Resources r = getContext().getResources();
         mChipBackground = a.getDrawable(R.styleable.RecipientEditTextView_chipBackground);
         if (mChipBackground == null) {
             mChipBackground = r.getDrawable(R.drawable.chip_background);
         }
-        mChipBackgroundPressed = r.getDrawable(R.drawable.chip_background_selected);
-        mChipDelete = r.getDrawable(R.drawable.chip_delete);
-        mChipPadding = (int) r.getDimension(R.dimen.chip_padding);
-        mAlternatesLayout = R.layout.chips_alternate_item;
-        mDefaultContactPhoto =  BitmapFactory.decodeResource(r, R.drawable.ic_contact_picture);
+        mChipBackgroundPressed = a
+                .getDrawable(R.styleable.RecipientEditTextView_chipBackgroundPressed);
+        if (mChipBackgroundPressed == null) {
+            mChipBackgroundPressed = r.getDrawable(R.drawable.chip_background_selected);
+        }
+        mChipDelete = a.getDrawable(R.styleable.RecipientEditTextView_chipDelete);
+        if (mChipDelete == null) {
+            mChipDelete = r.getDrawable(R.drawable.chip_delete);
+        }
+        mChipPadding = a.getDimensionPixelSize(R.styleable.RecipientEditTextView_chipPadding, -1);
+        if (mChipPadding == -1) {
+            mChipPadding = (int) r.getDimension(R.dimen.chip_padding);
+        }
+        mAlternatesLayout = a.getResourceId(R.styleable.RecipientEditTextView_chipAlternatesLayout,
+                -1);
+        if (mAlternatesLayout == -1) {
+            mAlternatesLayout = R.layout.chips_alternate_item;
+        }
+
+        mDefaultContactPhoto = BitmapFactory.decodeResource(r, R.drawable.ic_contact_picture);
+
         mMoreItem = (TextView) LayoutInflater.from(getContext()).inflate(R.layout.more_item, null);
-        mChipHeight = r.getDimension(R.dimen.chip_height);
-        mChipFontSize = r.getDimension(R.dimen.chip_text_size);
-        mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
-        mCopyViewRes = R.layout.copy_chip_dialog_layout;
+
+        mChipHeight = a.getDimensionPixelSize(R.styleable.RecipientEditTextView_chipHeight, -1);
+        if (mChipHeight == -1) {
+            mChipHeight = r.getDimension(R.dimen.chip_height);
+        }
+        mChipFontSize = a.getDimensionPixelSize(R.styleable.RecipientEditTextView_chipFontSize, -1);
+        if (mChipFontSize == -1) {
+            mChipFontSize = r.getDimension(R.dimen.chip_text_size);
+        }
+        mInvalidChipBackground = a
+                .getDrawable(R.styleable.RecipientEditTextView_invalidChipBackground);
+        if (mInvalidChipBackground == null) {
+            mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
+        }
     }
 
     // Visible for testing.
