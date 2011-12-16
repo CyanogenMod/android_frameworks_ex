@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnDismissListener;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -74,7 +75,6 @@ import android.widget.MultiAutoCompleteTextView;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -220,7 +220,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setChipDimensions();
+        setChipDimensions(context, attrs);
         if (sSelectedTextColor == -1) {
             sSelectedTextColor = context.getResources().getColor(android.R.color.white);
         }
@@ -595,9 +595,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
 
-    private void setChipDimensions() {
+    private void setChipDimensions(Context context, AttributeSet attrs) {
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.RecipientEditTextView, 0, 0);
         Resources r = getContext().getResources();
-        mChipBackground = r.getDrawable(R.drawable.chip_background);
+        mChipBackground = a.getDrawable(R.styleable.RecipientEditTextView_chipBackground);
+        if (mChipBackground == null) {
+            mChipBackground = r.getDrawable(R.drawable.chip_background);
+        }
         mChipBackgroundPressed = r.getDrawable(R.drawable.chip_background_selected);
         mChipDelete = r.getDrawable(R.drawable.chip_delete);
         mChipPadding = (int) r.getDimension(R.dimen.chip_padding);
@@ -608,39 +612,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mChipFontSize = r.getDimension(R.dimen.chip_text_size);
         mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         mCopyViewRes = R.layout.copy_chip_dialog_layout;
-    }
-
-    /**
-     * Set all chip dimensions and resources. This has to be done from the
-     * application as this is a static library.
-     * @param chipBackground
-     * @param chipBackgroundPressed
-     * @param invalidChip
-     * @param chipDelete
-     * @param defaultContact
-     * @param moreResource
-     * @param alternatesLayout
-     * @param chipHeight
-     * @param padding Padding around the text in a chip
-     * @param chipFontSize
-     * @param copyViewRes
-     * @deprecated
-     */
-    public void setChipDimensions(Drawable chipBackground, Drawable chipBackgroundPressed,
-            Drawable invalidChip, Drawable chipDelete, Bitmap defaultContact, int moreResource,
-            int alternatesLayout, float chipHeight, float padding,
-            float chipFontSize, int copyViewRes) {
-        mChipBackground = chipBackground;
-        mChipBackgroundPressed = chipBackgroundPressed;
-        mChipDelete = chipDelete;
-        mChipPadding = (int) padding;
-        mAlternatesLayout = alternatesLayout;
-        mDefaultContactPhoto = defaultContact;
-        mMoreItem = (TextView) LayoutInflater.from(getContext()).inflate(moreResource, null);
-        mChipHeight = chipHeight;
-        mChipFontSize = chipFontSize;
-        mInvalidChipBackground = invalidChip;
-        mCopyViewRes = copyViewRes;
     }
 
     // Visible for testing.

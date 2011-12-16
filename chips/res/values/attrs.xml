@@ -13,15 +13,8 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
 <resources>
-    <add-resource type="dimen" name="chip_padding" />
-    <add-resource type="dimen" name="chip_height" />
-    <add-resource type="dimen" name="chip_text_size" />
-    <add-resource type="color" name="default_chip_background" />
-    <add-resource type="color" name="chip_selected" />
-    <add-resource type="string" name="more_string" />
-    <add-resource type="string" name="chips_waiting_for_directory_result" />
-    <add-resource type="string" name="copy" />
-    <add-resource type="style" name="RecipientEditTextView" />
+    <declare-styleable name="RecipientEditTextView">
+        <attr name="chipBackground" format="reference" />
+    </declare-styleable>
 </resources>
