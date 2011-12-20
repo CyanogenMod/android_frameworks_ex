@@ -53,10 +53,10 @@ public class DataUsageStatUpdater {
      * it is supported by the device.
      */
     public static final class DataUsageFeedback {
-        private static final Uri FEEDBACK_URI =
+        static final Uri FEEDBACK_URI =
             Uri.withAppendedPath(Data.CONTENT_URI, "usagefeedback");
 
-        private static final String USAGE_TYPE = "type";
+        static final String USAGE_TYPE = "type";
         public static final String USAGE_TYPE_CALL = "call";
         public static final String USAGE_TYPE_LONG_TEXT = "long_text";
         public static final String USAGE_TYPE_SHORT_TEXT = "short_text";
