@@ -832,7 +832,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             int textLength = destText.length() - 1;
             SpannableString chipText = new SpannableString(destText);
             int end = getSelectionEnd();
-            int start = mTokenizer.findTokenStart(getText(), end);
+            int start = mTokenizer != null ? mTokenizer.findTokenStart(getText(), end) : 0;
             RecipientChip chip = null;
             try {
                 if (!mNoChips) {
@@ -1383,7 +1383,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     // Visible for testing.
     // Use this method to generate text to add to the list of addresses.
-    /*package*/ String createAddressText(RecipientEntry entry) {
+    /* package */String createAddressText(RecipientEntry entry) {
         String display = entry.getDisplayName();
         String address = entry.getDestination();
         if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
@@ -1400,7 +1400,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Rfc822Token token = new Rfc822Token(display, address, null);
         String trimmedDisplayText = token.toString().trim();
         int index = trimmedDisplayText.indexOf(",");
-        return index < trimmedDisplayText.length() - 1 ? (String) mTokenizer
+        return mTokenizer != null && !TextUtils.isEmpty(trimmedDisplayText)
+                && index < trimmedDisplayText.length() - 1 ? (String) mTokenizer
                 .terminateToken(trimmedDisplayText) : trimmedDisplayText;
     }
 
