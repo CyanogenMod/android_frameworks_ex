@@ -39,6 +39,13 @@ public class ProjectionMap extends HashMap<String, String> {
             return this;
         }
 
+        public Builder addAll(String[] columns) {
+            for (String column : columns) {
+                add(column);
+            }
+            return this;
+        }
+
         public Builder addAll(ProjectionMap map) {
             for (Map.Entry<String, String> entry : map.entrySet()) {
                 mMap.putColumn(entry.getKey(), entry.getValue());
