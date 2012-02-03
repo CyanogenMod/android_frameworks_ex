@@ -166,8 +166,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private Dialog mCopyDialog;
 
-    private int mCopyViewRes;
-
     private String mCopyAddress;
 
     /**
@@ -2391,7 +2389,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private void showCopyDialog(final String address) {
         mCopyAddress = address;
         mCopyDialog.setTitle(address);
-        mCopyDialog.setContentView(mCopyViewRes);
+        mCopyDialog.setContentView(R.layout.copy_chip_dialog_layout);
         mCopyDialog.setCancelable(true);
         mCopyDialog.setCanceledOnTouchOutside(true);
         mCopyDialog.findViewById(android.R.id.button1).setOnClickListener(this);
