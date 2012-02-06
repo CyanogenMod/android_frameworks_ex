@@ -1983,6 +1983,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private class RecipientTextWatcher implements TextWatcher {
+
         @Override
         public void afterTextChanged(Editable s) {
             // If the text has been set to null or empty, make sure we remove
@@ -2042,7 +2043,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
         @Override
         public void onTextChanged(CharSequence s, int start, int before, int count) {
-            // Do nothing.
+            // This is a delete; check to see if the insertion point is on a space
+            // following a chip.
+            if (before > count) {
+                // If the item deleted is a space, and the thing before the
+                // space is a chip, delete the entire span.
+                int selStart = getSelectionStart();
+                RecipientChip[] repl = getSpannable().getSpans(selStart, selStart,
+                        RecipientChip.class);
+                if (repl.length > 0) {
+                    // There is a chip there! Just remove it.
+                    Editable editable = getText();
+                    // Add the separator token.
+                    int tokenStart = mTokenizer.findTokenStart(editable, selStart);
+                    int tokenEnd = mTokenizer.findTokenEnd(editable, tokenStart);
+                    editable.delete(tokenStart, tokenEnd + 1);
+                    getSpannable().removeSpan(repl[0]);
+                }
+            }
         }
 
         @Override
