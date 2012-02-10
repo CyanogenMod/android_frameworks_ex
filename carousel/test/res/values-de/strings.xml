@@ -23,6 +23,6 @@
     <string name="carousel_test_activity_label" msgid="6014624482213318747">"CarouselTest"</string>
     <string name="carousel_test_activity_description" msgid="1632693812604375483">"Eine App, um die Verwendung des Karussells zu demonstrieren"</string>
     <string name="task_switcher_activity_label" msgid="714620143340933546">"Aufgabenwechsel"</string>
-    <string name="recent_tasks_title" msgid="1030287226205477117">"Zuletzt verwendete Apps"</string>
+    <string name="recent_tasks_title" msgid="1030287226205477117">"Kürzlich geöffnete Apps"</string>
     <string name="no_recent_tasks" msgid="6884096266670555780">"Keine neuen Aufgaben"</string>
 </resources>
