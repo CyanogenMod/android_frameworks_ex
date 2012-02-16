@@ -2057,7 +2057,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     // Add the separator token.
                     int tokenStart = mTokenizer.findTokenStart(editable, selStart);
                     int tokenEnd = mTokenizer.findTokenEnd(editable, tokenStart);
-                    editable.delete(tokenStart, tokenEnd + 1);
+                    tokenEnd = tokenEnd + 1;
+                    if (tokenEnd > editable.length()) {
+                        tokenEnd = editable.length();
+                    }
+                    editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
                 }
             }
