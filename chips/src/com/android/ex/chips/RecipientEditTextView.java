@@ -331,7 +331,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             shrink();
         } else {
             expand();
-            scrollLineIntoView(getLineCount());
         }
     }
 
