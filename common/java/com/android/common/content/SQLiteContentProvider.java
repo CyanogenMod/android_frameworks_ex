@@ -49,6 +49,13 @@ public abstract class SQLiteContentProvider extends ContentProvider
      */
     private static final int MAX_OPERATIONS_PER_YIELD_POINT = 500;
 
+    /**
+     * @return Number of operations that can be applied at once without a yield point.
+     */
+    public int getMaxOperationsPerYield() {
+        return MAX_OPERATIONS_PER_YIELD_POINT;
+    }
+
     @Override
     public boolean onCreate() {
         Context context = getContext();
@@ -204,7 +211,7 @@ public abstract class SQLiteContentProvider extends ContentProvider
             final int numOperations = operations.size();
             final ContentProviderResult[] results = new ContentProviderResult[numOperations];
             for (int i = 0; i < numOperations; i++) {
-                if (++opCount >= MAX_OPERATIONS_PER_YIELD_POINT) {
+                if (++opCount > getMaxOperationsPerYield()) {
                     throw new OperationApplicationException(
                             "Too many content provider operations between yield points. "
                                     + "The maximum number of operations per yield point is "
@@ -232,14 +239,17 @@ public abstract class SQLiteContentProvider extends ContentProvider
         }
     }
 
+    @Override
     public void onBegin() {
         onBeginTransaction();
     }
 
+    @Override
     public void onCommit() {
         beforeTransactionCommit();
     }
 
+    @Override
     public void onRollback() {
         // not used
     }
