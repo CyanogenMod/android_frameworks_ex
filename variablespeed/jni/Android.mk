@@ -35,7 +35,7 @@ LOCAL_SRC_FILES := \
     decode_buffer.cc \
 
 LOCAL_C_INCLUDES := \
-    system/media/wilhelm/include \
+    $(call include-path-for, wilhelm) \
     external/stlport/stlport \
     bionic \
 
