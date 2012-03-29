@@ -331,7 +331,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             shrink();
         } else {
             expand();
-            scrollLineIntoView(getLineCount());
         }
     }
 
@@ -760,6 +759,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     // Visible for testing.
     /*package*/ void sanitizeEnd() {
+        // Don't sanitize while we are waiting for pending chips to complete.
+        if (mPendingChipsCount > 0) {
+            return;
+        }
         // Find the last chip; eliminate any commit characters after it.
         RecipientChip[] chips = getSortedRecipients();
         if (chips != null && chips.length > 0) {
@@ -1047,6 +1050,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     // Visible for testing.
     /* package */ void sanitizeBetween() {
+        // Don't sanitize while we are waiting for content to chipify.
+        if (mPendingChipsCount > 0) {
+            return;
+        }
         // Find the last chip.
         RecipientChip[] recips = getSortedRecipients();
         if (recips != null && recips.length > 0) {
