@@ -68,6 +68,7 @@ import android.view.View.OnClickListener;
 import android.view.ViewParent;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
 import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
 import android.widget.ListView;
@@ -1310,7 +1311,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ListAdapter createAlternatesAdapter(RecipientChip chip) {
         return new RecipientAlternatesAdapter(getContext(), chip.getContactId(), chip.getDataId(),
-                mAlternatesLayout, this);
+                mAlternatesLayout, BaseRecipientAdapter.QUERY_TYPE_PHONE, this);
     }
 
     private ListAdapter createSingleAddressAdapter(RecipientChip currentChip) {
@@ -2414,7 +2415,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mCopyDialog.setContentView(R.layout.copy_chip_dialog_layout);
         mCopyDialog.setCancelable(true);
         mCopyDialog.setCanceledOnTouchOutside(true);
-        mCopyDialog.findViewById(android.R.id.button1).setOnClickListener(this);
+        Button button = (Button)mCopyDialog.findViewById(android.R.id.button1);
+        button.setOnClickListener(this);
+        int btnTitleId;
+        if (((BaseRecipientAdapter)getAdapter()).getQueryType() ==
+                BaseRecipientAdapter.QUERY_TYPE_PHONE) {
+            btnTitleId = R.string.copy_number;
+        } else {
+            btnTitleId = R.string.copy_email;
+        }
+        String buttonTitle = getContext().getResources().getString(btnTitleId);
+        button.setText(buttonTitle);
         mCopyDialog.setOnDismissListener(this);
         mCopyDialog.show();
     }

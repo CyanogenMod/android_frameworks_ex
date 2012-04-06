@@ -16,11 +16,8 @@
 
 package com.android.ex.chips;
 
-import com.android.ex.chips.BaseRecipientAdapter.EmailQuery;
-
 import android.content.Context;
 import android.database.Cursor;
-import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Log;
@@ -31,8 +28,14 @@ import android.widget.CursorAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.android.ex.chips.Queries.Query;
+
 import java.util.HashMap;
 
+/**
+ * RecipientAlternatesAdapter backs the RecipientEditTextView for managing contacts
+ * queried by email or by phone number.
+ */
 public class RecipientAlternatesAdapter extends CursorAdapter {
     static final int MAX_LOOKUPS = 50;
     private final LayoutInflater mLayoutInflater;
@@ -45,6 +48,15 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
     private static final String TAG = "RecipAlternates";
 
+    public static final int QUERY_TYPE_EMAIL = 0;
+    public static final int QUERY_TYPE_PHONE = 1;
+    private Query mQuery;
+
+    public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
+            String[] inAddresses) {
+        return getMatchingRecipients(context, inAddresses, QUERY_TYPE_EMAIL);
+    }
+
     /**
      * Get a HashMap of address to RecipientEntry that contains all contact
      * information for a contact with the provided address, if one exists. This
@@ -55,7 +67,13 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      * @return HashMap<String,RecipientEntry>
      */
     public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
-            String[] inAddresses) {
+            String[] inAddresses, int addressType) {
+        Queries.Query query;
+        if (addressType == QUERY_TYPE_EMAIL) {
+            query = Queries.EMAIL;
+        } else {
+            query = Queries.PHONE;
+        }
         int addressesSize = Math.min(MAX_LOOKUPS, inAddresses.length);
         String[] addresses = new String[addressesSize];
         StringBuilder bindString = new StringBuilder();
@@ -74,27 +92,31 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         }
 
         HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
-        Cursor c = context.getContentResolver().query(Email.CONTENT_URI, EmailQuery.PROJECTION,
-                Email.ADDRESS + " IN (" + bindString.toString() + ")", addresses, null);
+        Cursor c = context.getContentResolver().query(
+                query.getContentUri(), query.getProjection(),
+                Queries.Query.DESTINATION + " IN (" + bindString.toString() + ")",
+                addresses,
+                null);
+
         if (c != null) {
             try {
                 if (c.moveToFirst()) {
                     do {
-                        String address = c.getString(EmailQuery.ADDRESS);
+                        String address = c.getString(Queries.Query.DESTINATION);
                         recipientEntries.put(address, RecipientEntry.constructTopLevelEntry(
-                                c.getString(EmailQuery.NAME),
-                                c.getString(EmailQuery.ADDRESS),
-                                c.getInt(EmailQuery.ADDRESS_TYPE),
-                                c.getString(EmailQuery.ADDRESS_LABEL),
-                                c.getLong(EmailQuery.CONTACT_ID),
-                                c.getLong(EmailQuery.DATA_ID),
-                                c.getString(EmailQuery.PHOTO_THUMBNAIL_URI)));
+                                c.getString(Queries.Query.NAME),
+                                c.getString(Queries.Query.DESTINATION),
+                                c.getInt(Queries.Query.DESTINATION_TYPE),
+                                c.getString(Queries.Query.DESTINATION_LABEL),
+                                c.getLong(Queries.Query.CONTACT_ID),
+                                c.getLong(Queries.Query.DATA_ID),
+                                c.getString(Queries.Query.PHOTO_THUMBNAIL_URI)));
                         if (Log.isLoggable(TAG, Log.DEBUG)) {
                             Log.d(TAG, "Received reverse look up information for " + address
                                     + " RESULTS: "
-                                    + " NAME : " + c.getString(EmailQuery.NAME)
-                                    + " CONTACT ID : " + c.getLong(EmailQuery.CONTACT_ID)
-                                    + " ADDRESS :" + c.getString(EmailQuery.ADDRESS));
+                                    + " NAME : " + c.getString(Queries.Query.NAME)
+                                    + " CONTACT ID : " + c.getLong(Queries.Query.CONTACT_ID)
+                                    + " ADDRESS :" + c.getString(Queries.Query.DESTINATION));
                         }
                     } while (c.moveToNext());
                 }
@@ -107,20 +129,49 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
     public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,
             OnCheckedItemChangedListener listener) {
-        super(context, context.getContentResolver().query(Email.CONTENT_URI, EmailQuery.PROJECTION,
-                Email.CONTACT_ID + " =?", new String[] {
-                    String.valueOf(contactId)
-                }, null), 0);
+        this(context, contactId, currentId, viewId, QUERY_TYPE_EMAIL, listener);
+    }
+
+    public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,
+            int queryMode, OnCheckedItemChangedListener listener) {
+        super(context, getCursorForConstruction(context, contactId, queryMode), 0);
         mLayoutInflater = LayoutInflater.from(context);
         mCurrentId = currentId;
         mCheckedItemChangedListener = listener;
+
+        if (queryMode == QUERY_TYPE_EMAIL) {
+            mQuery = Queries.EMAIL;
+        } else if (queryMode == QUERY_TYPE_PHONE) {
+            mQuery = Queries.PHONE;
+        } else {
+            mQuery = Queries.EMAIL;
+            Log.e(TAG, "Unsupported query type: " + queryMode);
+        }
+    }
+
+    private static Cursor getCursorForConstruction(Context context, long contactId, int queryType) {
+        if (queryType == QUERY_TYPE_EMAIL) {
+            return context.getContentResolver().query(
+                    Queries.EMAIL.getContentUri(),
+                    Queries.EMAIL.getProjection(),
+                    Queries.Query.CONTACT_ID + " =?", new String[] {
+                        String.valueOf(contactId)
+                    }, null);
+        } else {
+            return context.getContentResolver().query(
+                    Queries.PHONE.getContentUri(),
+                    Queries.PHONE.getProjection(),
+                    Queries.Query.CONTACT_ID + " =?", new String[] {
+                        String.valueOf(contactId)
+                    }, null);
+        }
     }
 
     @Override
     public long getItemId(int position) {
         Cursor c = getCursor();
         if (c.moveToPosition(position)) {
-            c.getLong(EmailQuery.DATA_ID);
+            c.getLong(Queries.Query.DATA_ID);
         }
         return -1;
     }
@@ -128,11 +179,14 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     public RecipientEntry getRecipientEntry(int position) {
         Cursor c = getCursor();
         c.moveToPosition(position);
-        return RecipientEntry.constructTopLevelEntry(c.getString(EmailQuery.NAME),
-                c.getString(EmailQuery.ADDRESS), c.getInt(EmailQuery.ADDRESS_TYPE),
-                c.getString(EmailQuery.ADDRESS_LABEL),
-                c.getLong(EmailQuery.CONTACT_ID), c.getLong(EmailQuery.DATA_ID),
-                c.getString(EmailQuery.PHOTO_THUMBNAIL_URI));
+        return RecipientEntry.constructTopLevelEntry(
+                c.getString(Queries.Query.NAME),
+                c.getString(Queries.Query.DESTINATION),
+                c.getInt(Queries.Query.DESTINATION_TYPE),
+                c.getString(Queries.Query.DESTINATION_LABEL),
+                c.getLong(Queries.Query.CONTACT_ID),
+                c.getLong(Queries.Query.DATA_ID),
+                c.getString(Queries.Query.PHOTO_THUMBNAIL_URI));
     }
 
     @Override
@@ -142,7 +196,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         if (convertView == null) {
             convertView = newView();
         }
-        if (cursor.getLong(EmailQuery.DATA_ID) == mCurrentId) {
+        if (cursor.getLong(Queries.Query.DATA_ID) == mCurrentId) {
             mCheckedItemPosition = position;
             if (mCheckedItemChangedListener != null) {
                 mCheckedItemChangedListener.onCheckedItemChanged(mCheckedItemPosition);
@@ -162,7 +216,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         ImageView imageView = (ImageView) view.findViewById(android.R.id.icon);
         RecipientEntry entry = getRecipientEntry(position);
         if (position == 0) {
-            display.setText(cursor.getString(EmailQuery.NAME));
+            display.setText(cursor.getString(Queries.Query.NAME));
             display.setVisibility(View.VISIBLE);
             // TODO: see if this needs to be done outside the main thread
             // as it may be too slow to get immediately.
@@ -173,13 +227,13 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             imageView.setVisibility(View.GONE);
         }
         TextView destination = (TextView) view.findViewById(android.R.id.text1);
-        destination.setText(cursor.getString(EmailQuery.ADDRESS));
+        destination.setText(cursor.getString(Queries.Query.DESTINATION));
 
         TextView destinationType = (TextView) view.findViewById(android.R.id.text2);
         if (destinationType != null) {
-            destinationType.setText(Email.getTypeLabel(context.getResources(),
-                    cursor.getInt(EmailQuery.ADDRESS_TYPE),
-                    cursor.getString(EmailQuery.ADDRESS_LABEL)).toString().toUpperCase());
+            destinationType.setText(mQuery.getTypeLabel(context.getResources(),
+                    cursor.getInt(Queries.Query.DESTINATION_TYPE),
+                    cursor.getString(Queries.Query.DESTINATION_LABEL)).toString().toUpperCase());
         }
     }
 

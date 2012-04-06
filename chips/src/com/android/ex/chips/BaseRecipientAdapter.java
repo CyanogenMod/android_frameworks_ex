@@ -30,9 +30,7 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.ContactsContract;
-import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.CommonDataKinds.Photo;
-import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.Directory;
 import android.text.TextUtils;
 import android.text.util.Rfc822Token;
@@ -96,6 +94,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     public static final int QUERY_TYPE_EMAIL = 0;
     public static final int QUERY_TYPE_PHONE = 1;
 
+    private final Queries.Query mQuery;
+    private final int mQueryType;
+
     /**
      * Model object for a {@link Directory} row.
      */
@@ -107,27 +108,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public String accountType;
         public CharSequence constraint;
         public DirectoryFilter filter;
-    }
-
-    /* package */ static class EmailQuery {
-        public static final String[] PROJECTION = {
-            Contacts.DISPLAY_NAME,       // 0
-            Email.DATA,                  // 1
-            Email.TYPE,                  // 2
-            Email.LABEL,                 // 3
-            Email.CONTACT_ID,            // 4
-            Email._ID,                   // 5
-            Contacts.PHOTO_THUMBNAIL_URI // 6
-
-        };
-
-        public static final int NAME = 0;
-        public static final int ADDRESS = 1;
-        public static final int ADDRESS_TYPE = 2;
-        public static final int ADDRESS_LABEL = 3;
-        public static final int CONTACT_ID = 4;
-        public static final int DATA_ID = 5;
-        public static final int PHOTO_THUMBNAIL_URI = 6;
     }
 
     private static class PhotoQuery {
@@ -169,16 +149,14 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public final long dataId;
         public final String thumbnailUriString;
 
-        public TemporaryEntry(String displayName,
-                String destination, int destinationType, String destinationLabel,
-                long contactId, long dataId, String thumbnailUriString) {
-            this.displayName = displayName;
-            this.destination = destination;
-            this.destinationType = destinationType;
-            this.destinationLabel = destinationLabel;
-            this.contactId = contactId;
-            this.dataId = dataId;
-            this.thumbnailUriString = thumbnailUriString;
+        public TemporaryEntry(Cursor cursor) {
+            this.displayName = cursor.getString(Queries.Query.NAME);
+            this.destination = cursor.getString(Queries.Query.DESTINATION);
+            this.destinationType = cursor.getInt(Queries.Query.DESTINATION_TYPE);
+            this.destinationLabel = cursor.getString(Queries.Query.DESTINATION_LABEL);
+            this.contactId = cursor.getLong(Queries.Query.CONTACT_ID);
+            this.dataId = cursor.getLong(Queries.Query.DATA_ID);
+            this.thumbnailUriString = cursor.getString(Queries.Query.PHOTO_THUMBNAIL_URI);
         }
     }
 
@@ -230,6 +208,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
             try {
                 defaultDirectoryCursor = doQuery(constraint, mPreferredMaxResultCount, null);
+
                 if (defaultDirectoryCursor == null) {
                     if (DEBUG) {
                         Log.w(TAG, "null cursor returned for default Email filter query.");
@@ -247,7 +226,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     while (defaultDirectoryCursor.moveToNext()) {
                         // Note: At this point each entry doesn't contain any photo
                         // (thus getPhotoBytes() returns null).
-                        putOneEntry(constructTemporaryEntryFromCursor(defaultDirectoryCursor),
+                        putOneEntry(new TemporaryEntry(defaultDirectoryCursor),
                                 true, entryMap, nonAggregatedEntries, existingDestinations);
                     }
 
@@ -366,9 +345,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     // Assuming the result should contain fairly small results (at most ~10),
                     // We just copy everything to local structure.
                     cursor = doQuery(constraint, getLimit(), mParams.directoryId);
+
                     if (cursor != null) {
                         while (cursor.moveToNext()) {
-                            tempEntries.add(constructTemporaryEntryFromCursor(cursor));
+                            tempEntries.add(new TemporaryEntry(cursor));
                         }
                     }
                 } finally {
@@ -503,15 +483,41 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * Constructor for email queries.
      */
     public BaseRecipientAdapter(Context context) {
-        this(context, DEFAULT_PREFERRED_MAX_RESULT_COUNT);
+        this(context, DEFAULT_PREFERRED_MAX_RESULT_COUNT, QUERY_TYPE_EMAIL);
     }
 
     public BaseRecipientAdapter(Context context, int preferredMaxResultCount) {
+        this(context, preferredMaxResultCount, QUERY_TYPE_EMAIL);
+    }
+
+    public BaseRecipientAdapter(int queryMode, Context context) {
+        this(context, DEFAULT_PREFERRED_MAX_RESULT_COUNT, queryMode);
+    }
+
+    public BaseRecipientAdapter(int queryMode, Context context, int preferredMaxResultCount) {
+        this(context, preferredMaxResultCount, queryMode);
+    }
+
+    public BaseRecipientAdapter(Context context, int preferredMaxResultCount, int queryMode) {
         mContext = context;
         mContentResolver = context.getContentResolver();
         mInflater = LayoutInflater.from(context);
         mPreferredMaxResultCount = preferredMaxResultCount;
         mPhotoCacheMap = new LruCache<Uri, byte[]>(PHOTO_CACHE_SIZE);
+        mQueryType = queryMode;
+
+        if (queryMode == QUERY_TYPE_EMAIL) {
+            mQuery = Queries.EMAIL;
+        } else if (queryMode == QUERY_TYPE_PHONE) {
+            mQuery = Queries.PHONE;
+        } else {
+            mQuery = Queries.EMAIL;
+            Log.e(TAG, "Unsupported query type: " + queryMode);
+        }
+    }
+
+    public int getQueryType() {
+        return mQueryType;
     }
 
     /**
@@ -603,16 +609,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         // enough.
         mRemainingDirectoryCount = count - 1;
         mDelayedMessageHandler.sendDelayedLoadMessage();
-    }
-
-    private TemporaryEntry constructTemporaryEntryFromCursor(Cursor cursor) {
-        return new TemporaryEntry(cursor.getString(EmailQuery.NAME),
-                cursor.getString(EmailQuery.ADDRESS),
-                cursor.getInt(EmailQuery.ADDRESS_TYPE),
-                cursor.getString(EmailQuery.ADDRESS_LABEL),
-                cursor.getLong(EmailQuery.CONTACT_ID),
-                cursor.getLong(EmailQuery.DATA_ID),
-                cursor.getString(EmailQuery.PHOTO_THUMBNAIL_URI));
     }
 
     private void putOneEntry(TemporaryEntry entry, boolean isAggregatedEntry,
@@ -766,7 +762,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     }
 
     private Cursor doQuery(CharSequence constraint, int limit, Long directoryId) {
-        final Uri.Builder builder = Email.CONTENT_FILTER_URI.buildUpon()
+        final Uri.Builder builder = mQuery.getContentFilterUri().buildUpon()
                 .appendPath(constraint.toString())
                 .appendQueryParameter(ContactsContract.LIMIT_PARAM_KEY,
                         String.valueOf(limit + ALLOWANCE_FOR_DUPLICATES));
@@ -780,7 +776,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         }
         final long start = System.currentTimeMillis();
         final Cursor cursor = mContentResolver.query(
-                builder.build(), EmailQuery.PROJECTION, null, null, null);
+                builder.build(), mQuery.getProjection(), null, null, null);
         final long end = System.currentTimeMillis();
         if (DEBUG) {
             Log.d(TAG, "Time for autocomplete (query: " + constraint
@@ -863,9 +859,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     destinationView.setText(null);
                 }
                 if (destinationTypeView != null) {
-                    final CharSequence destinationType = Email.getTypeLabel(mContext.getResources(),
-                            entry.getDestinationType(), entry.getDestinationLabel()).toString()
-                            .toUpperCase();
+                    final CharSequence destinationType = mQuery.getTypeLabel(
+                            mContext.getResources(),
+                            entry.getDestinationType(),
+                            entry.getDestinationLabel()).toString().toUpperCase();
 
                     destinationTypeView.setText(destinationType);
                 }

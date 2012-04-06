@@ -22,5 +22,8 @@
     <string name="chips_waiting_for_directory_result">Waiting for more contacts</string>
     <!-- Text displayed when the user long presses on a chip to copy the recipients email address.
          [CHAR LIMIT=200] -->
-    <string name="copy">Copy email address</string>
+    <string name="copy_email">Copy email address</string>
+    <!-- Text displayed when the user long presses on a chip to copy the recipient's phone number.
+         [CHAR LIMIT=200] -->
+    <string name="copy_number">Copy phone number</string>
 </resources>
