@@ -18,5 +18,8 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="more_string" msgid="8971577924280885648">"<xliff:g id="COUNT">%1$s</xliff:g> więcej..."</string>
     <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"Oczekiwanie na więcej kontaktów"</string>
-    <string name="copy" msgid="7946975650226308595">"Kopiuj adres e-mail"</string>
+    <!-- no translation found for copy_email (7869435992461603532) -->
+    <skip />
+    <!-- no translation found for copy_number (530057841276106843) -->
+    <skip />
 </resources>
