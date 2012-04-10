@@ -18,8 +18,6 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="more_string" msgid="8971577924280885648">"Dar <xliff:g id="COUNT">%1$s</xliff:g>..."</string>
     <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"Laukiama daugiau kontaktų"</string>
-    <!-- no translation found for copy_email (7869435992461603532) -->
-    <skip />
-    <!-- no translation found for copy_number (530057841276106843) -->
-    <skip />
+    <string name="copy_email" msgid="7869435992461603532">"Kopijuoti el. pašto adresą"</string>
+    <string name="copy_number" msgid="530057841276106843">"Kopijuoti telefono numerį"</string>
 </resources>
