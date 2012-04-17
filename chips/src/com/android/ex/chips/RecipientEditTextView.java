@@ -54,6 +54,7 @@ import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.Patterns;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
 import android.view.DragEvent;
@@ -85,6 +86,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Matcher;
 
 /**
  * RecipientEditTextView is an auto complete text view for use with applications
@@ -852,9 +854,26 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    private static boolean isPhoneNumber(String number) {
+        // TODO: replace this function with libphonenumber's isPossibleNumber (see
+        // PhoneNumberUtil). One complication is that it requires the sender's region which
+        // comes from the CurrentCountryIso. For now, let's just do this simple match.
+        if (TextUtils.isEmpty(number)) {
+            return false;
+        }
+
+        Matcher match = Patterns.PHONE.matcher(number);
+        return match.matches();
+    }
+
     private RecipientEntry createTokenizedEntry(String token) {
         if (TextUtils.isEmpty(token)) {
             return null;
+        }
+        if (((BaseRecipientAdapter)getAdapter()).getQueryType() ==
+                    BaseRecipientAdapter.QUERY_TYPE_PHONE && isPhoneNumber(token)) {
+            return RecipientEntry
+                    .constructFakeEntry(token);
         }
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
@@ -1387,16 +1406,22 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
             display = null;
         }
-        if (address != null) {
-            // Tokenize out the address in case the address already
-            // contained the username as well.
-            Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(address);
-            if (tokenized != null && tokenized.length > 0) {
-                address = tokenized[0].getAddress();
+        String trimmedDisplayText;
+        if (((BaseRecipientAdapter)getAdapter()).getQueryType() ==
+                BaseRecipientAdapter.QUERY_TYPE_PHONE && isPhoneNumber(address)) {
+            trimmedDisplayText = address.trim();
+        } else {
+            if (address != null) {
+                // Tokenize out the address in case the address already
+                // contained the username as well.
+                Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(address);
+                if (tokenized != null && tokenized.length > 0) {
+                    address = tokenized[0].getAddress();
+                }
             }
+            Rfc822Token token = new Rfc822Token(display, address, null);
+            trimmedDisplayText = token.toString().trim();
         }
-        Rfc822Token token = new Rfc822Token(display, address, null);
-        String trimmedDisplayText = token.toString().trim();
         int index = trimmedDisplayText.indexOf(",");
         return mTokenizer != null && !TextUtils.isEmpty(trimmedDisplayText)
                 && index < trimmedDisplayText.length() - 1 ? (String) mTokenizer
@@ -1411,7 +1436,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
             display = null;
         }
-        if (address != null) {
+        if (address != null && !(((BaseRecipientAdapter)getAdapter()).getQueryType() ==
+                BaseRecipientAdapter.QUERY_TYPE_PHONE && isPhoneNumber(address))) {
             // Tokenize out the address in case the address already
             // contained the username as well.
             Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(address);
