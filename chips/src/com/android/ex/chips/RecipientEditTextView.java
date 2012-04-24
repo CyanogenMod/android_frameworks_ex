@@ -1330,7 +1330,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ListAdapter createAlternatesAdapter(RecipientChip chip) {
         return new RecipientAlternatesAdapter(getContext(), chip.getContactId(), chip.getDataId(),
-                mAlternatesLayout, BaseRecipientAdapter.QUERY_TYPE_PHONE, this);
+                mAlternatesLayout, ((BaseRecipientAdapter)getAdapter()).getQueryType(), this);
     }
 
     private ListAdapter createSingleAddressAdapter(RecipientChip currentChip) {
