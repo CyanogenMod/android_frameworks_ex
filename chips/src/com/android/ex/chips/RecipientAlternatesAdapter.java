@@ -29,7 +29,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.android.ex.chips.Queries.Query;
-
 import java.util.HashMap;
 
 /**
@@ -154,7 +153,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             return context.getContentResolver().query(
                     Queries.EMAIL.getContentUri(),
                     Queries.EMAIL.getProjection(),
-                    Queries.Query.CONTACT_ID + " =?", new String[] {
+                    Queries.EMAIL.getProjection()[Queries.Query.CONTACT_ID] + " =?", new String[] {
                         String.valueOf(contactId)
                     }, null);
         } else {
