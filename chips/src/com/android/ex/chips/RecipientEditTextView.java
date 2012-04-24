@@ -1938,7 +1938,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             toDelete++;
         }
         spannable.removeSpan(chip);
-        text.delete(spanStart, toDelete);
+        if (spanStart >= 0 && toDelete > 0) {
+            text.delete(spanStart, toDelete);
+        }
         if (wasSelected) {
             clearSelectedChip();
         }
