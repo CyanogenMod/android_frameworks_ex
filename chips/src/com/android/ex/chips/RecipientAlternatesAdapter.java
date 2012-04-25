@@ -160,7 +160,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             return context.getContentResolver().query(
                     Queries.PHONE.getContentUri(),
                     Queries.PHONE.getProjection(),
-                    Queries.Query.CONTACT_ID + " =?", new String[] {
+                    Queries.PHONE.getProjection()[Queries.Query.CONTACT_ID] + " =?", new String[] {
                         String.valueOf(contactId)
                     }, null);
         }
