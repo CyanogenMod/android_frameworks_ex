@@ -67,6 +67,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewParent;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
@@ -95,7 +97,7 @@ import java.util.regex.Matcher;
 public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         OnItemClickListener, Callback, RecipientAlternatesAdapter.OnCheckedItemChangedListener,
         GestureDetector.OnGestureListener, OnDismissListener, OnClickListener,
-        PopupWindow.OnDismissListener {
+        PopupWindow.OnDismissListener, TextView.OnEditorActionListener {
 
     private static final char COMMIT_CHAR_COMMA = ',';
 
@@ -260,6 +262,39 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         mTextWatcher = new RecipientTextWatcher();
         addTextChangedListener(mTextWatcher);
         mGestureDetector = new GestureDetector(context, this);
+        setOnEditorActionListener(this);
+    }
+
+    @Override
+    public boolean onEditorAction(TextView view, int action, KeyEvent keyEvent) {
+        if (action == EditorInfo.IME_ACTION_DONE) {
+            if (commitDefault()) {
+                return true;
+            }
+            if (mSelectedChip != null) {
+                clearSelectedChip();
+                return true;
+            } else if (focusNext()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        InputConnection connection = super.onCreateInputConnection(outAttrs);
+        int imeActions = outAttrs.imeOptions&EditorInfo.IME_MASK_ACTION;
+        if ((imeActions&EditorInfo.IME_ACTION_DONE) != 0) {
+            // clear the existing action
+            outAttrs.imeOptions ^= imeActions;
+            // set the DONE action
+            outAttrs.imeOptions |= EditorInfo.IME_ACTION_DONE;
+        }
+        if ((outAttrs.imeOptions&EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0) {
+            outAttrs.imeOptions &= ~EditorInfo.IME_FLAG_NO_ENTER_ACTION;
+        }
+        return connection;
     }
 
     /*package*/ RecipientChip getLastChip() {
