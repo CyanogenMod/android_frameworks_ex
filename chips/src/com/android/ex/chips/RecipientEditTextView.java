@@ -1019,6 +1019,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * @return If a chip was created from a real contact.
      */
     private boolean commitDefault() {
+        // If there is no tokenizer, don't try to commit.
+        if (mTokenizer == null) {
+            return false;
+        }
         Editable editable = getText();
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(editable, end);
@@ -1037,6 +1041,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void commitByCharacter() {
+        // We can't possibly commit by character if we can't tokenize.
+        if (mTokenizer == null) {
+            return;
+        }
         Editable editable = getText();
         int end = getSelectionEnd();
         int start = mTokenizer.findTokenStart(editable, end);
