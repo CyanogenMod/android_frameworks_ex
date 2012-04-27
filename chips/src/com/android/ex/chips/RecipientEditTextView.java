@@ -313,12 +313,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         super.append(text, start, end);
         if (!TextUtils.isEmpty(text) && TextUtils.getTrimmedLength(text) > 0) {
-            final String displayString = (String) text;
+            final String displayString = text.toString();
             int seperatorPos = displayString.indexOf(COMMIT_CHAR_COMMA);
             if (seperatorPos != 0 && !TextUtils.isEmpty(displayString)
                     && TextUtils.getTrimmedLength(displayString) > 0) {
                 mPendingChipsCount++;
-                mPendingChips.add((String)text);
+                mPendingChips.add(text.toString());
             }
         }
         // Put a message on the queue to make sure we ALWAYS handle pending chips.
