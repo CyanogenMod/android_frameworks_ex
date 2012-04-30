@@ -573,8 +573,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private float getTextYOffset(String text, TextPaint paint, int height) {
         Rect bounds = new Rect();
         paint.getTextBounds(text, 0, text.length(), bounds);
-        int textHeight = bounds.bottom - bounds.top  - (int)paint.descent();
-        return height - ((height - textHeight) / 2);
+        int textHeight = bounds.bottom - bounds.top ;
+        return height - ((height - textHeight) / 2) - (int)paint.descent();
     }
 
     private RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
