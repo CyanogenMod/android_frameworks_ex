@@ -148,6 +148,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public final long contactId;
         public final long dataId;
         public final String thumbnailUriString;
+        public final int displayNameSource;
 
         public TemporaryEntry(Cursor cursor) {
             this.displayName = cursor.getString(Queries.Query.NAME);
@@ -157,6 +158,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             this.contactId = cursor.getLong(Queries.Query.CONTACT_ID);
             this.dataId = cursor.getLong(Queries.Query.DATA_ID);
             this.thumbnailUriString = cursor.getString(Queries.Query.PHOTO_THUMBNAIL_URI);
+            this.displayNameSource = cursor.getInt(Queries.Query.DISPLAY_NAME_SOURCE);
         }
     }
 
@@ -624,6 +626,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         if (!isAggregatedEntry) {
             nonAggregatedEntries.add(RecipientEntry.constructTopLevelEntry(
                     entry.displayName,
+                    entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
                     entry.contactId, entry.dataId, entry.thumbnailUriString));
         } else if (entryMap.containsKey(entry.contactId)) {
@@ -631,12 +634,14 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             final List<RecipientEntry> entryList = entryMap.get(entry.contactId);
             entryList.add(RecipientEntry.constructSecondLevelEntry(
                     entry.displayName,
+                    entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
                     entry.contactId, entry.dataId, entry.thumbnailUriString));
         } else {
             final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
             entryList.add(RecipientEntry.constructTopLevelEntry(
                     entry.displayName,
+                    entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
                     entry.contactId, entry.dataId, entry.thumbnailUriString));
             entryMap.put(entry.contactId, entryList);
@@ -840,7 +845,12 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 if (TextUtils.isEmpty(displayName)
                         || TextUtils.equals(displayName, destination)) {
                     displayName = destination;
-                    destination = null;
+
+                    // We only show the destination for secondary entries, so clear it only for
+                    // the first level.
+                    if (entry.isFirstLevel()) {
+                        destination = null;
+                    }
                 }
 
                 final View itemView = convertView != null ? convertView
