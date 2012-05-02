@@ -23,6 +23,8 @@ LOCAL_CERTIFICATE := platform
 LOCAL_JAVA_LIBRARIES := android.test.runner
 LOCAL_STATIC_JAVA_LIBRARIES += android-common-chips
 LOCAL_RESOURCE_DIR := frameworks/ex/chips/res/
+LOCAL_AAPT_FLAGS := --auto-add-overlay
+LOCAL_AAPT_FLAGS += --extra-packages com.android.ex.chips
 
 include $(BUILD_PACKAGE)
 
