@@ -119,9 +119,16 @@ public class ChipsTest extends AndroidTestCase {
         }
     }
 
+    private class TestBaseRecipientAdapter extends BaseRecipientAdapter {
+        public TestBaseRecipientAdapter(Context context) {
+            super(context);
+        }
+    }
+
     private MockRecipientEditTextView createViewForTesting() {
         mEditable = new SpannableStringBuilder();
         MockRecipientEditTextView view = new MockRecipientEditTextView(getContext());
+        view.setAdapter(new TestBaseRecipientAdapter(getContext()));
         return view;
     }
 
