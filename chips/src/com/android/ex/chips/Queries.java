@@ -34,7 +34,8 @@ import android.provider.ContactsContract.CommonDataKinds.Phone;
             Phone.LABEL,                 // 3
             Phone.CONTACT_ID,            // 4
             Phone._ID,                   // 5
-            Contacts.PHOTO_THUMBNAIL_URI // 6
+            Contacts.PHOTO_THUMBNAIL_URI,// 6
+            Contacts.DISPLAY_NAME_SOURCE // 7
         }, Phone.CONTENT_FILTER_URI, Phone.CONTENT_URI) {
 
             @Override
@@ -51,8 +52,8 @@ import android.provider.ContactsContract.CommonDataKinds.Phone;
             Email.LABEL,                 // 3
             Email.CONTACT_ID,            // 4
             Email._ID,                   // 5
-            Contacts.PHOTO_THUMBNAIL_URI // 6
-
+            Contacts.PHOTO_THUMBNAIL_URI,// 6
+            Contacts.DISPLAY_NAME_SOURCE // 7
         }, Email.CONTENT_FILTER_URI, Email.CONTENT_URI) {
 
             @Override
@@ -74,6 +75,7 @@ import android.provider.ContactsContract.CommonDataKinds.Phone;
         public static final int CONTACT_ID = 4;
         public static final int DATA_ID = 5;
         public static final int PHOTO_THUMBNAIL_URI = 6;
+        public static final int DISPLAY_NAME_SOURCE = 7;
 
         public Query (String[] projection, Uri contentFilter, Uri content) {
             mProjection = projection;

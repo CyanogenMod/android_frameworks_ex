@@ -18,6 +18,7 @@ package com.android.ex.chips;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.provider.ContactsContract.DisplayNameSources;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Log;
@@ -104,6 +105,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                         String address = c.getString(Queries.Query.DESTINATION);
                         recipientEntries.put(address, RecipientEntry.constructTopLevelEntry(
                                 c.getString(Queries.Query.NAME),
+                                c.getInt(Queries.Query.DISPLAY_NAME_SOURCE),
                                 c.getString(Queries.Query.DESTINATION),
                                 c.getInt(Queries.Query.DESTINATION_TYPE),
                                 c.getString(Queries.Query.DESTINATION_LABEL),
@@ -180,6 +182,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         c.moveToPosition(position);
         return RecipientEntry.constructTopLevelEntry(
                 c.getString(Queries.Query.NAME),
+                c.getInt(Queries.Query.DISPLAY_NAME_SOURCE),
                 c.getString(Queries.Query.DESTINATION),
                 c.getInt(Queries.Query.DESTINATION_TYPE),
                 c.getString(Queries.Query.DESTINATION_LABEL),

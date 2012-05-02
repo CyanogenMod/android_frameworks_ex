@@ -18,6 +18,7 @@ package com.android.ex.chips;
 
 import android.net.Uri;
 import android.provider.ContactsContract.CommonDataKinds.Email;
+import android.provider.ContactsContract.DisplayNameSources;
 
 /**
  * Represents one entry inside recipient auto-complete list.
@@ -50,6 +51,7 @@ public class RecipientEntry {
      */
     private boolean mIsFirstLevel;
     private final String mDisplayName;
+
     /** Destination for this contact entry. Would be an email address or a phone number. */
     private final String mDestination;
     /** Type of the destination like {@link Email#TYPE_HOME} */
@@ -123,6 +125,17 @@ public class RecipientEntry {
     }
 
     /**
+     * @return the display name for the entry.  If the display name source is larger than
+     * {@link DisplayNameSources#PHONE} we use the contact's display name, but if not,
+     * i.e. the display name came from an email address or a phone number, we don't use it
+     * to avoid confusion and just use the destination instead.
+     */
+    private static String pickDisplayName(int displayNameSource, String displayName,
+            String destination) {
+        return (displayNameSource > DisplayNameSources.PHONE) ? displayName : destination;
+    }
+
+    /**
      * Construct a RecipientEntry from just an address that has been entered
      * with both an associated display name. This address has not been resolved
      * to a contact and therefore does not have a contact id or photo.
@@ -134,30 +147,31 @@ public class RecipientEntry {
     }
 
     public static RecipientEntry constructTopLevelEntry(
-            String displayName, String destination, int destinationType, String destinationLabel,
-            long contactId, long dataId, Uri photoThumbnailUri) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, displayName,
+            String displayName, int displayNameSource, String destination, int destinationType,
+            String destinationLabel, long contactId, long dataId, Uri photoThumbnailUri) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource, displayName,
+                    destination),
                 destination, destinationType, destinationLabel,
                 contactId, dataId,
                 photoThumbnailUri, true);
     }
 
     public static RecipientEntry constructTopLevelEntry(
-            String displayName, String destination, int destinationType, String destinationLabel,
-            long contactId, long dataId,
+            String displayName, int displayNameSource, String destination, int destinationType,
+            String destinationLabel, long contactId, long dataId,
             String thumbnailUriAsString) {
         return new RecipientEntry(
-                ENTRY_TYPE_PERSON, displayName,
+                ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource, displayName, destination),
                 destination, destinationType, destinationLabel,
                 contactId, dataId,
                 (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), true);
     }
 
     public static RecipientEntry constructSecondLevelEntry(
-            String displayName, String destination, int destinationType, String destinationLabel,
-            long contactId, long dataId, String thumbnailUriAsString) {
+            String displayName, int displayNameSource, String destination, int destinationType,
+            String destinationLabel, long contactId, long dataId, String thumbnailUriAsString) {
         return new RecipientEntry(
-                ENTRY_TYPE_PERSON, displayName,
+                ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource, displayName, destination),
                 destination, destinationType, destinationLabel,
                 contactId, dataId,
                 (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), false);
