@@ -674,6 +674,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mInvalidChipBackground == null) {
             mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         }
+        a.recycle();
     }
 
     // Visible for testing.
