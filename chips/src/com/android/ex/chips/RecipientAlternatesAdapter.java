@@ -95,10 +95,10 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
         HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
         Cursor c = context.getContentResolver().query(
-                query.getContentUri(), query.getProjection(),
-                Queries.Query.DESTINATION + " IN (" + bindString.toString() + ")",
-                addresses,
-                null);
+                query.getContentUri(),
+                query.getProjection(),
+                query.getProjection()[Queries.Query.DESTINATION] + " IN (" + bindString.toString()
+                        + ")", addresses, null);
 
         if (c != null) {
             try {
