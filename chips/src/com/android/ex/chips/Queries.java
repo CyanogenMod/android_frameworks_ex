@@ -18,9 +18,9 @@ package com.android.ex.chips;
 
 import android.content.res.Resources;
 import android.net.Uri;
-import android.provider.ContactsContract.Contacts;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
+import android.provider.ContactsContract.Contacts;
 
 /**
  * Phone and Email queries for supporting Chips UI.
@@ -68,14 +68,14 @@ import android.provider.ContactsContract.CommonDataKinds.Phone;
         private final Uri mContentFilterUri;
         private final Uri mContentUri;
 
-        public static final int NAME = 0;
-        public static final int DESTINATION = 1;
-        public static final int DESTINATION_TYPE = 2;
-        public static final int DESTINATION_LABEL = 3;
-        public static final int CONTACT_ID = 4;
-        public static final int DATA_ID = 5;
-        public static final int PHOTO_THUMBNAIL_URI = 6;
-        public static final int DISPLAY_NAME_SOURCE = 7;
+        public static final int NAME = 0;                // String
+        public static final int DESTINATION = 1;         // String
+        public static final int DESTINATION_TYPE = 2;    // int
+        public static final int DESTINATION_LABEL = 3;   // String
+        public static final int CONTACT_ID = 4;          // long
+        public static final int DATA_ID = 5;             // long
+        public static final int PHOTO_THUMBNAIL_URI = 6; // String
+        public static final int DISPLAY_NAME_SOURCE = 7; // int
 
         public Query (String[] projection, Uri contentFilter, Uri content) {
             mProjection = projection;

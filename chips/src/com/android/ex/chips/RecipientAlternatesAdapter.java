@@ -18,7 +18,7 @@ package com.android.ex.chips;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.provider.ContactsContract.DisplayNameSources;
+import android.database.MatrixCursor;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Log;
@@ -30,7 +30,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.android.ex.chips.Queries.Query;
+
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * RecipientAlternatesAdapter backs the RecipientEditTextView for managing contacts
@@ -151,21 +153,63 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     }
 
     private static Cursor getCursorForConstruction(Context context, long contactId, int queryType) {
+        final Cursor cursor;
         if (queryType == QUERY_TYPE_EMAIL) {
-            return context.getContentResolver().query(
+            cursor = context.getContentResolver().query(
                     Queries.EMAIL.getContentUri(),
                     Queries.EMAIL.getProjection(),
                     Queries.EMAIL.getProjection()[Queries.Query.CONTACT_ID] + " =?", new String[] {
                         String.valueOf(contactId)
                     }, null);
         } else {
-            return context.getContentResolver().query(
+            cursor = context.getContentResolver().query(
                     Queries.PHONE.getContentUri(),
                     Queries.PHONE.getProjection(),
                     Queries.PHONE.getProjection()[Queries.Query.CONTACT_ID] + " =?", new String[] {
                         String.valueOf(contactId)
                     }, null);
         }
+        return removeDuplicateDestinations(cursor);
+    }
+
+    /**
+     * @return a new cursor based on the given cursor with all duplicate destinations removed.
+     *
+     * It's only intended to use for the alternate list, so...
+     * - This method ignores all other fields and dedupe solely on the destination.  Normally,
+     * if a cursor contains multiple contacts and they have the same destination, we'd still want
+     * to show both.
+     * - This method creates a MatrixCursor, so all data will be kept in memory.  We wouldn't want
+     * to do this if the original cursor is large, but it's okay here because the alternate list
+     * won't be that big.
+     */
+    // Visible for testing
+    /* package */ static Cursor removeDuplicateDestinations(Cursor original) {
+        final MatrixCursor result = new MatrixCursor(
+                original.getColumnNames(), original.getCount());
+        final HashSet<String> destinationsSeen = new HashSet<String>();
+
+        original.moveToPosition(-1);
+        while (original.moveToNext()) {
+            final String destination = original.getString(Query.DESTINATION);
+            if (destinationsSeen.contains(destination)) {
+                continue;
+            }
+            destinationsSeen.add(destination);
+
+            result.addRow(new Object[] {
+                    original.getString(Query.NAME),
+                    original.getString(Query.DESTINATION),
+                    original.getInt(Query.DESTINATION_TYPE),
+                    original.getString(Query.DESTINATION_LABEL),
+                    original.getLong(Query.CONTACT_ID),
+                    original.getLong(Query.DATA_ID),
+                    original.getString(Query.PHOTO_THUMBNAIL_URI),
+                    original.getInt(Query.DISPLAY_NAME_SOURCE)
+                    });
+        }
+
+        return result;
     }
 
     @Override
