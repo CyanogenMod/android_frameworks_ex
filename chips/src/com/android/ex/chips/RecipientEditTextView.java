@@ -2097,14 +2097,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
                     commitByCharacter();
                 } else if (last == COMMIT_CHAR_SPACE) {
-                    // Check if this is a valid email address. If it is,
-                    // commit it.
-                    String text = getText().toString();
-                    int tokenStart = mTokenizer.findTokenStart(text, getSelectionEnd());
-                    String sub = text.substring(tokenStart, mTokenizer.findTokenEnd(text,
-                            tokenStart));
-                    if (!TextUtils.isEmpty(sub) && mValidator != null && mValidator.isValid(sub)) {
-                        commitByCharacter();
+                    if (!isPhoneQuery()) {
+                        // Check if this is a valid email address. If it is,
+                        // commit it.
+                        String text = getText().toString();
+                        int tokenStart = mTokenizer.findTokenStart(text, getSelectionEnd());
+                        String sub = text.substring(tokenStart, mTokenizer.findTokenEnd(text,
+                                tokenStart));
+                        if (!TextUtils.isEmpty(sub) && mValidator != null &&
+                                mValidator.isValid(sub)) {
+                            commitByCharacter();
+                        }
                     }
                 }
             }
