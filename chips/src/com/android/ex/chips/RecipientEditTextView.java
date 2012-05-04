@@ -906,8 +906,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (TextUtils.isEmpty(token)) {
             return null;
         }
-        if (((BaseRecipientAdapter)getAdapter()).getQueryType() ==
-                    BaseRecipientAdapter.QUERY_TYPE_PHONE && isPhoneNumber(token)) {
+        if (isPhoneQuery() && isPhoneNumber(token)) {
             return RecipientEntry
                     .constructFakeEntry(token);
         }
@@ -1093,7 +1092,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private boolean commitChip(int start, int end, Editable editable) {
         ListAdapter adapter = getAdapter();
         if (adapter != null && adapter.getCount() > 0 && enoughToFilter()
-                && end == getSelectionEnd()) {
+                && end == getSelectionEnd() && !isPhoneQuery()) {
             // choose the first entry.
             submitItemAtPosition(0);
             dismissDropDown();
@@ -1451,8 +1450,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             display = null;
         }
         String trimmedDisplayText;
-        if (((BaseRecipientAdapter)getAdapter()).getQueryType() ==
-                BaseRecipientAdapter.QUERY_TYPE_PHONE && isPhoneNumber(address)) {
+        if (isPhoneQuery() && isPhoneNumber(address)) {
             trimmedDisplayText = address.trim();
         } else {
             if (address != null) {
@@ -1480,8 +1478,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
             display = null;
         }
-        if (address != null && !(((BaseRecipientAdapter)getAdapter()).getQueryType() ==
-                BaseRecipientAdapter.QUERY_TYPE_PHONE && isPhoneNumber(address))) {
+        if (address != null && !(isPhoneQuery() && isPhoneNumber(address))) {
             // Tokenize out the address in case the address already
             // contained the username as well.
             Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(address);
@@ -2490,8 +2487,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Button button = (Button)mCopyDialog.findViewById(android.R.id.button1);
         button.setOnClickListener(this);
         int btnTitleId;
-        if (((BaseRecipientAdapter)getAdapter()).getQueryType() ==
-                BaseRecipientAdapter.QUERY_TYPE_PHONE) {
+        if (isPhoneQuery()) {
             btnTitleId = R.string.copy_number;
         } else {
             btnTitleId = R.string.copy_email;
@@ -2531,5 +2527,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 Context.CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(ClipData.newPlainText("", mCopyAddress));
         mCopyDialog.dismiss();
+    }
+
+    protected boolean isPhoneQuery() {
+        return ((BaseRecipientAdapter)getAdapter()).getQueryType() ==
+                BaseRecipientAdapter.QUERY_TYPE_PHONE;
     }
 }
