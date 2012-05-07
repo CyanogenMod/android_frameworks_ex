@@ -41,7 +41,7 @@ import android.text.style.ImageSpan;
     private CharSequence mOriginalText;
 
     public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
-        super(drawable, DynamicDrawableSpan.ALIGN_BASELINE);
+        super(drawable, DynamicDrawableSpan.ALIGN_BOTTOM);
         mDisplay = entry.getDisplayName();
         mValue = entry.getDestination().trim();
         mContactId = entry.getContactId();
