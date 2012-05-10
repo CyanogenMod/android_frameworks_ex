@@ -20,4 +20,6 @@
     <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"انتظار برای مخاطبین بیشتر"</string>
     <string name="copy_email" msgid="7869435992461603532">"کپی آدرس ایمیل"</string>
     <string name="copy_number" msgid="530057841276106843">"کپی شماره تلفن"</string>
+    <!-- no translation found for done (2356320650733788862) -->
+    <skip />
 </resources>
