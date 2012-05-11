@@ -20,4 +20,6 @@
     <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"Изчакват се още контакти"</string>
     <string name="copy_email" msgid="7869435992461603532">"Копиране на имейл адреса"</string>
     <string name="copy_number" msgid="530057841276106843">"Копиране на телефонния номер"</string>
+    <!-- no translation found for done (2356320650733788862) -->
+    <skip />
 </resources>

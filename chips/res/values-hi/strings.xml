@@ -20,4 +20,6 @@
     <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"अधिक संपर्कों के लिए प्रतीक्षा कर रहा है"</string>
     <string name="copy_email" msgid="7869435992461603532">"ईमेल पते की प्रतिलिपि बनाएं"</string>
     <string name="copy_number" msgid="530057841276106843">"फोन नंबर की प्रतिलिपि बनाएं"</string>
+    <!-- no translation found for done (2356320650733788862) -->
+    <skip />
 </resources>
