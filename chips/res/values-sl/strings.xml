@@ -20,6 +20,5 @@
     <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"Čakanje na več stikov"</string>
     <string name="copy_email" msgid="7869435992461603532">"Kopiranje e-poštnega naslova"</string>
     <string name="copy_number" msgid="530057841276106843">"Kopiranje telefonske številke"</string>
-    <!-- no translation found for done (2356320650733788862) -->
-    <skip />
+    <string name="done" msgid="2356320650733788862">"Vračalka"</string>
 </resources>
