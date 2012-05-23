@@ -132,6 +132,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private float mChipFontSize;
 
+    private float mLineSpacingExtra;
+
     private int mChipPadding;
 
     private Tokenizer mTokenizer;
@@ -675,6 +677,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mInvalidChipBackground == null) {
             mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         }
+        mLineSpacingExtra =  context.getResources().getDimension(R.dimen.line_spacing_extra);
         a.recycle();
     }
 
@@ -1342,7 +1345,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private void showAlternates(RecipientChip currentChip, ListPopupWindow alternatesPopup,
             int width, Context context) {
         int line = getLayout().getLineForOffset(getChipStart(currentChip));
-        int bottom = calculateOffsetFromBottom(line);
+        int bottom;
+        if (line == getLineCount() -1) {
+            bottom = 0;
+        } else {
+            bottom = -(int) ((mChipHeight + (2 * mLineSpacingExtra)) * (Math.abs(getLineCount() - 1
+                    - line)));
+        }
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
         alternatesPopup.setWidth(width);
