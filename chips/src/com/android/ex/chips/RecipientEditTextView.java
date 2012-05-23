@@ -2137,12 +2137,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
                 }
+            } else {
+                scrollBottomIntoView();
             }
         }
 
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             // Do nothing.
+        }
+    }
+
+    private void scrollBottomIntoView() {
+        if (mScrollView != null) {
+            mScrollView.scrollBy(0, (int)(getLineCount() * mChipHeight));
         }
     }
 
