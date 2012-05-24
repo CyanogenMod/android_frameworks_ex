@@ -992,8 +992,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     @Override
     public boolean onKeyPreIme(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && mSelectedChip != null) {
             clearSelectedChip();
+            return true;
         }
         return super.onKeyPreIme(keyCode, event);
     }
@@ -1034,6 +1035,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         return true;
                     }
                 }
+                break;
         }
         return super.onKeyUp(keyCode, event);
     }
@@ -2281,12 +2283,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (mRemovedSpans != null) {
                 originalRecipients.addAll(mRemovedSpans);
             }
-            String[] addresses = new String[originalRecipients.size()];
+            ArrayList<String> addresses = new ArrayList<String>();
             RecipientChip chip;
             for (int i = 0; i < originalRecipients.size(); i++) {
                 chip = originalRecipients.get(i);
                 if (chip != null) {
-                    addresses[i] = createAddressText(chip.getEntry());
+                    addresses.add(createAddressText(chip.getEntry()));
                 }
             }
             HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
@@ -2346,12 +2348,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // chip.
             final ArrayList<RecipientChip> originalRecipients =
                 (ArrayList<RecipientChip>) params[0];
-            String[] addresses = new String[originalRecipients.size()];
+            ArrayList<String> addresses = new ArrayList<String>();
             RecipientChip chip;
             for (int i = 0; i < originalRecipients.size(); i++) {
                 chip = originalRecipients.get(i);
                 if (chip != null) {
-                    addresses[i] = createAddressText(chip.getEntry());
+                    addresses.add(createAddressText(chip.getEntry()));
                 }
             }
             HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
