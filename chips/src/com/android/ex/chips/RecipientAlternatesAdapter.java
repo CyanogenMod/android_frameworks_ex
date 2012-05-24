@@ -31,6 +31,7 @@ import android.widget.TextView;
 
 import com.android.ex.chips.Queries.Query;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -55,7 +56,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     private Query mQuery;
 
     public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
-            String[] inAddresses) {
+            ArrayList<String> inAddresses) {
         return getMatchingRecipients(context, inAddresses, QUERY_TYPE_EMAIL);
     }
 
@@ -69,20 +70,20 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      * @return HashMap<String,RecipientEntry>
      */
     public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
-            String[] inAddresses, int addressType) {
+            ArrayList<String> inAddresses, int addressType) {
         Queries.Query query;
         if (addressType == QUERY_TYPE_EMAIL) {
             query = Queries.EMAIL;
         } else {
             query = Queries.PHONE;
         }
-        int addressesSize = Math.min(MAX_LOOKUPS, inAddresses.length);
+        int addressesSize = Math.min(MAX_LOOKUPS, inAddresses.size());
         String[] addresses = new String[addressesSize];
         StringBuilder bindString = new StringBuilder();
         // Create the "?" string and set up arguments.
         for (int i = 0; i < addressesSize; i++) {
-            Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(inAddresses[i].toLowerCase());
-            addresses[i] = (tokens.length > 0 ? tokens[0].getAddress() : inAddresses[i]);
+            Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(inAddresses.get(i).toLowerCase());
+            addresses[i] = (tokens.length > 0 ? tokens[0].getAddress() : inAddresses.get(i));
             bindString.append("?");
             if (i < addressesSize - 1) {
                 bindString.append(",");
