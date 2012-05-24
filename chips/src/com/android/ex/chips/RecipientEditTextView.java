@@ -76,7 +76,6 @@ import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
 import android.widget.ListView;
 import android.widget.MultiAutoCompleteTextView;
-import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -97,7 +96,7 @@ import java.util.regex.Matcher;
 public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         OnItemClickListener, Callback, RecipientAlternatesAdapter.OnCheckedItemChangedListener,
         GestureDetector.OnGestureListener, OnDismissListener, OnClickListener,
-        PopupWindow.OnDismissListener, TextView.OnEditorActionListener {
+        TextView.OnEditorActionListener {
 
     private static final char COMMIT_CHAR_COMMA = ',';
 
@@ -230,16 +229,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             sSelectedTextColor = context.getResources().getColor(android.R.color.white);
         }
         mAlternatesPopup = new ListPopupWindow(context);
-        mAlternatesPopup.setOnDismissListener(this);
         mAddressPopup = new ListPopupWindow(context);
-        mAddressPopup.setOnDismissListener(this);
         mCopyDialog = new Dialog(context);
         mAlternatesListener = new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView,View view, int position,
                     long rowId) {
                 mAlternatesPopup.setOnItemClickListener(null);
-                setEnabled(true);
                 replaceChip(mSelectedChip, ((RecipientAlternatesAdapter) adapterView.getAdapter())
                         .getRecipientEntry(position));
                 Message delayed = Message.obtain(mHandler, DISMISS);
@@ -1357,7 +1353,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
         alternatesPopup.setWidth(width);
-        setEnabled(false);
         alternatesPopup.setAnchorView(this);
         alternatesPopup.setVerticalOffset(bottom);
         alternatesPopup.setAdapter(createAlternatesAdapter(currentChip));
@@ -1375,12 +1370,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             listView.setItemChecked(mCheckedItem, true);
             mCheckedItem = -1;
         }
-    }
-
-    // Dismiss listener for alterns and single address popup.
-    @Override
-    public void onDismiss() {
-        setEnabled(true);
     }
 
     private ListAdapter createAlternatesAdapter(RecipientChip chip) {
@@ -1904,7 +1893,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int bottom = calculateOffsetFromBottom(line);
         // Align the alternates popup with the left side of the View,
         // regardless of the position of the chip tapped.
-        setEnabled(false);
         popup.setWidth(width);
         popup.setAnchorView(this);
         popup.setVerticalOffset(bottom);
