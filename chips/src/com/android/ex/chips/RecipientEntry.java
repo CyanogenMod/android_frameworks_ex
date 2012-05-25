@@ -36,12 +36,8 @@ public class RecipientEntry {
     /* package */ static final int INVALID_DESTINATION_TYPE = -1;
 
     public static final int ENTRY_TYPE_PERSON = 0;
-    public static final int ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH = 1;
 
-    public static final int ENTRY_TYPE_SIZE = 2;
-
-    public static final RecipientEntry WAITING_FOR_DIRECTORY_SEARCH =
-            new RecipientEntry(ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH);
+    public static final int ENTRY_TYPE_SIZE = 1;
 
     private final int mEntryType;
 
