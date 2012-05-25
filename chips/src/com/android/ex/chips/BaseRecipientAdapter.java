@@ -916,7 +916,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * Returns a layout id for a view showing "waiting for more contacts".
      */
     protected int getWaitingForDirectorySearchLayout() {
-        return R.layout.chips_recipient_dropdown_item;
+        return R.layout.chips_waiting_for_directory_search;
     }
 
     /**
