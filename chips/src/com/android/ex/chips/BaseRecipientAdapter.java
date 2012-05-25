@@ -685,10 +685,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
         }
 
-        if (showMessageIfDirectoryLoadRemaining && mRemainingDirectoryCount > 0) {
-            entries.add(RecipientEntry.WAITING_FOR_DIRECTORY_SEARCH);
-        }
-
         return entries;
     }
 
@@ -834,71 +830,59 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         final RecipientEntry entry = mEntries.get(position);
-        switch (entry.getEntryType()) {
-            case RecipientEntry.ENTRY_TYPE_WAITING_FOR_DIRECTORY_SEARCH: {
-                return convertView != null ? convertView
-                        : mInflater.inflate(getWaitingForDirectorySearchLayout(), parent, false);
-            }
-            default: {
-                String displayName = entry.getDisplayName();
-                String destination = entry.getDestination();
-                if (TextUtils.isEmpty(displayName)
-                        || TextUtils.equals(displayName, destination)) {
-                    displayName = destination;
+        String displayName = entry.getDisplayName();
+        String destination = entry.getDestination();
+        if (TextUtils.isEmpty(displayName) || TextUtils.equals(displayName, destination)) {
+            displayName = destination;
 
-                    // We only show the destination for secondary entries, so clear it only for
-                    // the first level.
-                    if (entry.isFirstLevel()) {
-                        destination = null;
-                    }
-                }
-
-                final View itemView = convertView != null ? convertView
-                        : mInflater.inflate(getItemLayout(), parent, false);
-                final TextView displayNameView =
-                        (TextView) itemView.findViewById(getDisplayNameId());
-                final TextView destinationView =
-                        (TextView) itemView.findViewById(getDestinationId());
-                final TextView destinationTypeView =
-                        (TextView) itemView.findViewById(getDestinationTypeId());
-                final ImageView imageView = (ImageView)itemView.findViewById(getPhotoId());
-                displayNameView.setText(displayName);
-                if (!TextUtils.isEmpty(destination)) {
-                    destinationView.setText(destination);
-                } else {
-                    destinationView.setText(null);
-                }
-                if (destinationTypeView != null) {
-                    final CharSequence destinationType = mQuery.getTypeLabel(
-                            mContext.getResources(),
-                            entry.getDestinationType(),
-                            entry.getDestinationLabel()).toString().toUpperCase();
-
-                    destinationTypeView.setText(destinationType);
-                }
-
-                if (entry.isFirstLevel()) {
-                    displayNameView.setVisibility(View.VISIBLE);
-                    if (imageView != null) {
-                        imageView.setVisibility(View.VISIBLE);
-                        final byte[] photoBytes = entry.getPhotoBytes();
-                        if (photoBytes != null && imageView != null) {
-                            final Bitmap photo = BitmapFactory.decodeByteArray(
-                                    photoBytes, 0, photoBytes.length);
-                            imageView.setImageBitmap(photo);
-                        } else {
-                            imageView.setImageResource(getDefaultPhotoResource());
-                        }
-                    }
-                } else {
-                    displayNameView.setVisibility(View.GONE);
-                    if (imageView != null) {
-                        imageView.setVisibility(View.INVISIBLE);
-                    }
-                }
-                return itemView;
+            // We only show the destination for secondary entries, so clear it
+            // only for the first level.
+            if (entry.isFirstLevel()) {
+                destination = null;
             }
         }
+
+        final View itemView = convertView != null ? convertView : mInflater.inflate(
+                getItemLayout(), parent, false);
+        final TextView displayNameView = (TextView) itemView.findViewById(getDisplayNameId());
+        final TextView destinationView = (TextView) itemView.findViewById(getDestinationId());
+        final TextView destinationTypeView = (TextView) itemView
+                .findViewById(getDestinationTypeId());
+        final ImageView imageView = (ImageView) itemView.findViewById(getPhotoId());
+        displayNameView.setText(displayName);
+        if (!TextUtils.isEmpty(destination)) {
+            destinationView.setText(destination);
+        } else {
+            destinationView.setText(null);
+        }
+        if (destinationTypeView != null) {
+            final CharSequence destinationType = mQuery
+                    .getTypeLabel(mContext.getResources(), entry.getDestinationType(),
+                            entry.getDestinationLabel()).toString().toUpperCase();
+
+            destinationTypeView.setText(destinationType);
+        }
+
+        if (entry.isFirstLevel()) {
+            displayNameView.setVisibility(View.VISIBLE);
+            if (imageView != null) {
+                imageView.setVisibility(View.VISIBLE);
+                final byte[] photoBytes = entry.getPhotoBytes();
+                if (photoBytes != null && imageView != null) {
+                    final Bitmap photo = BitmapFactory.decodeByteArray(photoBytes, 0,
+                            photoBytes.length);
+                    imageView.setImageBitmap(photo);
+                } else {
+                    imageView.setImageResource(getDefaultPhotoResource());
+                }
+            }
+        } else {
+            displayNameView.setVisibility(View.GONE);
+            if (imageView != null) {
+                imageView.setVisibility(View.INVISIBLE);
+            }
+        }
+        return itemView;
     }
 
     /**
@@ -910,13 +894,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      */
     protected int getItemLayout() {
         return R.layout.chips_recipient_dropdown_item;
-    }
-
-    /**
-     * Returns a layout id for a view showing "waiting for more contacts".
-     */
-    protected int getWaitingForDirectorySearchLayout() {
-        return R.layout.chips_waiting_for_directory_search;
     }
 
     /**
