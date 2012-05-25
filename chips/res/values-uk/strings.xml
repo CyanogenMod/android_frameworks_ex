@@ -17,7 +17,6 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="more_string" msgid="8971577924280885648">"Ще <xliff:g id="COUNT">%1$s</xliff:g>..."</string>
-    <string name="chips_waiting_for_directory_result" msgid="4210117336820180232">"В очікуванні інших контактів"</string>
     <string name="copy_email" msgid="7869435992461603532">"Копіювати електронну адресу"</string>
     <string name="copy_number" msgid="530057841276106843">"Копіювати номер телефону"</string>
     <string name="done" msgid="2356320650733788862">"Return"</string>
