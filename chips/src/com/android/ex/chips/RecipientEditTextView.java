@@ -2225,6 +2225,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     tokenEnd = movePastTerminators(mTokenizer.findTokenEnd(text, tokenStart));
                     commitChip(tokenStart, tokenEnd, getText());
                     createdChip = findChip(tokenStart);
+                    if (createdChip == null) {
+                        break;
+                    }
                     // +1 for the space at the end.
                     tokenStart = getSpannable().getSpanEnd(createdChip) + 1;
                     created.add(createdChip);
