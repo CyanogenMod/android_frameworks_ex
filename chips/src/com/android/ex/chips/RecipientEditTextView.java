@@ -906,12 +906,38 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (TextUtils.isEmpty(token)) {
             return null;
         }
-        if (isPhoneQuery() && isPhoneNumber(token)) {
-            return RecipientEntry
-                    .constructFakeEntry(token);
-        }
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
+        if (isPhoneQuery()) {
+            // The number often arrives as "(800) 123-1231, ".
+            // Trim the space and trailing comma if necessary.
+            token = token.trim();
+            char charAt = token.charAt(token.length() - 1);
+            if (charAt == COMMIT_CHAR_COMMA || charAt == COMMIT_CHAR_SEMICOLON) {
+                token = token.substring(0, token.length() - 1);
+            }
+
+            // look for something that looks like a phone number. At this point, the original
+            // token might have looked like this: "Fred Flinstone <(800) 425-2323>"
+            if (!isPhoneNumber(token) && isValid(token) && tokens != null && tokens.length > 0) {
+                for (int i = 0; i < tokens.length; i++) {
+                    // If we can get a phone number from tokenizing, then generate an entry from
+                    // this.
+                    display = tokens[i].getName();
+                    if (!TextUtils.isEmpty(display) && isPhoneNumber(display)) {
+                        return RecipientEntry.constructGeneratedEntry(display, display);
+                    } else {
+                        display = tokens[i].getAddress();
+                        if (!TextUtils.isEmpty(display) && isPhoneNumber(display)) {
+                            return RecipientEntry.constructFakeEntry(display);
+                        }
+                    }
+                }
+            }
+            // If the original token is a phone number to start with or as a last resort, use the
+            // original token.
+            return RecipientEntry.constructFakeEntry(token);
+        }
         if (isValid(token) && tokens != null && tokens.length > 0) {
             // If we can get a name from tokenizing, then generate an entry from
             // this.
