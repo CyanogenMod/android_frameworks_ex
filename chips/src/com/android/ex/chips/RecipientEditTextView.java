@@ -2136,7 +2136,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
                 }
-            } else {
+            } else if (count > before) {
+                // Only scroll when the user is adding text, not clearing text.
                 scrollBottomIntoView();
             }
         }
