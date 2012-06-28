@@ -2544,7 +2544,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     protected boolean isPhoneQuery() {
-        return ((BaseRecipientAdapter)getAdapter()).getQueryType() ==
-                BaseRecipientAdapter.QUERY_TYPE_PHONE;
+        return getAdapter() != null
+                && ((BaseRecipientAdapter) getAdapter()).getQueryType()
+                    == BaseRecipientAdapter.QUERY_TYPE_PHONE;
     }
 }
