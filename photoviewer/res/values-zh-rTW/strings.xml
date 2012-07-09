@@ -20,7 +20,7 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="photo_view_default_title" msgid="8529005357137322238">"郵件中的相片"</string>
     <string name="photo_view_load_error" msgid="738557967189699322">"無法載入相片。"</string>
-    <string name="photo_view_video_not_ready" msgid="3998974166493712675">"影片正準備中，請重新整理頁面。"</string>
+    <string name="photo_view_video_not_ready" msgid="3998974166493712675">"影片準備中，請重新整理頁面。"</string>
     <string name="camera_photo_error" msgid="3505076890331146233">"找不到相片。"</string>
     <string name="photo_view_count" msgid="3466690572899800275">"第 <xliff:g id="CURRENT_POS">%d</xliff:g> 張 (共 <xliff:g id="COUNT">%d</xliff:g> 張)"</string>
     <string name="loading_photo" msgid="2781498368206257164">"載入中…"</string>
