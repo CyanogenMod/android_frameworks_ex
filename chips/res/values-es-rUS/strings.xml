@@ -16,8 +16,7 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <!-- no translation found for more_string (8495478259330621990) -->
-    <skip />
+    <string name="more_string" msgid="8495478259330621990">"+<xliff:g id="COUNT">%1$s</xliff:g>"</string>
     <string name="copy_email" msgid="7869435992461603532">"Copiar la dirección de correo"</string>
     <string name="copy_number" msgid="530057841276106843">"Copiar el número de teléfono"</string>
     <string name="done" msgid="2356320650733788862">"Volver"</string>
