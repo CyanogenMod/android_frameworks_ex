@@ -18,54 +18,24 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/photo_activity_root_view"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    >
-    <LinearLayout
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        >
-        <com.android.ex.photo.PhotoViewPager
-            android:id="@+id/photo_view_pager"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            />
-    </LinearLayout>
-    <!-- We cannot directly include empty_layout as the IDs defined there
-         would clash with IDs defined underneath the PhotoViewPager. -->
-    <FrameLayout
-        android:id="@+id/photo_activity_empty"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_weight="1">
-        <TextView
-            android:id="@+id/photo_activity_empty_text"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:textSize="18sp"/>
+    android:layout_height="match_parent" >
 
-        <LinearLayout
-            android:id="@+id/photo_activity_empty_progress"
+    <com.android.ex.photo.PhotoViewPager
+        android:id="@+id/photo_view_pager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/empty_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" >
+
+        <ProgressBar
+            style="?android:attr/progressBarStyleLarge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:visibility="gone">
-            <ProgressBar
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dip"
-                android:indeterminate="true"/>
-            <TextView
-                android:id="@+id/photo_activity_empty_progress_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="5dip"
-                android:textSize="18sp"
-                android:textColor="@color/title_text_color"
-                android:text="@string/loading_photo"/>
-        </LinearLayout>
-    </FrameLayout>
-</FrameLayout>
+            android:indeterminate="true" />
+    </LinearLayout>
 
+</FrameLayout>

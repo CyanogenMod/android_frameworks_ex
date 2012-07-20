@@ -23,20 +23,23 @@ import android.app.LoaderManager.LoaderCallbacks;
 import android.content.Context;
 import android.content.Intent;
 import android.content.Loader;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.app.LoaderManager;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.Toast;
 
 import com.android.ex.photo.Intents;
 import com.android.ex.photo.PhotoViewActivity;
+import com.android.ex.photo.PhotoViewActivity.CursorChangedListener;
 import com.android.ex.photo.PhotoViewActivity.OnScreenListener;
 import com.android.ex.photo.R;
+import com.android.ex.photo.adapters.PhotoPagerAdapter;
 import com.android.ex.photo.loaders.PhotoBitmapLoader;
 import com.android.ex.photo.util.ImageUtils;
 import com.android.ex.photo.views.PhotoView;
@@ -45,7 +48,7 @@ import com.android.ex.photo.views.PhotoView;
  * Displays a photo.
  */
 public class PhotoViewFragment extends Fragment implements
-        LoaderCallbacks<Bitmap>, OnClickListener, OnScreenListener {
+        LoaderCallbacks<Bitmap>, OnClickListener, OnScreenListener, CursorChangedListener {
     /**
      * Interface for components that are internally scrollable left-to-right.
      */
@@ -84,18 +87,22 @@ public class PhotoViewFragment extends Fragment implements
     /** The intent we were launched with */
     private Intent mIntent;
     private PhotoViewActivity mCallback;
+    private PhotoPagerAdapter mAdapter;
 
     private PhotoView mPhotoView;
+    private final int mPosition;
 
     /** Whether or not the fragment should make the photo full-screen */
     private boolean mFullScreen;
 
     public PhotoViewFragment() {
+        mPosition = -1;
     }
 
-    public PhotoViewFragment(Intent intent) {
-        this();
+    public PhotoViewFragment(Intent intent, int position, PhotoPagerAdapter adapter) {
         mIntent = intent;
+        mPosition = position;
+        mAdapter = adapter;
     }
 
     @Override
@@ -169,6 +176,7 @@ public class PhotoViewFragment extends Fragment implements
     @Override
     public void onResume() {
         mCallback.addScreenListener(this);
+        mCallback.addCursorListener(this);
 
         getLoaderManager().initLoader(LOADER_ID_PHOTO, null, this);
 
@@ -178,7 +186,8 @@ public class PhotoViewFragment extends Fragment implements
     @Override
     public void onPause() {
         super.onPause();
-        // Remove listener
+        // Remove listeners
+        mCallback.removeCursorListener(this);
         mCallback.removeScreenListener(this);
         resetPhotoView();
     }
@@ -222,15 +231,11 @@ public class PhotoViewFragment extends Fragment implements
         final int id = loader.getId();
         if (id == LOADER_ID_PHOTO) {
             if (data == null) {
-                Toast.makeText(getActivity(), R.string.photo_view_load_error, Toast.LENGTH_SHORT)
-                        .show();
                 return;
             }
-            final View view = getView();
-            if (view != null) {
-                bindPhoto(data);
-            }
 
+            bindPhoto(data);
+            mCallback.setViewActivated();
             setViewVisibility();
         }
     }
@@ -262,32 +267,10 @@ public class PhotoViewFragment extends Fragment implements
 
     @Override
     public void onClick(View v) {
-        switch (v.getId()) {
-            default: {
-                if (!isPhotoBound()) {
-                    // If there is no photo, don't allow any actions except to exit
-                    // full-screen mode. We want to let the user view comments, etc...
-                    if (mCallback.isFragmentFullScreen(this)) {
-                        mCallback.toggleFullScreen();
-                    }
-                    break;
-                }
-
-                // TODO: enable video
-                if (isVideo() && mCallback.isFragmentFullScreen(this)) {
-                    if (isVideoReady()) {
-//                        final Intent startIntent = Intents.getVideoViewActivityIntent(getActivity(),
-//                                mAccount, mOwnerId, mPhotoId, mAdapter.getVideoData());
-//                        startActivity(startIntent);
-                    } else {
-                        final String toastText = getString(R.string.photo_view_video_not_ready);
-                        Toast.makeText(getActivity(), toastText, Toast.LENGTH_LONG).show();
-                    }
-                } else {
-                    mCallback.toggleFullScreen();
-                }
-                break;
-            }
+        // If there is no photo, don't allow any actions except to exit
+        // full-screen mode.
+        if (mCallback.isFragmentFullScreen(this) || isPhotoBound()) {
+            mCallback.toggleFullScreen();
         }
     }
 
@@ -343,34 +326,6 @@ public class PhotoViewFragment extends Fragment implements
     }
 
     /**
-     * Returns {@code true} if a photo is loading. Otherwise, returns {@code false}.
-     */
-    public boolean isPhotoLoading() {
-        return (mPhotoView != null && mPhotoView.isPhotoLoading());
-    }
-
-    /**
-     * Returns {@code true} if the photo represents a video. Otherwise, returns {@code false}.
-     */
-    public boolean isVideo() {
-        return (mPhotoView != null && mPhotoView.isVideo());
-    }
-
-    /**
-     * Returns {@code true} if the video is ready to play. Otherwise, returns {@code false}.
-     */
-    public boolean isVideoReady() {
-        return (mPhotoView != null && mPhotoView.isVideoReady());
-    }
-
-    /**
-     * Returns video data for the photo. Otherwise, {@code null} if the photo is not a video.
-     */
-    public byte[] getVideoData() {
-        return (mPhotoView == null ? null : mPhotoView.getVideoData());
-    }
-
-    /**
      * Sets view visibility depending upon whether or not we're in "full screen" mode.
      */
     private void setViewVisibility() {
@@ -386,5 +341,22 @@ public class PhotoViewFragment extends Fragment implements
     public void setFullScreen(boolean fullScreen) {
         mFullScreen = fullScreen;
         mPhotoView.enableImageTransforms(true);
+    }
+
+    @Override
+    public void onCursorChanged(Cursor cursor) {
+        if (cursor.moveToPosition(mPosition) && !isPhotoBound()) {
+            final LoaderManager manager = getLoaderManager();
+            final Loader<Bitmap> fakeLoader = manager.getLoader(LOADER_ID_PHOTO);
+            if (fakeLoader == null) {
+                return;
+            }
+
+            final PhotoBitmapLoader loader =
+                    (PhotoBitmapLoader) fakeLoader;
+            mResolvedPhotoUri = mAdapter.getPhotoUri(cursor);
+            loader.setPhotoUri(mResolvedPhotoUri);
+            loader.forceLoad();
+        }
     }
 }

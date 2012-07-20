@@ -39,7 +39,7 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
     }
 
     @Override
-    public Fragment getItem(Context context, Cursor cursor) {
+    public Fragment getItem(Context context, Cursor cursor, int position) {
         final String photoUri = cursor.getString(mContentUriIndex);
         final String photoName = cursor.getString(mPhotoNameIndex);
 
@@ -50,7 +50,7 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
             .setPhotoName(photoName)
             .setResolvedPhotoUri(photoUri);
 
-        return new PhotoViewFragment(builder.build());
+        return new PhotoViewFragment(builder.build(), position, this);
     }
 
     @Override
@@ -61,5 +61,9 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
                 newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.NAME);
 
         return super.swapCursor(newCursor);
+    }
+
+    public String getPhotoUri(Cursor cursor) {
+        return cursor.getString(mContentUriIndex);
     }
 }

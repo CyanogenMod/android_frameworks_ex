@@ -30,12 +30,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.view.View;
-import android.widget.TextView;
 
 import com.android.ex.photo.PhotoViewPager.InterceptType;
 import com.android.ex.photo.PhotoViewPager.OnInterceptTouchListener;
 import com.android.ex.photo.adapters.BaseFragmentPagerAdapter.OnFragmentPagerListener;
 import com.android.ex.photo.adapters.PhotoPagerAdapter;
+import com.android.ex.photo.fragments.PhotoViewFragment;
 import com.android.ex.photo.loaders.PhotoPagerLoader;
 import com.android.ex.photo.provider.PhotoContract;
 
@@ -83,6 +83,16 @@ public class PhotoViewActivity extends Activity implements
         public boolean onInterceptMoveRight(float origX, float origY);
     }
 
+    public static interface CursorChangedListener {
+        /**
+         * Called when the cursor that contains the photo list data
+         * is updated. Note that there is no guarantee that the cursor
+         * will be at the proper position.
+         * @param cursor the cursor containing the photo list data
+         */
+        public void onCursorChanged(Cursor cursor);
+    }
+
     private final static String STATE_ITEM_KEY =
             "com.google.android.apps.plus.PhotoViewFragment.ITEM";
     private final static String STATE_FULLSCREEN_KEY =
@@ -110,8 +120,8 @@ public class PhotoViewActivity extends Activity implements
     private int mAlbumCount = ALBUM_COUNT_UNKNOWN;
     /** {@code true} if the view is empty. Otherwise, {@code false}. */
     private boolean mIsEmpty;
-    /** The root view of the activity */
-    private View mRootView;
+    /** The view to be shown if the current photo is not displayed. */
+    private View mEmptyView;
     /** The main pager; provides left/right swipe between photos */
     private PhotoViewPager mViewPager;
     /** Adapter to create pager views */
@@ -120,6 +130,8 @@ public class PhotoViewActivity extends Activity implements
     private boolean mFullScreen;
     /** The set of listeners wanting full screen state */
     private Set<OnScreenListener> mScreenListeners = new HashSet<OnScreenListener>();
+    /** The set of listeners wanting full screen state */
+    private Set<CursorChangedListener> mCursorListeners = new HashSet<CursorChangedListener>();
     /** When {@code true}, restart the loader when the activity becomes active */
     private boolean mRestartLoader;
     /** Whether or not this activity is paused */
@@ -130,8 +142,6 @@ public class PhotoViewActivity extends Activity implements
     // by the activity, but, that gets tricky when it comes to screen rotation. For now, we
     // track the loading by this variable which is fragile and may cause phantom "loading..."
     // text.
-    /** {@code true} if the fragment is loading. */
-    private boolean mFragmentIsLoading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -177,7 +187,7 @@ public class PhotoViewActivity extends Activity implements
         mPhotoIndex = currentItem;
 
         setContentView(R.layout.photo_activity_view);
-        mRootView = findViewById(R.id.photo_activity_root_view);
+        mEmptyView = findViewById(R.id.empty_view);
 
         // Create the adapter and add the view pager
         mAdapter = new PhotoPagerAdapter(this, getFragmentManager(), null);
@@ -193,8 +203,6 @@ public class PhotoViewActivity extends Activity implements
 
         final ActionBar actionBar = getActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
-
-        updateView(mRootView);
     }
 
     @Override
@@ -242,6 +250,14 @@ public class PhotoViewActivity extends Activity implements
         mScreenListeners.remove(listener);
     }
 
+    public synchronized void addCursorListener(CursorChangedListener listener) {
+        mCursorListeners.add(listener);
+    }
+
+    public synchronized void removeCursorListener(CursorChangedListener listener) {
+        mCursorListeners.remove(listener);
+    }
+
     public boolean isFragmentFullScreen(Fragment fragment) {
         if (mViewPager == null || mAdapter == null || mAdapter.getCount() == 0) {
             return mFullScreen;
@@ -262,11 +278,6 @@ public class PhotoViewActivity extends Activity implements
 
         final int dataCount = data.getCount();
         if (dataCount <= 1) {
-            // The last photo was removed ... finish the activity & go to photos-home
-//            final Intent intent = Intents.getPhotosHomeIntent(this, mAccount, mAccount.getGaiaId());
-//
-//            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//            startActivity(intent);
             finish();
             return;
         }
@@ -277,7 +288,6 @@ public class PhotoViewActivity extends Activity implements
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         if (id == LOADER_PHOTO_LIST) {
-            mFragmentIsLoading = true;
             return new PhotoPagerLoader(this, Uri.parse(mPhotosUri), mProjection);
         }
         return null;
@@ -289,8 +299,6 @@ public class PhotoViewActivity extends Activity implements
         if (id == LOADER_PHOTO_LIST) {
             if (data == null || data.getCount() == 0) {
                 mIsEmpty = true;
-                mFragmentIsLoading = false;
-                updateView(mRootView);
             } else {
                 mAlbumCount = data.getCount();
 
@@ -315,12 +323,21 @@ public class PhotoViewActivity extends Activity implements
                         }
 
                         mAdapter.swapCursor(data);
-                        updateView(mRootView);
+                        notifyCursorListeners(data);
+
                         mViewPager.setCurrentItem(itemIndex, false);
                         updateActionBar();
                     }
                 });
             }
+        }
+    }
+
+    private synchronized void notifyCursorListeners(Cursor data) {
+        // tell all of the objects listening for cursor changes
+        // that the cursor has changed
+        for (CursorChangedListener listener : mCursorListeners) {
+            listener.onCursorChanged(data);
         }
     }
 
@@ -355,14 +372,13 @@ public class PhotoViewActivity extends Activity implements
         return mViewPager.getCurrentItem() == mAdapter.getItemPosition(fragment);
     }
 
-    public void onFragmentVisible(Fragment fragment) {
-        if (mViewPager == null || mAdapter == null) {
-            return;
-        }
-        if (mViewPager.getCurrentItem() == mAdapter.getItemPosition(fragment)) {
-            mFragmentIsLoading = false;
-        }
-        updateView(mRootView);
+    public void onFragmentVisible(PhotoViewFragment fragment) {
+        setEmptyViewVisibility(
+                fragment.isPhotoBound() ? View.GONE : View.VISIBLE);
+    }
+
+    public void setEmptyViewVisibility(int visibility) {
+        mEmptyView.setVisibility(visibility);
     }
 
     @Override
@@ -412,66 +428,10 @@ public class PhotoViewActivity extends Activity implements
         }
     }
 
-    /**
-     * Updates the title bar according to the value of {@link #mFullScreen}.
-     */
-    private void setViewActivated() {
+    public void setViewActivated() {
         for (OnScreenListener listener : mScreenListeners) {
             listener.onViewActivated();
         }
-    }
-
-    /**
-     * Updates the view to show the correct content. If album data is available, show the album
-     * list. Otherwise, show either progress or no album view.
-     */
-    private void updateView(View view) {
-        if (view == null) {
-            return;
-        }
-
-        if (mFragmentIsLoading || (mAdapter.getCursor() == null && !mIsEmpty)) {
-            showEmptyViewProgress(view);
-        } else {
-            if (!mIsEmpty) {
-                showContent(view);
-            } else {
-                showEmptyView(view, getResources().getString(R.string.camera_photo_error));
-            }
-        }
-    }
-
-    /**
-     * Display loading progress
-     *
-     * @param view The layout view
-     */
-    private void showEmptyViewProgress(View view) {
-        view.findViewById(R.id.photo_activity_empty_text).setVisibility(View.GONE);
-        view.findViewById(R.id.photo_activity_empty_progress).setVisibility(View.VISIBLE);
-        view.findViewById(R.id.photo_activity_empty).setVisibility(View.VISIBLE);
-    }
-
-    /**
-     * Show only the empty view
-     *
-     * @param view The layout view
-     */
-    private void showEmptyView(View view, CharSequence emptyText) {
-        view.findViewById(R.id.photo_activity_empty_progress).setVisibility(View.GONE);
-        final TextView etv = (TextView) view.findViewById(R.id.photo_activity_empty_text);
-        etv.setText(emptyText);
-        etv.setVisibility(View.VISIBLE);
-        view.findViewById(R.id.photo_activity_empty).setVisibility(View.VISIBLE);
-    }
-
-    /**
-     * Hide the empty view and show the content
-     *
-     * @param view The layout view
-     */
-    private void showContent(View view) {
-        view.findViewById(R.id.photo_activity_empty).setVisibility(View.GONE);
     }
 
     /**

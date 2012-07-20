@@ -30,12 +30,16 @@ import com.android.ex.photo.util.ImageUtils;
  * Loader for the bitmap of a photo.
  */
 public class PhotoBitmapLoader extends AsyncTaskLoader<Bitmap> {
-    private final String mPhotoUri;
+    private String mPhotoUri;
 
     private Bitmap mBitmap;
 
     public PhotoBitmapLoader(Context context, String photoUri) {
         super(context);
+        mPhotoUri = photoUri;
+    }
+
+    public void setPhotoUri(String photoUri) {
         mPhotoUri = photoUri;
     }
 
