@@ -65,12 +65,12 @@ public abstract class BaseCursorPagerAdapter extends BaseFragmentPagerAdapter {
      * moved to the correct position.
      * @return the newly created fragment.
      */
-    public abstract Fragment getItem(Context context, Cursor cursor);
+    public abstract Fragment getItem(Context context, Cursor cursor, int position);
 
     @Override
     public Fragment getItem(int position) {
         if (mDataValid && moveCursorTo(position)) {
-            return getItem(mContext, mCursor);
+            return getItem(mContext, mCursor, position);
         }
         return null;
     }
