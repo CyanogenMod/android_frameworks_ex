@@ -22,6 +22,7 @@ import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.View;
 
 /**
  * View pager for photo view fragments. Define our own class so we can specify the
@@ -37,7 +38,7 @@ public class PhotoViewPager extends ViewPager {
      * Provides an ability to intercept touch events.
      * <p>
      * {@link ViewPager} intercepts all touch events and we need to be able to override this
-     * behaviour. Instead, we could perform a similar function by declaring a custom
+     * behavior. Instead, we could perform a similar function by declaring a custom
      * {@link ViewGroup} to contain the pager and intercept touch events at a higher level.
      */
     public static interface OnInterceptTouchListener {
@@ -63,10 +64,34 @@ public class PhotoViewPager extends ViewPager {
 
     public PhotoViewPager(Context context) {
         super(context);
+        initialize();
     }
 
     public PhotoViewPager(Context context, AttributeSet attrs) {
         super(context, attrs);
+        initialize();
+    }
+
+    private void initialize() {
+        // Set the page transformer to perform the transition animation
+        // for each page in the view.
+        setPageTransformer(true, new PageTransformer() {
+            @Override
+            public void transformPage(View page, float position) {
+                if (position < 0) {
+                    page.setTranslationX(0);
+                    page.setAlpha(1.f);
+                    page.setScaleX(1);
+                    page.setScaleY(1);
+                } else {
+                    page.setTranslationX(-position * page.getWidth());
+                    page.setAlpha(Math.max(0,1.f - position));
+                    final float scale = Math.max(0, 1.f - position * 0.3f);
+                    page.setScaleX(scale);
+                    page.setScaleY(scale);
+                }
+            }
+        });
     }
 
     /**
