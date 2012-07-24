@@ -21,7 +21,7 @@ import android.net.Uri;
 import android.provider.OpenableColumns;
 
 public final class PhotoContract {
-    /** Columns for the view {@link #PHOTO_VIEW} */
+    /** Columns for the view */
     public static interface PhotoViewColumns {
         /**
          * This column is a {@link Uri} that can be queried
@@ -39,6 +39,12 @@ public final class PhotoContract {
          */
         public static final String CONTENT_URI = "contentUri";
         /**
+         * This column is a {@link Uri} that points to a thumbnail of the image
+         * that ideally is a local file.
+         * This value is undefined in any other state.
+         */
+        public static final String THUMBNAIL_URI = "thumbnailUri";
+        /**
          * This string column is the MIME type.
          */
         public static final String CONTENT_TYPE = "contentType";
@@ -51,13 +57,9 @@ public final class PhotoContract {
             PhotoViewColumns.URI,
             PhotoViewColumns.NAME,
             PhotoViewColumns.CONTENT_URI,
+            PhotoViewColumns.THUMBNAIL_URI,
             PhotoViewColumns.CONTENT_TYPE,
         };
-
-        public final static int INDEX_URI = 0;
-        public final static int INDEX_NAME = 1;
-        public final static int INDEX_CONTENT_URI = 2;
-        public final static int INDEX_CONTENT_TYPE = 3;
     }
 
     public static final class ContentTypeParameters {

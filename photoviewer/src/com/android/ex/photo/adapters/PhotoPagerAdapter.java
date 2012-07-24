@@ -33,6 +33,7 @@ import com.android.ex.photo.provider.PhotoContract;
 public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
     private int mContentUriIndex;
     private int mPhotoNameIndex;
+    private int mThumbnailUriIndex;
 
     public PhotoPagerAdapter(Context context, FragmentManager fm, Cursor c) {
         super(context, fm, c);
@@ -42,13 +43,15 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
     public Fragment getItem(Context context, Cursor cursor, int position) {
         final String photoUri = cursor.getString(mContentUriIndex);
         final String photoName = cursor.getString(mPhotoNameIndex);
+        final String thumbnailUri = cursor.getString(mThumbnailUriIndex);
 
         // create new PhotoViewFragment
         final PhotoViewIntentBuilder builder =
                 Intents.newPhotoViewFragmentIntentBuilder(mContext);
           builder
             .setPhotoName(photoName)
-            .setResolvedPhotoUri(photoUri);
+            .setResolvedPhotoUri(photoUri)
+            .setThumbnailUri(thumbnailUri);
 
         return new PhotoViewFragment(builder.build(), position, this);
     }
@@ -57,6 +60,8 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
     public Cursor swapCursor(Cursor newCursor) {
         mContentUriIndex =
                 newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.CONTENT_URI);
+        mThumbnailUriIndex =
+                newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.THUMBNAIL_URI);
         mPhotoNameIndex =
                 newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.NAME);
 

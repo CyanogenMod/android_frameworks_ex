@@ -86,8 +86,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
 
     /** The photo to display */
     private BitmapDrawable mDrawable;
-    /** Whether or not the photo is in the process of loading */
-    private boolean mLoading;
     /** The matrix used for drawing; this may be {@code null} */
     private Matrix mDrawMatrix;
     /** A matrix to apply the scaling of the photo */
@@ -469,20 +467,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     }
 
     /**
-     * Returns {@code true} if a photo has been bound. Otherwise, {@code false}.
-     */
-    public boolean isPhotoLoading() {
-        return mLoading;
-    }
-
-    /**
-     * Sets whether the photo is being loaded.
-     */
-    public void setPhotoLoading(boolean loading) {
-        mLoading = loading;
-    }
-
-    /**
      * Hides the photo info portion of the header. As a side effect, this automatically enables
      * or disables image transformations [eg zoom, pan, etc...] depending upon the value of
      * fullScreen. If this is not desirable, enable / disable image transformations manually.
@@ -550,7 +534,7 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
         // snap transformations; we don't animate
         mMatrix.set(mOriginalMatrix);
 
-        // Invalidate the view because if you move off this PhotoHeaderView
+        // Invalidate the view because if you move off this PhotoView
         // to another one and come back, you want it to draw from scratch
         // in case you were zoomed in or translated (since those settings
         // are not preserved and probably shouldn't be).
