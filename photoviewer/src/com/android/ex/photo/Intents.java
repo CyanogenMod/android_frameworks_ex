@@ -35,6 +35,7 @@ public class Intents {
     public static final String EXTRA_RESOLVED_PHOTO_URI = "resolved_photo_uri";
     public static final String EXTRA_PHOTO_NAME = "photo_name";
     public static final String EXTRA_PROJECTION = "projection";
+    public static final String EXTRA_THUMBNAIL_URI = "thumbnail_uri";
 
     /**
      * Gets a photo view intent builder to display the photos from phone activity.
@@ -76,6 +77,8 @@ public class Intents {
         private String mResolvedPhotoUri;
         /** The projection for the query to use; optional */
         private String[] mProjection;
+        /** The URI of a thumbnail of the photo to display */
+        private String mThumbnailUri;
 
         private PhotoViewIntentBuilder(Context context, Class<?> cls) {
             mIntent = new Intent(context, cls);
@@ -115,6 +118,14 @@ public class Intents {
             return this;
         }
 
+        /**
+         * Sets the URI for a thumbnail preview of the photo.
+         */
+        public PhotoViewIntentBuilder setThumbnailUri(String thumbnailUri) {
+            mThumbnailUri = thumbnailUri;
+            return this;
+        }
+
         /** Build the intent */
         public Intent build() {
             if (TextUtils.isEmpty(mPhotosUri) && TextUtils.isEmpty(mResolvedPhotoUri)) {
@@ -144,6 +155,10 @@ public class Intents {
 
             if (mProjection != null) {
                 mIntent.putExtra(EXTRA_PROJECTION, mProjection);
+            }
+
+            if (mThumbnailUri != null) {
+                mIntent.putExtra(EXTRA_THUMBNAIL_URI, mThumbnailUri);
             }
 
             return mIntent;

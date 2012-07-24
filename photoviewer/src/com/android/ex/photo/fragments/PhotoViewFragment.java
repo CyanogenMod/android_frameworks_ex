@@ -77,13 +77,15 @@ public class PhotoViewFragment extends Fragment implements
             "com.android.mail.photo.fragments.PhotoViewFragment.INTENT";
 
     // Loader IDs
-    private final static int LOADER_ID_PHOTO = 2;
+    private final static int LOADER_ID_PHOTO = 1;
+    private final static int LOADER_ID_THUMBNAIL = 2;
 
     /** The size of the photo */
     public static Integer sPhotoSize;
 
     /** The URL of a photo to display */
     private String mResolvedPhotoUri;
+    private String mThumbnailUri;
     /** The intent we were launched with */
     private Intent mIntent;
     private PhotoViewActivity mCallback;
@@ -95,6 +97,8 @@ public class PhotoViewFragment extends Fragment implements
     /** Whether or not the fragment should make the photo full-screen */
     private boolean mFullScreen;
 
+    private boolean mShowingThumbnail;
+
     public PhotoViewFragment() {
         mPosition = -1;
     }
@@ -103,6 +107,7 @@ public class PhotoViewFragment extends Fragment implements
         mIntent = intent;
         mPosition = position;
         mAdapter = adapter;
+        mShowingThumbnail = false;
     }
 
     @Override
@@ -151,8 +156,7 @@ public class PhotoViewFragment extends Fragment implements
         }
 
         mResolvedPhotoUri = mIntent.getStringExtra(Intents.EXTRA_RESOLVED_PHOTO_URI);
-
-        setHasOptionsMenu(true);
+        mThumbnailUri = mIntent.getStringExtra(Intents.EXTRA_THUMBNAIL_URI);
     }
 
     @Override
@@ -161,9 +165,6 @@ public class PhotoViewFragment extends Fragment implements
         final View view = inflater.inflate(R.layout.photo_fragment_view, container, false);
 
         mPhotoView = (PhotoView) view.findViewById(R.id.photo_view);
-
-        mPhotoView.setPhotoLoading(true);
-
         mPhotoView.setOnClickListener(this);
         mPhotoView.setFullScreen(mFullScreen, false);
 
@@ -214,10 +215,13 @@ public class PhotoViewFragment extends Fragment implements
 
     @Override
     public Loader<Bitmap> onCreateLoader(int id, Bundle args) {
-        if (id == LOADER_ID_PHOTO) {
-            return new PhotoBitmapLoader(getActivity(), mResolvedPhotoUri);
-        } else {
-            return null;
+        switch (id) {
+            case LOADER_ID_PHOTO:
+                return new PhotoBitmapLoader(getActivity(), mResolvedPhotoUri);
+            case LOADER_ID_THUMBNAIL:
+                return new PhotoBitmapLoader(getActivity(), mThumbnailUri);
+            default:
+                return null;
         }
     }
 
@@ -229,14 +233,31 @@ public class PhotoViewFragment extends Fragment implements
         }
 
         final int id = loader.getId();
-        if (id == LOADER_ID_PHOTO) {
-            if (data == null) {
-                return;
-            }
+        switch (id) {
+            case LOADER_ID_PHOTO:
+                if (data == null) {
+                    getLoaderManager().initLoader(LOADER_ID_THUMBNAIL, null, this);
+                    return;
+                }
 
-            bindPhoto(data);
-            mCallback.setViewActivated();
-            setViewVisibility();
+                mShowingThumbnail = false;
+                bindPhoto(data);
+                mCallback.setViewActivated();
+                setViewVisibility();
+                break;
+            case LOADER_ID_THUMBNAIL:
+                if (data == null || isPhotoBound()) {
+                    return;
+                }
+
+                mShowingThumbnail = true;
+                bindPhoto(data);
+                mCallback.setViewActivated();
+                setViewVisibility();
+                mPhotoView.enableImageTransforms(false);
+                break;
+            default:
+                break;
         }
     }
 
@@ -245,7 +266,6 @@ public class PhotoViewFragment extends Fragment implements
      */
     private void bindPhoto(Bitmap bitmap) {
         if (mPhotoView != null) {
-            mPhotoView.setPhotoLoading(false);
             mPhotoView.bindPhoto(bitmap);
         }
     }
@@ -255,7 +275,6 @@ public class PhotoViewFragment extends Fragment implements
      */
     private void resetPhotoView() {
         if (mPhotoView != null) {
-            mPhotoView.setPhotoLoading(true);
             mPhotoView.bindPhoto(null);
         }
     }
@@ -322,7 +341,7 @@ public class PhotoViewFragment extends Fragment implements
      * Returns {@code true} if a photo has been bound. Otherwise, returns {@code false}.
      */
     public boolean isPhotoBound() {
-        return (mPhotoView != null && mPhotoView.isPhotoBound());
+        return (mPhotoView != null && mPhotoView.isPhotoBound() && !mShowingThumbnail);
     }
 
     /**
