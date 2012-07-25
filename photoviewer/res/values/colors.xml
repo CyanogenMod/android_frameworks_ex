@@ -18,9 +18,6 @@
 <resources>
     <!-- Photo Viewer Colors -->
     <color name="solid_black">#ff000000</color>
-    <color name="title_text_color">#ffffffff</color>
-    <color name="clear">#00000000</color>
-    <color name="photo_background_color">#ff000000</color>
     <color name="photo_crop_dim_color">#cc000000</color>
     <color name="photo_crop_highlight_color">#fff</color>
 </resources>

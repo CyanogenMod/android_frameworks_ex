@@ -80,10 +80,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     /** Paint to highlight the cropped portion of the photo */
     private static Paint sCropPaint;
 
-    // Colours
-    /** The colour of the header background */
-    private static int sBackgroundColor;
-
     /** The photo to display */
     private BitmapDrawable mDrawable;
     /** The matrix used for drawing; this may be {@code null} */
@@ -516,9 +512,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
         matrix.postTranslate(-mCropRect.left, -mCropRect.top);
         matrix.postScale(scaleWidth, scaleHeight);
 
-        // Set the background to black
-        croppedCanvas.drawColor(sBackgroundColor);
-
         // draw the photo
         if (mDrawable != null) {
             croppedCanvas.concat(matrix);
@@ -558,8 +551,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        // Set the background to black
-        canvas.drawColor(sBackgroundColor);
 
         // draw the photo
         if (mDrawable != null) {
@@ -933,9 +924,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
             sInitialized = true;
 
             Resources resources = context.getApplicationContext().getResources();
-
-            // Initialize colors
-            sBackgroundColor = resources.getColor(R.color.photo_background_color);
 
             sCropSize = resources.getDimensionPixelSize(R.dimen.photo_crop_width);
 

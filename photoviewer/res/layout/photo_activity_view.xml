@@ -18,7 +18,8 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/photo_activity_root_view"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" >
+    android:layout_height="match_parent"
+    android:background="@color/solid_black" >
 
     <com.android.ex.photo.PhotoViewPager
         android:id="@+id/photo_view_pager"
