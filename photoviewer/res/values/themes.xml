@@ -21,6 +21,5 @@
         <item name="android:windowNoTitle">false</item>
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowActionBarOverlay">true</item>
-        <item name="android:windowBackground">@drawable/photo_view_background</item>
     </style>
 </resources>
