@@ -78,7 +78,16 @@ public class PhotoViewPager extends ViewPager {
         setPageTransformer(true, new PageTransformer() {
             @Override
             public void transformPage(View page, float position) {
-                if (position < 0) {
+
+                // The >= 1 is needed so that the page
+                // (page A) that transitions behind the newly visible
+                // page (page B) that comes in from the left does not
+                // get the touch events because it is still on screen
+                // (page A is still technically on screen despite being
+                // invisible). This makes sure that when the transition
+                // has completely finished, we revert it to its default
+                // behavior and move it off of the screen.
+                if (position < 0 || position >= 1.f) {
                     page.setTranslationX(0);
                     page.setAlpha(1.f);
                     page.setScaleX(1);
