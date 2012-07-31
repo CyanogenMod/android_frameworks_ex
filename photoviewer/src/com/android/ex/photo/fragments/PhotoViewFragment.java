@@ -33,6 +33,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.ImageView;
 
 import com.android.ex.photo.Intents;
 import com.android.ex.photo.PhotoViewActivity;
@@ -92,6 +93,7 @@ public class PhotoViewFragment extends Fragment implements
     private PhotoPagerAdapter mAdapter;
 
     private PhotoView mPhotoView;
+    private ImageView mPhotoPreview;
     private final int mPosition;
 
     /** Whether or not the fragment should make the photo full-screen */
@@ -167,6 +169,9 @@ public class PhotoViewFragment extends Fragment implements
         mPhotoView = (PhotoView) view.findViewById(R.id.photo_view);
         mPhotoView.setOnClickListener(this);
         mPhotoView.setFullScreen(mFullScreen, false);
+        mPhotoView.enableImageTransforms(true);
+
+        mPhotoPreview = (ImageView) view.findViewById(R.id.photo_preview_image);
 
         // Don't call until we've setup the entire view
         setViewVisibility();
@@ -244,17 +249,25 @@ public class PhotoViewFragment extends Fragment implements
                 bindPhoto(data);
                 mCallback.setViewActivated();
                 setViewVisibility();
+                mPhotoPreview.setVisibility(View.GONE);
                 break;
             case LOADER_ID_THUMBNAIL:
-                if (data == null || isPhotoBound()) {
+                if (isPhotoBound()) {
+                    return;
+                }
+
+                if (data == null) {
+                    // no preview, show default
+                    mPhotoPreview.setVisibility(View.VISIBLE);
+                    mPhotoPreview.setImageResource(R.drawable.default_image);
                     return;
                 }
 
                 mShowingThumbnail = true;
-                bindPhoto(data);
+                mPhotoPreview.setVisibility(View.VISIBLE);
+                mPhotoPreview.setImageBitmap(data);
                 mCallback.setViewActivated();
                 setViewVisibility();
-                mPhotoView.enableImageTransforms(false);
                 break;
             default:
                 break;
@@ -355,7 +368,6 @@ public class PhotoViewFragment extends Fragment implements
      */
     public void setFullScreen(boolean fullScreen) {
         mFullScreen = fullScreen;
-        mPhotoView.enableImageTransforms(true);
     }
 
     @Override
