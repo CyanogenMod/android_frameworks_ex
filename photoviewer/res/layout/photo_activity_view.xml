@@ -18,25 +18,11 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/photo_activity_root_view"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/solid_black" >
+    android:layout_height="match_parent" >
 
     <com.android.ex.photo.PhotoViewPager
         android:id="@+id/photo_view_pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
-
-    <LinearLayout
-        android:id="@+id/empty_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center" >
-
-        <ProgressBar
-            style="?android:attr/progressBarStyleLarge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:indeterminate="true" />
-    </LinearLayout>
 
 </FrameLayout>

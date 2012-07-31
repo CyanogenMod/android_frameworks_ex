@@ -26,6 +26,7 @@ import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
@@ -57,7 +58,7 @@ public class PhotoViewActivity extends Activity implements
         /**
          * The full screen state has changed.
          */
-        public void onFullScreenChanged(boolean fullScreen, boolean animate);
+        public void onFullScreenChanged(boolean fullScreen);
 
         /**
          * A new view has been activated and the previous view de-activated.
@@ -120,8 +121,6 @@ public class PhotoViewActivity extends Activity implements
     private int mAlbumCount = ALBUM_COUNT_UNKNOWN;
     /** {@code true} if the view is empty. Otherwise, {@code false}. */
     private boolean mIsEmpty;
-    /** The view to be shown if the current photo is not displayed. */
-    private View mEmptyView;
     /** The main pager; provides left/right swipe between photos */
     private PhotoViewPager mViewPager;
     /** Adapter to create pager views */
@@ -136,12 +135,14 @@ public class PhotoViewActivity extends Activity implements
     private boolean mRestartLoader;
     /** Whether or not this activity is paused */
     private boolean mIsPaused = true;
+    private Handler mActionBarHideHandler;
     // TODO Find a better way to do this. We basically want the activity to display the
     // "loading..." progress until the fragment takes over and shows it's own "loading..."
     // progress [located in photo_header_view.xml]. We could potentially have all status displayed
     // by the activity, but, that gets tricky when it comes to screen rotation. For now, we
     // track the loading by this variable which is fragile and may cause phantom "loading..."
     // text.
+    private long mActionBarHideDelayTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -187,7 +188,6 @@ public class PhotoViewActivity extends Activity implements
         mPhotoIndex = currentItem;
 
         setContentView(R.layout.photo_activity_view);
-        mEmptyView = findViewById(R.id.empty_view);
 
         // Create the adapter and add the view pager
         mAdapter = new PhotoPagerAdapter(this, getFragmentManager(), null);
@@ -203,6 +203,8 @@ public class PhotoViewActivity extends Activity implements
 
         final ActionBar actionBar = getActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
+        mActionBarHideDelayTime = getResources().getInteger(
+                R.integer.action_bar_delay_time_in_millis);
     }
 
     @Override
@@ -373,12 +375,6 @@ public class PhotoViewActivity extends Activity implements
     }
 
     public void onFragmentVisible(PhotoViewFragment fragment) {
-        setEmptyViewVisibility(
-                fragment.isPhotoBound() ? View.GONE : View.VISIBLE);
-    }
-
-    public void setEmptyViewVisibility(int visibility) {
-        mEmptyView.setVisibility(visibility);
     }
 
     @Override
@@ -410,23 +406,66 @@ public class PhotoViewActivity extends Activity implements
     /**
      * Updates the title bar according to the value of {@link #mFullScreen}.
      */
-    private void setFullScreen(boolean fullScreen, boolean animate) {
+    private void setFullScreen(boolean fullScreen, boolean setDelayedRunnable) {
         final boolean fullScreenChanged = (fullScreen != mFullScreen);
         mFullScreen = fullScreen;
 
-        ActionBar actionBar = getActionBar();
         if (mFullScreen) {
-            actionBar.hide();
+            setLightsOutMode(true);
+            if (mActionBarHideHandler == null) {
+                mActionBarHideHandler = new Handler();
+            }
+            mActionBarHideHandler.removeCallbacks(mActionBarHideRunnable);
         } else {
-            actionBar.show();
+            setLightsOutMode(false);
+            if (setDelayedRunnable) {
+                if (mActionBarHideHandler == null) {
+                    mActionBarHideHandler = new Handler();
+                }
+                mActionBarHideHandler.postDelayed(mActionBarHideRunnable,
+                        mActionBarHideDelayTime);
+            }
         }
 
         if (fullScreenChanged) {
             for (OnScreenListener listener : mScreenListeners) {
-                listener.onFullScreenChanged(mFullScreen, animate);
+                listener.onFullScreenChanged(mFullScreen);
             }
         }
     }
+
+    private void setLightsOutMode(boolean enabled) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            int flags = enabled
+                    ? View.SYSTEM_UI_FLAG_LOW_PROFILE
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    : View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+
+            // using mViewPager since we have it and we need a view
+            mViewPager.setSystemUiVisibility(flags);
+        } else {
+            final ActionBar actionBar = getActionBar();
+            if (enabled) {
+                actionBar.hide();
+            } else {
+                actionBar.show();
+            }
+            int flags = enabled
+                    ? View.SYSTEM_UI_FLAG_LOW_PROFILE
+                    : View.SYSTEM_UI_FLAG_VISIBLE;
+            mViewPager.setSystemUiVisibility(flags);
+        }
+    }
+
+    private Runnable mActionBarHideRunnable = new Runnable() {
+        @Override
+        public void run() {
+            PhotoViewActivity.this.setLightsOutMode(true);
+        }
+    };
 
     public void setViewActivated() {
         for (OnScreenListener listener : mScreenListeners) {
