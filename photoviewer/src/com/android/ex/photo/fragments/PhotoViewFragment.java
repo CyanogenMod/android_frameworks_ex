@@ -286,15 +286,11 @@ public class PhotoViewFragment extends Fragment implements
 
     @Override
     public void onClick(View v) {
-        // If there is no photo, don't allow any actions except to exit
-        // full-screen mode.
-        if (mCallback.isFragmentFullScreen(this) || isPhotoBound()) {
-            mCallback.toggleFullScreen();
-        }
+        mCallback.toggleFullScreen();
     }
 
     @Override
-    public void onFullScreenChanged(boolean fullScreen, boolean animate) {
+    public void onFullScreenChanged(boolean fullScreen) {
         setViewVisibility();
     }
 

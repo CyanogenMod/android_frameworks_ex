@@ -17,14 +17,5 @@
 -->
 
 <resources>
-    <style name="PhotoViewTheme" parent="android:Theme.Holo">
-        <item name="android:windowNoTitle">false</item>
-        <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowActionBarOverlay">true</item>
-        <item name="android:windowBackground">@color/solid_black</item>
-        <item name="android:actionBarStyle">@style/Holo.ActionBar</item>
-    </style>
-    <style name="Holo.ActionBar" parent="android:Widget.Holo.ActionBar">
-        <item name="android:background">@drawable/actionbar_translucent</item>
-    </style>
+    <integer name="action_bar_delay_time_in_millis">5000</integer>
 </resources>
