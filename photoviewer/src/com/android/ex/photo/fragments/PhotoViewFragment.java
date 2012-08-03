@@ -19,6 +19,7 @@ package com.android.ex.photo.fragments;
 
 import android.app.Activity;
 import android.app.Fragment;
+import android.app.LoaderManager;
 import android.app.LoaderManager.LoaderCallbacks;
 import android.content.Context;
 import android.content.Intent;
@@ -26,7 +27,6 @@ import android.content.Loader;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.app.LoaderManager;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,6 +34,8 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.android.ex.photo.Intents;
 import com.android.ex.photo.PhotoViewActivity;
@@ -44,6 +46,7 @@ import com.android.ex.photo.adapters.PhotoPagerAdapter;
 import com.android.ex.photo.loaders.PhotoBitmapLoader;
 import com.android.ex.photo.util.ImageUtils;
 import com.android.ex.photo.views.PhotoView;
+import com.android.ex.photo.views.ProgressBarWrapper;
 
 /**
  * Displays a photo.
@@ -93,13 +96,17 @@ public class PhotoViewFragment extends Fragment implements
     private PhotoPagerAdapter mAdapter;
 
     private PhotoView mPhotoView;
-    private ImageView mPhotoPreview;
+    private ImageView mPhotoPreviewImage;
+    private TextView mEmptyText;
+    private ImageView mRetryButton;
+    private ProgressBarWrapper mPhotoProgressBar;
+
     private final int mPosition;
 
     /** Whether or not the fragment should make the photo full-screen */
     private boolean mFullScreen;
 
-    private boolean mShowingThumbnail;
+    private View mPhotoPreviewAndProgress;
 
     public PhotoViewFragment() {
         mPosition = -1;
@@ -109,7 +116,6 @@ public class PhotoViewFragment extends Fragment implements
         mIntent = intent;
         mPosition = position;
         mAdapter = adapter;
-        mShowingThumbnail = false;
     }
 
     @Override
@@ -117,7 +123,8 @@ public class PhotoViewFragment extends Fragment implements
         super.onAttach(activity);
         mCallback = (PhotoViewActivity) activity;
         if (mCallback == null) {
-            throw new IllegalArgumentException("Activity must be a derived class of PhotoViewActivity");
+            throw new IllegalArgumentException(
+                    "Activity must be a derived class of PhotoViewActivity");
         }
 
         if (sPhotoSize == null) {
@@ -171,7 +178,15 @@ public class PhotoViewFragment extends Fragment implements
         mPhotoView.setFullScreen(mFullScreen, false);
         mPhotoView.enableImageTransforms(true);
 
-        mPhotoPreview = (ImageView) view.findViewById(R.id.photo_preview_image);
+        mPhotoPreviewAndProgress = view.findViewById(R.id.photo_preview);
+        mPhotoPreviewImage = (ImageView) view.findViewById(R.id.photo_preview_image);
+        final ProgressBar indeterminate =
+                (ProgressBar) view.findViewById(R.id.indeterminate_progress);
+        final ProgressBar determinate =
+                (ProgressBar) view.findViewById(R.id.determinate_progress);
+        mPhotoProgressBar = new ProgressBarWrapper(determinate, indeterminate, true);
+        mEmptyText = (TextView) view.findViewById(R.id.empty_text);
+        mRetryButton = (ImageView) view.findViewById(R.id.retry_button);
 
         // Don't call until we've setup the entire view
         setViewVisibility();
@@ -242,36 +257,29 @@ public class PhotoViewFragment extends Fragment implements
             case LOADER_ID_PHOTO:
                 if (data == null) {
                     getLoaderManager().initLoader(LOADER_ID_THUMBNAIL, null, this);
-                    return;
+                } else {
+                    bindPhoto(data);
+                    mPhotoPreviewAndProgress.setVisibility(View.GONE);
                 }
-
-                mShowingThumbnail = false;
-                bindPhoto(data);
-                mCallback.setViewActivated();
-                setViewVisibility();
-                mPhotoPreview.setVisibility(View.GONE);
                 break;
             case LOADER_ID_THUMBNAIL:
                 if (isPhotoBound()) {
                     return;
-                }
-
-                if (data == null) {
+                } else if (data == null) {
                     // no preview, show default
-                    mPhotoPreview.setVisibility(View.VISIBLE);
-                    mPhotoPreview.setImageResource(R.drawable.default_image);
-                    return;
+                    mPhotoPreviewImage.setVisibility(View.VISIBLE);
+                    mPhotoPreviewImage.setImageResource(R.drawable.default_image);
+                } else {
+                    mPhotoPreviewImage.setVisibility(View.VISIBLE);
+                    mPhotoPreviewImage.setImageBitmap(data);
                 }
-
-                mShowingThumbnail = true;
-                mPhotoPreview.setVisibility(View.VISIBLE);
-                mPhotoPreview.setImageBitmap(data);
-                mCallback.setViewActivated();
-                setViewVisibility();
                 break;
             default:
                 break;
         }
+
+        mCallback.setViewActivated();
+        setViewVisibility();
     }
 
     /**
@@ -350,7 +358,7 @@ public class PhotoViewFragment extends Fragment implements
      * Returns {@code true} if a photo has been bound. Otherwise, returns {@code false}.
      */
     public boolean isPhotoBound() {
-        return (mPhotoView != null && mPhotoView.isPhotoBound() && !mShowingThumbnail);
+        return (mPhotoView != null && mPhotoView.isPhotoBound());
     }
 
     /**
@@ -385,5 +393,17 @@ public class PhotoViewFragment extends Fragment implements
             loader.setPhotoUri(mResolvedPhotoUri);
             loader.forceLoad();
         }
+    }
+
+    public ProgressBarWrapper getPhotoProgressBar() {
+        return mPhotoProgressBar;
+    }
+
+    public TextView getEmptyText() {
+        return mEmptyText;
+    }
+
+    public ImageView getRetryButton() {
+        return mRetryButton;
     }
 }

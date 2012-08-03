@@ -24,11 +24,59 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <FrameLayout
+        android:id="@+id/photo_preview"
+        android:layout_width="@dimen/photo_preview_size"
+        android:layout_height="@dimen/photo_preview_size"
+        android:layout_centerInParent="true" >
+
+        <ImageView
+            android:id="@+id/photo_preview_image"
+            android:layout_width="@dimen/photo_preview_size"
+            android:layout_height="@dimen/photo_preview_size"
+            android:layout_gravity="center"
+            android:scaleType="centerCrop"
+            android:src="@drawable/default_image"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/indeterminate_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="@dimen/photo_preview_size"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/determinate_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="@dimen/photo_preview_size"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:indeterminate="false"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/empty_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/photo_preview"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="8dip"
+        android:textColor="@android:color/white"
+        android:visibility="gone" />
+
     <ImageView
-        android:id="@+id/photo_preview_image"
-        android:layout_width="256dip"
-        android:layout_height="256dip"
-        android:layout_centerInParent="true"
-        />
+        android:id="@+id/retry_button"
+        android:layout_width="@dimen/retry_button_size"
+        android:layout_height="@dimen/retry_button_size"
+        android:layout_below="@id/empty_text"
+        android:layout_centerHorizontal="true"
+        android:background="?android:attr/selectableItemBackground"
+        android:scaleType="center"
+        android:src="@drawable/ic_menu_refresh_holo_dark"
+        android:visibility="gone" />
 
 </RelativeLayout>
