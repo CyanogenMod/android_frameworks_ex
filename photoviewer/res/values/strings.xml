@@ -16,16 +16,7 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-     <!-- Default title for photo view  [CHAR LIMIT=40] -->
-    <string name="photo_view_default_title">Photos from message</string>
-    <!-- Toast message if there was a problem loading the photo view.  [CHAR LIMIT=80] -->
-    <string name="photo_view_load_error">Photo couldn\'t be loaded.</string>
-    <!-- Message displayed when trying to play a video that isn't ready [CHAR LIMIT=100] -->
-    <string name="photo_view_video_not_ready">Video not available at this time. Please refresh.</string>
-    <!-- Displayed in a toast if the photo taken from the camera was not found. -->
-    <string name="camera_photo_error">Can\'t find photo.</string>
     <!-- Photo view sub-title for current photo position [CHAR LIMIT=10] -->
     <string name="photo_view_count"><xliff:g id="current_pos">%d</xliff:g> of <xliff:g id="count">%d</xliff:g></string>
-    <!-- Status message displayed while a list's content is loading -->
-    <string name="loading_photo">Loading&#8230;</string>
+    <string name="retry">Retry</string>
 </resources>
