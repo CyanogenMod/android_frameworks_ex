@@ -18,6 +18,7 @@
 package com.android.ex.photo;
 
 import android.app.ActionBar;
+import android.app.ActionBar.OnMenuVisibilityListener;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Fragment;
@@ -48,7 +49,7 @@ import java.util.Set;
  */
 public class PhotoViewActivity extends Activity implements
         LoaderCallbacks<Cursor>, OnPageChangeListener, OnInterceptTouchListener,
-        OnFragmentPagerListener {
+        OnFragmentPagerListener, OnMenuVisibilityListener {
 
     /**
      * Listener to be invoked for screen events.
@@ -205,6 +206,8 @@ public class PhotoViewActivity extends Activity implements
         actionBar.setDisplayHomeAsUpEnabled(true);
         mActionBarHideDelayTime = getResources().getInteger(
                 R.integer.action_bar_delay_time_in_millis);
+        actionBar.addOnMenuVisibilityListener(this);
+        mActionBarHideHandler = new Handler();
     }
 
     @Override
@@ -328,7 +331,7 @@ public class PhotoViewActivity extends Activity implements
                         notifyCursorListeners(data);
 
                         mViewPager.setCurrentItem(itemIndex, false);
-                        updateActionBar();
+                        setViewActivated();
                     }
                 });
             }
@@ -353,9 +356,8 @@ public class PhotoViewActivity extends Activity implements
 
     @Override
     public void onPageSelected(int position) {
-        setViewActivated();
-        updateActionBar();
         mPhotoIndex = position;
+        setViewActivated();
     }
 
     @Override
@@ -375,6 +377,7 @@ public class PhotoViewActivity extends Activity implements
     }
 
     public void onFragmentVisible(PhotoViewFragment fragment) {
+        updateActionBar(fragment);
     }
 
     @Override
@@ -412,18 +415,11 @@ public class PhotoViewActivity extends Activity implements
 
         if (mFullScreen) {
             setLightsOutMode(true);
-            if (mActionBarHideHandler == null) {
-                mActionBarHideHandler = new Handler();
-            }
-            mActionBarHideHandler.removeCallbacks(mActionBarHideRunnable);
+            cancelActionBarHideRunnable();
         } else {
             setLightsOutMode(false);
             if (setDelayedRunnable) {
-                if (mActionBarHideHandler == null) {
-                    mActionBarHideHandler = new Handler();
-                }
-                mActionBarHideHandler.postDelayed(mActionBarHideRunnable,
-                        mActionBarHideDelayTime);
+                postActionBarHideRunnableWithDelay();
             }
         }
 
@@ -432,6 +428,15 @@ public class PhotoViewActivity extends Activity implements
                 listener.onFullScreenChanged(mFullScreen);
             }
         }
+    }
+
+    private void postActionBarHideRunnableWithDelay() {
+        mActionBarHideHandler.postDelayed(mActionBarHideRunnable,
+                mActionBarHideDelayTime);
+    }
+
+    private void cancelActionBarHideRunnable() {
+        mActionBarHideHandler.removeCallbacks(mActionBarHideRunnable);
     }
 
     private void setLightsOutMode(boolean enabled) {
@@ -476,7 +481,7 @@ public class PhotoViewActivity extends Activity implements
     /**
      * Adjusts the activity title and subtitle to reflect the photo name and count.
      */
-    protected void updateActionBar() {
+    protected void updateActionBar(PhotoViewFragment fragment) {
         final int position = mViewPager.getCurrentItem() + 1;
         final String subtitle;
         final boolean hasAlbumCount = mAlbumCount >= 0;
@@ -525,5 +530,14 @@ public class PhotoViewActivity extends Activity implements
 
     public Cursor getCursor() {
         return (mAdapter == null) ? null : mAdapter.getCursor();
+    }
+
+    @Override
+    public void onMenuVisibilityChanged(boolean isVisible) {
+        if (isVisible) {
+            cancelActionBarHideRunnable();
+        } else {
+            postActionBarHideRunnableWithDelay();
+        }
     }
 }
