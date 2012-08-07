@@ -164,8 +164,6 @@ public class PhotoViewActivity extends Activity implements
         // album name; if not set, use a default name
         if (mIntent.hasExtra(Intents.EXTRA_PHOTO_NAME)) {
             mPhotoName = mIntent.getStringExtra(Intents.EXTRA_PHOTO_NAME);
-        } else {
-            mPhotoName = getResources().getString(R.string.photo_view_default_title);
         }
 
         // uri of the photos to view; optional
