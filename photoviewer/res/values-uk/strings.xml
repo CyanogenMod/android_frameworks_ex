@@ -18,10 +18,6 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="photo_view_default_title" msgid="8529005357137322238">"Фотографії з повідомлення"</string>
-    <string name="photo_view_load_error" msgid="738557967189699322">"Не вдалося завантажити фотографію."</string>
-    <string name="photo_view_video_not_ready" msgid="3998974166493712675">"Відео зараз не доступне. Оновіть його."</string>
-    <string name="camera_photo_error" msgid="3505076890331146233">"Неможливо знайти фотографію."</string>
     <string name="photo_view_count" msgid="3466690572899800275">"<xliff:g id="CURRENT_POS">%d</xliff:g> з <xliff:g id="COUNT">%d</xliff:g>"</string>
-    <string name="loading_photo" msgid="2781498368206257164">"Завантаження…"</string>
+    <string name="retry" msgid="3319517143224679074">"Повторити"</string>
 </resources>
