@@ -20,7 +20,6 @@ package com.android.ex.photo;
 import android.content.ContentProvider;
 import android.content.Context;
 import android.content.Intent;
-import android.text.TextUtils;
 
 import com.android.ex.photo.fragments.PhotoViewFragment;
 
@@ -33,7 +32,6 @@ public class Intents {
     public static final String EXTRA_PHOTO_ID = "photo_id";
     public static final String EXTRA_PHOTOS_URI = "photos_uri";
     public static final String EXTRA_RESOLVED_PHOTO_URI = "resolved_photo_uri";
-    public static final String EXTRA_PHOTO_NAME = "photo_name";
     public static final String EXTRA_PROJECTION = "projection";
     public static final String EXTRA_THUMBNAIL_URI = "thumbnail_uri";
 
@@ -67,8 +65,6 @@ public class Intents {
     public static class PhotoViewIntentBuilder {
         private final Intent mIntent;
 
-        /** The name of the photo being displayed */
-        private String mPhotoName;
         /** The index of the photo to show */
         private Integer mPhotoIndex;
         /** The URI of the group of photos to display */
@@ -82,12 +78,6 @@ public class Intents {
 
         private PhotoViewIntentBuilder(Context context, Class<?> cls) {
             mIntent = new Intent(context, cls);
-        }
-
-        /** Sets the photo name */
-        public PhotoViewIntentBuilder setPhotoName(String photoName) {
-            mPhotoName = photoName;
-            return this;
         }
 
         /** Sets the photo index */
@@ -131,10 +121,6 @@ public class Intents {
             mIntent.setAction(Intent.ACTION_VIEW);
 
             mIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
-
-            if (mPhotoName != null) {
-                mIntent.putExtra(EXTRA_PHOTO_NAME, mPhotoName);
-            }
 
             if (mPhotoIndex != null) {
                 mIntent.putExtra(EXTRA_PHOTO_INDEX, (int) mPhotoIndex);
