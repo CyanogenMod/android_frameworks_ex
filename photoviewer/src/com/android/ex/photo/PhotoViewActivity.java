@@ -116,8 +116,6 @@ public class PhotoViewActivity extends Activity implements
     private int mPhotoIndex;
     /** The query projection to use; may be {@code null} */
     private String[] mProjection;
-    /** The name of the particular photo being viewed. */
-    private String mPhotoName;
     /** The total number of photos; only valid if {@link #mIsEmpty} is {@code false}. */
     private int mAlbumCount = ALBUM_COUNT_UNKNOWN;
     /** {@code true} if the view is empty. Otherwise, {@code false}. */
@@ -161,11 +159,6 @@ public class PhotoViewActivity extends Activity implements
             mFullScreen = savedInstanceState.getBoolean(STATE_FULLSCREEN_KEY, false);
         }
 
-        // album name; if not set, use a default name
-        if (mIntent.hasExtra(Intents.EXTRA_PHOTO_NAME)) {
-            mPhotoName = mIntent.getStringExtra(Intents.EXTRA_PHOTO_NAME);
-        }
-
         // uri of the photos to view; optional
         if (mIntent.hasExtra(Intents.EXTRA_PHOTOS_URI)) {
             mPhotosUri = mIntent.getStringExtra(Intents.EXTRA_PHOTOS_URI);
@@ -205,6 +198,7 @@ public class PhotoViewActivity extends Activity implements
         mActionBarHideDelayTime = getResources().getInteger(
                 R.integer.action_bar_delay_time_in_millis);
         actionBar.addOnMenuVisibilityListener(this);
+        actionBar.setDisplayOptions(0, ActionBar.DISPLAY_SHOW_TITLE);
         mActionBarHideHandler = new Handler();
     }
 
@@ -481,6 +475,7 @@ public class PhotoViewActivity extends Activity implements
      */
     protected void updateActionBar(PhotoViewFragment fragment) {
         final int position = mViewPager.getCurrentItem() + 1;
+        final String title;
         final String subtitle;
         final boolean hasAlbumCount = mAlbumCount >= 0;
 
@@ -488,7 +483,9 @@ public class PhotoViewActivity extends Activity implements
 
         if (cursor != null) {
             final int photoNameIndex = cursor.getColumnIndex(PhotoContract.PhotoViewColumns.NAME);
-            mPhotoName = cursor.getString(photoNameIndex);
+            title = cursor.getString(photoNameIndex);
+        } else {
+            title = null;
         }
 
         if (mIsEmpty || !hasAlbumCount || position <= 0) {
@@ -498,8 +495,8 @@ public class PhotoViewActivity extends Activity implements
         }
 
         final ActionBar actionBar = getActionBar();
-
-        actionBar.setTitle(mPhotoName);
+        actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_TITLE, ActionBar.DISPLAY_SHOW_TITLE);
+        actionBar.setTitle(title);
         actionBar.setSubtitle(subtitle);
     }
 
