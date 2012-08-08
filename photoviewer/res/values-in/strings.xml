@@ -19,6 +19,5 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="photo_view_count" msgid="3466690572899800275">"<xliff:g id="CURRENT_POS">%d</xliff:g> dari <xliff:g id="COUNT">%d</xliff:g>"</string>
-    <!-- no translation found for retry (3319517143224679074) -->
-    <skip />
+    <string name="retry" msgid="3319517143224679074">"Coba lagi"</string>
 </resources>
