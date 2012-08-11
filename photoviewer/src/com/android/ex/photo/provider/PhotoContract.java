@@ -34,14 +34,14 @@ public final class PhotoContract {
          */
         public static final String NAME = OpenableColumns.DISPLAY_NAME;
         /**
-         * This column is a {@link Uri} that points to the downloaded local file
-         * This value is undefined in any other state.
+         * This column is a {@link Uri} that points to the downloaded local file.
+         * Can be null.
          */
         public static final String CONTENT_URI = "contentUri";
         /**
          * This column is a {@link Uri} that points to a thumbnail of the image
          * that ideally is a local file.
-         * This value is undefined in any other state.
+         * Can be null.
          */
         public static final String THUMBNAIL_URI = "thumbnailUri";
         /**
