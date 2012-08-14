@@ -27,8 +27,8 @@ import android.widget.ProgressBar;
  * modes.
  */
 public class ProgressBarWrapper {
-    private ProgressBar mDeterminate;
-    private ProgressBar mIndeterminate;
+    private final ProgressBar mDeterminate;
+    private final ProgressBar mIndeterminate;
     private boolean mIsIndeterminate;
 
     public ProgressBarWrapper(ProgressBar determinate,

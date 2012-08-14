@@ -41,21 +41,9 @@ import android.view.View;
  * added to a cache. If the fragment is evicted from the cache, it will be deleted.
  * An album may contain thousands of photos and we want to avoid having thousands of
  * fragments.</li>
- * <li>The interface {@link OnFragmentPagerListener} and supporting plumbing has been
- * added.</li>
  * </ol>
  */
 public abstract class BaseFragmentPagerAdapter extends PagerAdapter {
-    /**
-     * Listener for fragment pager events
-     */
-    public interface OnFragmentPagerListener {
-        /**
-         * The given fragment has been made the activated fragment.
-         */
-        public void onPageActivated(Fragment fragment);
-    }
-
     /** The default size of {@link #mFragmentCache} */
     private static final int DEFAULT_CACHE_SIZE = 5;
     private static final String TAG = "FragmentPagerAdapter";
@@ -64,7 +52,6 @@ public abstract class BaseFragmentPagerAdapter extends PagerAdapter {
     private final FragmentManager mFragmentManager;
     private FragmentTransaction mCurTransaction = null;
     private Fragment mCurrentPrimaryItem = null;
-    private OnFragmentPagerListener mPagerListener;
     /** A cache to store detached fragments before they are removed  */
     private LruCache<String, Fragment> mFragmentCache = new FragmentCache(DEFAULT_CACHE_SIZE);
 
@@ -144,9 +131,6 @@ public abstract class BaseFragmentPagerAdapter extends PagerAdapter {
             mCurrentPrimaryItem = fragment;
         }
 
-        if (mPagerListener != null) {
-            mPagerListener.onPageActivated(fragment);
-        }
     }
 
     @Override
@@ -177,11 +161,6 @@ public abstract class BaseFragmentPagerAdapter extends PagerAdapter {
 
     @Override
     public void restoreState(Parcelable state, ClassLoader loader) {
-    }
-
-    /** Sets the fragment pager listener */
-    public void setFragmentPagerListener(OnFragmentPagerListener pagerListener) {
-        mPagerListener = pagerListener;
     }
 
     /** Creates a name for the fragment */
