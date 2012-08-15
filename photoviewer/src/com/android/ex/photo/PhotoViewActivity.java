@@ -35,7 +35,6 @@ import android.view.View;
 
 import com.android.ex.photo.PhotoViewPager.InterceptType;
 import com.android.ex.photo.PhotoViewPager.OnInterceptTouchListener;
-import com.android.ex.photo.adapters.BaseFragmentPagerAdapter.OnFragmentPagerListener;
 import com.android.ex.photo.adapters.PhotoPagerAdapter;
 import com.android.ex.photo.fragments.PhotoViewFragment;
 import com.android.ex.photo.loaders.PhotoPagerLoader;
@@ -49,7 +48,7 @@ import java.util.Set;
  */
 public class PhotoViewActivity extends Activity implements
         LoaderCallbacks<Cursor>, OnPageChangeListener, OnInterceptTouchListener,
-        OnFragmentPagerListener, OnMenuVisibilityListener {
+        OnMenuVisibilityListener {
 
     /**
      * Listener to be invoked for screen events.
@@ -183,7 +182,6 @@ public class PhotoViewActivity extends Activity implements
 
         // Create the adapter and add the view pager
         mAdapter = new PhotoPagerAdapter(this, getFragmentManager(), null);
-        mAdapter.setFragmentPagerListener(this);
 
         mViewPager = (PhotoViewPager) findViewById(R.id.photo_view_pager);
         mViewPager.setAdapter(mAdapter);
@@ -300,6 +298,8 @@ public class PhotoViewActivity extends Activity implements
                 mAlbumCount = data.getCount();
 
                 // Cannot do this directly; need to be out of the loader
+                // TODO(pwestbro): Fix this as this could cause a problem as the cursor may be
+                // closed before the runnable runs.
                 new Handler().post(new Runnable() {
                     @Override
                     public void run() {
@@ -354,11 +354,6 @@ public class PhotoViewActivity extends Activity implements
 
     @Override
     public void onPageScrollStateChanged(int state) {
-    }
-
-    @Override
-    public void onPageActivated(Fragment fragment) {
-        setViewActivated();
     }
 
     public boolean isFragmentActive(Fragment fragment) {
