@@ -106,16 +106,21 @@ public class PhotoViewFragment extends Fragment implements
     /** Whether or not the fragment should make the photo full-screen */
     private boolean mFullScreen;
 
+    /** Whether or not the progress bar is showing valid information about the progress stated */
+    private boolean mProgressBarNeeded = true;
+
     private View mPhotoPreviewAndProgress;
 
     public PhotoViewFragment() {
         mPosition = -1;
+        mProgressBarNeeded = true;
     }
 
     public PhotoViewFragment(Intent intent, int position, PhotoPagerAdapter adapter) {
         mIntent = intent;
         mPosition = position;
         mAdapter = adapter;
+        mProgressBarNeeded = true;
     }
 
     @Override
@@ -255,27 +260,43 @@ public class PhotoViewFragment extends Fragment implements
         final int id = loader.getId();
         switch (id) {
             case LOADER_ID_PHOTO:
-                if (data == null) {
-                    getLoaderManager().initLoader(LOADER_ID_THUMBNAIL, null, this);
-                } else {
+                if (data != null) {
                     bindPhoto(data);
                     mPhotoPreviewAndProgress.setVisibility(View.GONE);
+                    mProgressBarNeeded = false;
+                } else {
+                    // Received a null result for the full size image.  Instead attempt to load the
+                    // thumbnail
+                    getLoaderManager().initLoader(LOADER_ID_THUMBNAIL, null, this);
                 }
                 break;
             case LOADER_ID_THUMBNAIL:
                 if (isPhotoBound()) {
+                    // There is need to do anything with the thumbnail image, as the full size
+                    // image is being shown.
+                    mPhotoPreviewAndProgress.setVisibility(View.GONE);
+                    mProgressBarNeeded = false;
                     return;
                 } else if (data == null) {
                     // no preview, show default
                     mPhotoPreviewImage.setVisibility(View.VISIBLE);
                     mPhotoPreviewImage.setImageResource(R.drawable.default_image);
+
+                    mProgressBarNeeded = false;
                 } else {
                     mPhotoPreviewImage.setVisibility(View.VISIBLE);
                     mPhotoPreviewImage.setImageBitmap(data);
+
+                    mProgressBarNeeded = false;
                 }
                 break;
             default:
                 break;
+        }
+
+        if (mProgressBarNeeded == false) {
+            // Hide the progress bar as it isn't needed anymore.
+            mPhotoProgressBar.setVisibility(View.GONE);
         }
 
         mCallback.setViewActivated();
@@ -405,5 +426,9 @@ public class PhotoViewFragment extends Fragment implements
 
     public ImageView getRetryButton() {
         return mRetryButton;
+    }
+
+    public boolean isProgressBarNeeded() {
+        return mProgressBarNeeded;
     }
 }
