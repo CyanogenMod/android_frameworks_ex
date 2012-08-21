@@ -303,6 +303,10 @@ public class PhotoViewActivity extends Activity implements
                 new Handler().post(new Runnable() {
                     @Override
                     public void run() {
+                        // If the cursor is closed, we can leave, as another runnable will have
+                        // been posted (this means our Cursor is already out-of-date)
+                        if (data.isClosed()) return;
+
                         // We're paused; don't do anything now, we'll get re-invoked
                         // when the activity becomes active again
                         if (mIsPaused) {
