@@ -204,7 +204,7 @@ public class PhotoViewFragment extends Fragment implements
         mCallback.addScreenListener(this);
         mCallback.addCursorListener(this);
 
-        getLoaderManager().initLoader(LOADER_ID_PHOTO, null, this);
+        getLoaderManager().initLoader(LOADER_ID_THUMBNAIL, null, this);
 
         super.onResume();
     }
@@ -284,10 +284,8 @@ public class PhotoViewFragment extends Fragment implements
 
                     mProgressBarNeeded = false;
                 } else {
-                    mPhotoPreviewImage.setVisibility(View.VISIBLE);
-                    mPhotoPreviewImage.setImageBitmap(data);
-
-                    mProgressBarNeeded = false;
+                    bindPhoto(data);
+                    getLoaderManager().initLoader(LOADER_ID_PHOTO, null, this);
                 }
                 break;
             default:
