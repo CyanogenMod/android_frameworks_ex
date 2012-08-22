@@ -31,6 +31,9 @@ import com.android.ex.photo.PhotoViewActivity;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 
 /**
  * Image utilities
@@ -86,12 +89,13 @@ public class ImageUtils {
      * @return The new bitmap
      */
     public static Bitmap createLocalBitmap(ContentResolver resolver, Uri uri, int maxSize) {
+        // TODO: make this method not download the image for both getImageBounds and decodeStream
         InputStream inputStream = null;
         try {
             final BitmapFactory.Options opts = new BitmapFactory.Options();
             final Point bounds = getImageBounds(resolver, uri);
 
-            inputStream = resolver.openInputStream(uri);
+            inputStream = openInputStream(resolver, uri);
             opts.inSampleSize = Math.max(bounds.x / maxSize, bounds.y / maxSize);
 
             final Bitmap decodedBitmap = decodeStream(inputStream, null, opts);
@@ -156,10 +160,10 @@ public class ImageUtils {
             throws IOException {
         final BitmapFactory.Options opts = new BitmapFactory.Options();
         InputStream inputStream = null;
-
+        String scheme = uri.getScheme();
         try {
             opts.inJustDecodeBounds = true;
-            inputStream = resolver.openInputStream(uri);
+            inputStream = openInputStream(resolver, uri);
             decodeStream(inputStream, null, opts);
 
             return new Point(opts.outWidth, opts.outHeight);
@@ -171,5 +175,23 @@ public class ImageUtils {
             } catch (IOException ignore) {
             }
         }
+    }
+
+    private static InputStream openInputStream(ContentResolver resolver, Uri uri) throws
+            FileNotFoundException {
+        String scheme = uri.getScheme();
+        if("http".equals(scheme) || "https".equals(scheme)) {
+            try {
+                return new URL(uri.toString()).openStream();
+            } catch (MalformedURLException e) {
+                // Fall-back to the previous behaviour, just in case
+                Log.w(TAG, "Could not convert the uri to url: " + uri.toString());
+                return resolver.openInputStream(uri);
+            } catch (IOException e) {
+                Log.w(TAG, "Could not open input stream for uri: " + uri.toString());
+                return null;
+            }
+        }
+        return resolver.openInputStream(uri);
     }
 }

@@ -31,6 +31,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.view.MenuItem;
 import android.view.View;
 
 import com.android.ex.photo.PhotoViewPager.InterceptType;
@@ -235,6 +236,16 @@ public class PhotoViewActivity extends Activity implements
 
         outState.putInt(STATE_ITEM_KEY, mViewPager.getCurrentItem());
         outState.putBoolean(STATE_FULLSCREEN_KEY, mFullScreen);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+       switch (item.getItemId()) {
+          case android.R.id.home:
+             finish();
+          default:
+             return super.onOptionsItemSelected(item);
+       }
     }
 
     public void addScreenListener(OnScreenListener listener) {
