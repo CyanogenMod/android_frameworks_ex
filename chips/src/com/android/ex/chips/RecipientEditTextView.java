@@ -100,6 +100,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private static final char COMMIT_CHAR_COMMA = ',';
 
+    private static final char NAME_WRAPPER_CHAR = '"';
+
     private static final char COMMIT_CHAR_SEMICOLON = ';';
 
     private static final char COMMIT_CHAR_SPACE = ' ';
@@ -347,9 +349,20 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         super.append(text, start, end);
         if (!TextUtils.isEmpty(text) && TextUtils.getTrimmedLength(text) > 0) {
-            final String displayString = text.toString();
-            int seperatorPos = displayString.indexOf(COMMIT_CHAR_COMMA);
-            if (seperatorPos != 0 && !TextUtils.isEmpty(displayString)
+            String displayString = text.toString();
+            int separatorPos = displayString.indexOf(COMMIT_CHAR_COMMA);
+            // Verify that the separator pos is not within ""; if it is, look
+            // past the closing quote. If there is no comma past ", this string
+            // will resolve to an error chip.
+            if (separatorPos > -1) {
+                displayString = displayString.substring(separatorPos);
+                int endQuotedTextPos = displayString.indexOf(NAME_WRAPPER_CHAR);
+                if (endQuotedTextPos > separatorPos) {
+                    displayString = displayString.substring(endQuotedTextPos);
+                    separatorPos = displayString.indexOf(COMMIT_CHAR_COMMA);
+                }
+            }
+            if (separatorPos > 0 && !TextUtils.isEmpty(displayString)
                     && TextUtils.getTrimmedLength(displayString) > 0) {
                 mPendingChipsCount++;
                 mPendingChips.add(text.toString());
