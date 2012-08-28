@@ -86,6 +86,10 @@ public abstract class BaseFragmentPagerAdapter extends PagerAdapter {
             mCurTransaction.attach(fragment);
         } else {
             fragment = getItem(position);
+            if(fragment == null) {
+                if (DEBUG) Log.e(TAG, "NPE workaround for getItem(). See b/7103023");
+                return null;
+            }
             if (DEBUG) Log.v(TAG, "Adding item #" + position + ": f=" + fragment);
             mCurTransaction.add(container.getId(), fragment,
                     makeFragmentName(container.getId(), position));

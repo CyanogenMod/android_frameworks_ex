@@ -415,7 +415,7 @@ public class PhotoViewActivity extends Activity implements
     /**
      * Updates the title bar according to the value of {@link #mFullScreen}.
      */
-    private void setFullScreen(boolean fullScreen, boolean setDelayedRunnable) {
+    protected void setFullScreen(boolean fullScreen, boolean setDelayedRunnable) {
         final boolean fullScreenChanged = (fullScreen != mFullScreen);
         mFullScreen = fullScreen;
 
@@ -548,5 +548,13 @@ public class PhotoViewActivity extends Activity implements
         } else {
             postActionBarHideRunnableWithDelay();
         }
+    }
+
+    protected boolean isFullScreen() {
+        return mFullScreen;
+    }
+
+    protected void setPhotoIndex(int index) {
+        mPhotoIndex = index;
     }
 }
