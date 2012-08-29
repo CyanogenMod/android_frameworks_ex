@@ -134,7 +134,7 @@ public class PhotoViewActivity extends Activity implements
     private boolean mRestartLoader;
     /** Whether or not this activity is paused */
     private boolean mIsPaused = true;
-    private Handler mActionBarHideHandler;
+    private final Handler mHandler = new Handler();
     // TODO Find a better way to do this. We basically want the activity to display the
     // "loading..." progress until the fragment takes over and shows it's own "loading..."
     // progress [located in photo_header_view.xml]. We could potentially have all status displayed
@@ -198,7 +198,6 @@ public class PhotoViewActivity extends Activity implements
                 R.integer.action_bar_delay_time_in_millis);
         actionBar.addOnMenuVisibilityListener(this);
         actionBar.setDisplayOptions(0, ActionBar.DISPLAY_SHOW_TITLE);
-        mActionBarHideHandler = new Handler();
     }
 
     @Override
@@ -308,39 +307,29 @@ public class PhotoViewActivity extends Activity implements
             } else {
                 mAlbumCount = data.getCount();
 
-                // Cannot do this directly; need to be out of the loader
-                // TODO(pwestbro): Fix this as this could cause a problem as the cursor may be
-                // closed before the runnable runs.
-                new Handler().post(new Runnable() {
-                    @Override
-                    public void run() {
-                        // If the cursor is closed, we can leave, as another runnable will have
-                        // been posted (this means our Cursor is already out-of-date)
-                        if (data.isClosed()) return;
+                // We're paused; don't do anything now, we'll get re-invoked
+                // when the activity becomes active again
+                // TODO(pwestbro): This shouldn't be necessary, as the loader manager should
+                // restart the loader
+                if (mIsPaused) {
+                    mRestartLoader = true;
+                    return;
+                }
+                mIsEmpty = false;
 
-                        // We're paused; don't do anything now, we'll get re-invoked
-                        // when the activity becomes active again
-                        if (mIsPaused) {
-                            mRestartLoader = true;
-                            return;
-                        }
-                        mIsEmpty = false;
+                // set the selected photo
+                int itemIndex = mPhotoIndex;
 
-                        // set the selected photo
-                        int itemIndex = mPhotoIndex;
+                // Use an index of 0 if the index wasn't specified or couldn't be found
+                if (itemIndex < 0) {
+                    itemIndex = 0;
+                }
 
-                        // Use an index of 0 if the index wasn't specified or couldn't be found
-                        if (itemIndex < 0) {
-                            itemIndex = 0;
-                        }
+                mAdapter.swapCursor(data);
+                notifyCursorListeners(data);
 
-                        mAdapter.swapCursor(data);
-                        notifyCursorListeners(data);
-
-                        mViewPager.setCurrentItem(itemIndex, false);
-                        setViewActivated();
-                    }
-                });
+                mViewPager.setCurrentItem(itemIndex, false);
+                setViewActivated();
             }
         }
     }
@@ -355,6 +344,9 @@ public class PhotoViewActivity extends Activity implements
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
+        // If the loader is reset, remove the reference in the adapter to this cursor
+        // TODO(pwestbro): reenable this when b/7075236 is fixed
+        // mAdapter.swapCursor(null);
     }
 
     @Override
@@ -433,12 +425,12 @@ public class PhotoViewActivity extends Activity implements
     }
 
     private void postActionBarHideRunnableWithDelay() {
-        mActionBarHideHandler.postDelayed(mActionBarHideRunnable,
+        mHandler.postDelayed(mActionBarHideRunnable,
                 mActionBarHideDelayTime);
     }
 
     private void cancelActionBarHideRunnable() {
-        mActionBarHideHandler.removeCallbacks(mActionBarHideRunnable);
+        mHandler.removeCallbacks(mActionBarHideRunnable);
     }
 
     private void setLightsOutMode(boolean enabled) {
