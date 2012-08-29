@@ -699,7 +699,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
         final boolean fits = (dwidth < 0 || vwidth == dwidth) &&
                 (dheight < 0 || vheight == dheight);
 
-        // Set the matrix to fill the screen
         if (fits && !mAllowCrop) {
             mMatrix.reset();
         } else {
@@ -710,7 +709,12 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
             } else {
                 mTempDst.set(0, 0, vwidth, vheight);
             }
-            mMatrix.setRectToRect(mTempSrc, mTempDst, Matrix.ScaleToFit.CENTER);
+
+            if (dwidth < vwidth && dheight < vheight && !mAllowCrop) {
+                mMatrix.setTranslate(vwidth / 2 - dwidth / 2, vheight / 2 - dheight / 2);
+            } else {
+                mMatrix.setRectToRect(mTempSrc, mTempDst, Matrix.ScaleToFit.CENTER);
+            }
         }
         mOriginalMatrix.set(mMatrix);
     }
