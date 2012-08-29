@@ -55,10 +55,15 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
 
     @Override
     public Cursor swapCursor(Cursor newCursor) {
-        mContentUriIndex =
-                newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.CONTENT_URI);
-        mThumbnailUriIndex =
-                newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.THUMBNAIL_URI);
+        if (newCursor != null) {
+            mContentUriIndex =
+                    newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.CONTENT_URI);
+            mThumbnailUriIndex =
+                    newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.THUMBNAIL_URI);
+        } else {
+            mContentUriIndex = -1;
+            mThumbnailUriIndex = -1;
+        }
 
         return super.swapCursor(newCursor);
     }
