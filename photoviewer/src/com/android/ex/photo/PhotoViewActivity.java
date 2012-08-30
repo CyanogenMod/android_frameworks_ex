@@ -320,7 +320,13 @@ public class PhotoViewActivity extends Activity implements
                 mViewPager.setCurrentItem(itemIndex, false);
                 setViewActivated();
             }
+            // Update the any action items
+            updateActionItems();
         }
+    }
+
+    protected void updateActionItems() {
+        // Do nothing, but allow extending classes to do work
     }
 
     private synchronized void notifyCursorListeners(Cursor data) {
