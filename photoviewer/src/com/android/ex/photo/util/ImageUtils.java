@@ -83,7 +83,7 @@ public class ImageUtils {
      * @param uri The local URI
      * @param maxSize The maximum size (either width or height)
      *
-     * @return The new bitmap
+     * @return The new bitmap or null
      */
     public static Bitmap createLocalBitmap(ContentResolver resolver, Uri uri, int maxSize) {
         InputStream inputStream = null;
