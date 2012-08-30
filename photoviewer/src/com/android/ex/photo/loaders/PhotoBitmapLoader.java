@@ -52,7 +52,9 @@ public class PhotoBitmapLoader extends AsyncTaskLoader<Bitmap> {
             final ContentResolver resolver = context.getContentResolver();
             Bitmap bitmap = ImageUtils.createLocalBitmap(resolver, Uri.parse(mPhotoUri),
                     PhotoViewFragment.sPhotoSize);
-            bitmap.setDensity(DisplayMetrics.DENSITY_MEDIUM);
+            if (bitmap != null) {
+                bitmap.setDensity(DisplayMetrics.DENSITY_MEDIUM);
+            }
             return bitmap;
         }
 

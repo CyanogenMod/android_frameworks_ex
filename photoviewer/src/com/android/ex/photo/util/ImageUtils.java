@@ -86,7 +86,7 @@ public class ImageUtils {
      * @param uri The local URI
      * @param maxSize The maximum size (either width or height)
      *
-     * @return The new bitmap
+     * @return The new bitmap or null
      */
     public static Bitmap createLocalBitmap(ContentResolver resolver, Uri uri, int maxSize) {
         // TODO: make this method not download the image for both getImageBounds and decodeStream
@@ -195,3 +195,4 @@ public class ImageUtils {
         return resolver.openInputStream(uri);
     }
 }
+
