@@ -134,6 +134,8 @@ public class PhotoViewActivity extends Activity implements
     private boolean mRestartLoader;
     /** Whether or not this activity is paused */
     private boolean mIsPaused = true;
+    /** The maximum scale factor applied to images when they are initially displayed */
+    private float mMaxInitialScale;
     private final Handler mHandler = new Handler();
     // TODO Find a better way to do this. We basically want the activity to display the
     // "loading..." progress until the fragment takes over and shows it's own "loading..."
@@ -177,12 +179,16 @@ public class PhotoViewActivity extends Activity implements
         if (mIntent.hasExtra(Intents.EXTRA_PHOTO_INDEX) && currentItem < 0) {
             currentItem = mIntent.getIntExtra(Intents.EXTRA_PHOTO_INDEX, -1);
         }
+
+        // Set the max initial scale, defaulting to 1x
+        mMaxInitialScale = mIntent.getFloatExtra(Intents.EXTRA_MAX_INITIAL_SCALE, 1.0f);
+
         mPhotoIndex = currentItem;
 
         setContentView(R.layout.photo_activity_view);
 
         // Create the adapter and add the view pager
-        mAdapter = new PhotoPagerAdapter(this, getFragmentManager(), null);
+        mAdapter = new PhotoPagerAdapter(this, getFragmentManager(), null, mMaxInitialScale);
 
         mViewPager = (PhotoViewPager) findViewById(R.id.photo_view_pager);
         mViewPager.setAdapter(mAdapter);

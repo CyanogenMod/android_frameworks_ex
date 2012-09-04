@@ -34,6 +34,7 @@ public class Intents {
     public static final String EXTRA_RESOLVED_PHOTO_URI = "resolved_photo_uri";
     public static final String EXTRA_PROJECTION = "projection";
     public static final String EXTRA_THUMBNAIL_URI = "thumbnail_uri";
+    public static final String EXTRA_MAX_INITIAL_SCALE = "max_scale";
 
     /**
      * Gets a photo view intent builder to display the photos from phone activity.
@@ -75,6 +76,8 @@ public class Intents {
         private String[] mProjection;
         /** The URI of a thumbnail of the photo to display */
         private String mThumbnailUri;
+        /** The maximum scale to display images at before  */
+        private Float mMaxInitialScale;
 
         private PhotoViewIntentBuilder(Context context, Class<?> cls) {
             mIntent = new Intent(context, cls);
@@ -116,6 +119,14 @@ public class Intents {
             return this;
         }
 
+        /**
+         * Sets the maximum scale which an image is initially displayed at
+         */
+        public PhotoViewIntentBuilder setMaxInitialScale(float maxScale) {
+            mMaxInitialScale = maxScale;
+            return this;
+        }
+
         /** Build the intent */
         public Intent build() {
             mIntent.setAction(Intent.ACTION_VIEW);
@@ -140,6 +151,10 @@ public class Intents {
 
             if (mThumbnailUri != null) {
                 mIntent.putExtra(EXTRA_THUMBNAIL_URI, mThumbnailUri);
+            }
+
+            if (mMaxInitialScale != null) {
+                mIntent.putExtra(EXTRA_MAX_INITIAL_SCALE, mMaxInitialScale);
             }
 
             return mIntent;

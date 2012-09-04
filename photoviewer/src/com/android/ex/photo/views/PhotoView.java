@@ -106,6 +106,8 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     private Rect mCropRect = new Rect();
     /** Actual crop size; may differ from {@link #sCropSize} if the screen is smaller */
     private int mCropSize;
+    /** The maximum amount of scaling to apply to images */
+    private float mMaxInitialScaleFactor;
 
     /** Gesture detector */
     private GestureDetector mGestureDetector;
@@ -709,9 +711,13 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
             } else {
                 mTempDst.set(0, 0, vwidth, vheight);
             }
-
-            if (dwidth < vwidth && dheight < vheight && !mAllowCrop) {
-                mMatrix.setTranslate(vwidth / 2 - dwidth / 2, vheight / 2 - dheight / 2);
+            RectF scaledDestination = new RectF(
+                    (vwidth / 2) - (dwidth * mMaxInitialScaleFactor / 2),
+                    (vheight / 2) - (dheight * mMaxInitialScaleFactor / 2),
+                    (vwidth / 2) + (dwidth * mMaxInitialScaleFactor / 2),
+                    (vheight / 2) + (dheight * mMaxInitialScaleFactor / 2));
+            if(mTempDst.contains(scaledDestination)) {
+                mMatrix.setRectToRect(mTempSrc, scaledDestination, Matrix.ScaleToFit.CENTER);
             } else {
                 mMatrix.setRectToRect(mTempSrc, mTempDst, Matrix.ScaleToFit.CENTER);
             }
@@ -1297,5 +1303,9 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
             }
             mHeader.post(this);
         }
+    }
+
+    public void setMaxInitialScale(float f) {
+        mMaxInitialScaleFactor = f;
     }
 }

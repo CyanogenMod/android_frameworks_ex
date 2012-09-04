@@ -179,6 +179,7 @@ public class PhotoViewFragment extends Fragment implements
         final View view = inflater.inflate(R.layout.photo_fragment_view, container, false);
 
         mPhotoView = (PhotoView) view.findViewById(R.id.photo_view);
+        mPhotoView.setMaxInitialScale(mIntent.getFloatExtra(Intents.EXTRA_MAX_INITIAL_SCALE, 1));
         mPhotoView.setOnClickListener(this);
         mPhotoView.setFullScreen(mFullScreen, false);
         mPhotoView.enableImageTransforms(true);

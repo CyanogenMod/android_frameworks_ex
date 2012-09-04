@@ -33,9 +33,11 @@ import com.android.ex.photo.provider.PhotoContract;
 public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
     private int mContentUriIndex;
     private int mThumbnailUriIndex;
+    private float mMaxScale;
 
-    public PhotoPagerAdapter(Context context, FragmentManager fm, Cursor c) {
+    public PhotoPagerAdapter(Context context, FragmentManager fm, Cursor c, float maxScale) {
         super(context, fm, c);
+        mMaxScale = maxScale;
     }
 
     @Override
@@ -48,7 +50,8 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
                 Intents.newPhotoViewFragmentIntentBuilder(mContext);
         builder
             .setResolvedPhotoUri(photoUri)
-            .setThumbnailUri(thumbnailUri);
+            .setThumbnailUri(thumbnailUri)
+            .setMaxInitialScale(mMaxScale);
 
         return new PhotoViewFragment(builder.build(), position, this);
     }
