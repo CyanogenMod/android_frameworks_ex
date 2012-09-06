@@ -445,7 +445,7 @@ public class PhotoViewActivity extends Activity implements
         mHandler.removeCallbacks(mActionBarHideRunnable);
     }
 
-    private void setLightsOutMode(boolean enabled) {
+    protected void setLightsOutMode(boolean enabled) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             int flags = enabled
                     ? View.SYSTEM_UI_FLAG_LOW_PROFILE
