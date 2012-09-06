@@ -474,7 +474,7 @@ public class PhotoViewActivity extends Activity implements
     private Runnable mActionBarHideRunnable = new Runnable() {
         @Override
         public void run() {
-            PhotoViewActivity.this.setLightsOutMode(true);
+            setFullScreen(true, true);
         }
     };
 
