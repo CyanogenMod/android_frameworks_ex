@@ -350,16 +350,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         super.append(text, start, end);
         if (!TextUtils.isEmpty(text) && TextUtils.getTrimmedLength(text) > 0) {
             String displayString = text.toString();
-            int separatorPos = displayString.indexOf(COMMIT_CHAR_COMMA);
+            int separatorPos = displayString.lastIndexOf(COMMIT_CHAR_COMMA);
             // Verify that the separator pos is not within ""; if it is, look
             // past the closing quote. If there is no comma past ", this string
             // will resolve to an error chip.
             if (separatorPos > -1) {
-                displayString = displayString.substring(separatorPos);
-                int endQuotedTextPos = displayString.indexOf(NAME_WRAPPER_CHAR);
+                String parseDisplayString = displayString.substring(separatorPos);
+                int endQuotedTextPos = parseDisplayString.indexOf(NAME_WRAPPER_CHAR);
                 if (endQuotedTextPos > separatorPos) {
-                    displayString = displayString.substring(endQuotedTextPos);
-                    separatorPos = displayString.indexOf(COMMIT_CHAR_COMMA);
+                    separatorPos = parseDisplayString.lastIndexOf(COMMIT_CHAR_COMMA,
+                            endQuotedTextPos);
+                }
+                if (separatorPos == -1) {
+                    separatorPos = displayString.length();
                 }
             }
             if (separatorPos > 0 && !TextUtils.isEmpty(displayString)
@@ -368,7 +371,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 mPendingChips.add(text.toString());
             }
         }
-        // Put a message on the queue to make sure we ALWAYS handle pending chips.
+        // Put a message on the queue to make sure we ALWAYS handle pending
+        // chips.
         if (mPendingChipsCount > 0) {
             postHandlePendingChips();
         }
