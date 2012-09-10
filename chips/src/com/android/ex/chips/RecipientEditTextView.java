@@ -361,11 +361,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     separatorPos = parseDisplayString.lastIndexOf(COMMIT_CHAR_COMMA,
                             endQuotedTextPos);
                 }
-                if (separatorPos == -1) {
-                    separatorPos = displayString.length();
-                }
             }
-            if (separatorPos > 0 && !TextUtils.isEmpty(displayString)
+            if (!TextUtils.isEmpty(displayString)
                     && TextUtils.getTrimmedLength(displayString) > 0) {
                 mPendingChipsCount++;
                 mPendingChips.add(text.toString());
