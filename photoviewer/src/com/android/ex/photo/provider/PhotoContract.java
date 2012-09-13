@@ -48,6 +48,11 @@ public final class PhotoContract {
          * This string column is the MIME type.
          */
         public static final String CONTENT_TYPE = "contentType";
+        /**
+         * This boolean column indicates that a loading indicator should display permenantly
+         * if no image urls are provided.
+         */
+        public static final String LOADING_INDICATOR = "loadingIndicator";
 
     }
 
