@@ -272,18 +272,16 @@ public class PhotoViewFragment extends Fragment implements
                 }
                 break;
             case LOADER_ID_THUMBNAIL:
+                mProgressBarNeeded = false;
                 if (isPhotoBound()) {
                     // There is need to do anything with the thumbnail image, as the full size
                     // image is being shown.
                     mPhotoPreviewAndProgress.setVisibility(View.GONE);
-                    mProgressBarNeeded = false;
                     return;
                 } else if (data == null) {
                     // no preview, show default
                     mPhotoPreviewImage.setVisibility(View.VISIBLE);
                     mPhotoPreviewImage.setImageResource(R.drawable.default_image);
-
-                    mProgressBarNeeded = false;
                 } else {
                     bindPhoto(data);
                     getLoaderManager().initLoader(LOADER_ID_PHOTO, null, this);
