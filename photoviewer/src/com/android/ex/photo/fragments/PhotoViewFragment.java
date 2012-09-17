@@ -166,7 +166,10 @@ public class PhotoViewFragment extends Fragment implements
         super.onCreate(savedInstanceState);
 
         if (savedInstanceState != null) {
-            mIntent = new Intent().putExtras(savedInstanceState.getBundle(STATE_INTENT_KEY));
+            final Bundle state = savedInstanceState.getBundle(STATE_INTENT_KEY);
+            if (state != null) {
+                mIntent = new Intent().putExtras(state);
+            }
         }
 
         mResolvedPhotoUri = mIntent.getStringExtra(Intents.EXTRA_RESOLVED_PHOTO_URI);
