@@ -172,8 +172,10 @@ public class PhotoViewFragment extends Fragment implements
             }
         }
 
-        mResolvedPhotoUri = mIntent.getStringExtra(Intents.EXTRA_RESOLVED_PHOTO_URI);
-        mThumbnailUri = mIntent.getStringExtra(Intents.EXTRA_THUMBNAIL_URI);
+        if (mIntent != null) {
+            mResolvedPhotoUri = mIntent.getStringExtra(Intents.EXTRA_RESOLVED_PHOTO_URI);
+            mThumbnailUri = mIntent.getStringExtra(Intents.EXTRA_THUMBNAIL_URI);
+        }
     }
 
     @Override
