@@ -29,7 +29,6 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.util.AttributeSet;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -133,8 +132,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     private float mMaxScale;
     /** When {@code true}, prevents scale end gesture from falsely triggering a fling. */
     private boolean mFlingDebounce;
-    /** When {@code true}, prevents scale end gesture from falsely triggering a scroll. */
-    private boolean mScrollDebounce;
 
     // To support translation [i.e. panning]
     /** Runnable that can move the image */
@@ -246,10 +243,7 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
         if (mTransformsEnabled) {
-            if (!mScrollDebounce) {
-                translate(-distanceX, -distanceY);
-            }
-            mScrollDebounce = false;
+            translate(-distanceX, -distanceY);
         }
         return true;
     }
@@ -301,7 +295,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
             resetTransformations();
         }
         mFlingDebounce = true;
-        mScrollDebounce = true;
     }
 
     @Override
