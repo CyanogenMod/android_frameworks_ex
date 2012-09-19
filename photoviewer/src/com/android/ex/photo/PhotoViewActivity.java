@@ -323,6 +323,9 @@ public class PhotoViewActivity extends Activity implements
                 }
                 mIsEmpty = false;
 
+                mAdapter.swapCursor(data);
+                notifyCursorListeners(data);
+
                 // set the selected photo
                 int itemIndex = mPhotoIndex;
 
@@ -330,9 +333,6 @@ public class PhotoViewActivity extends Activity implements
                 if (itemIndex < 0) {
                     itemIndex = 0;
                 }
-
-                mAdapter.swapCursor(data);
-                notifyCursorListeners(data);
 
                 mViewPager.setCurrentItem(itemIndex, false);
                 setViewActivated();
