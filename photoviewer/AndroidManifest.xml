@@ -18,4 +18,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.ex.photo"
     android:versionCode="1">
+
+    <uses-sdk
+        android:minSdkVersion="11"/>
 </manifest>
