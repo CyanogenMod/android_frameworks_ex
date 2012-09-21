@@ -43,7 +43,7 @@ public abstract class BaseCursorPagerAdapter extends BaseFragmentPagerAdapter {
     /** Mapping of row ID to cursor position */
     private SparseIntArray mItemPosition;
     /** Mapping of instantiated object to row ID */
-    private HashMap<Object, Integer> mObjectRowMap = new HashMap<Object, Integer>();
+    private final HashMap<Object, Integer> mObjectRowMap = new HashMap<Object, Integer>();
 
     /**
      * Constructor that always enables auto-requery.

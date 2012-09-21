@@ -106,6 +106,9 @@ public class PhotoViewFragment extends Fragment implements
     /** Whether or not the fragment should make the photo full-screen */
     private boolean mFullScreen;
 
+    /** Whether or not this fragment will only show the loading spinner */
+    private final boolean mOnlyShowSpinner;
+
     /** Whether or not the progress bar is showing valid information about the progress stated */
     private boolean mProgressBarNeeded = true;
 
@@ -113,13 +116,16 @@ public class PhotoViewFragment extends Fragment implements
 
     public PhotoViewFragment() {
         mPosition = -1;
+        mOnlyShowSpinner = false;
         mProgressBarNeeded = true;
     }
 
-    public PhotoViewFragment(Intent intent, int position, PhotoPagerAdapter adapter) {
+    public PhotoViewFragment(Intent intent, int position, PhotoPagerAdapter adapter,
+            boolean onlyShowSpinner) {
         mIntent = intent;
         mPosition = position;
         mAdapter = adapter;
+        mOnlyShowSpinner = onlyShowSpinner;
         mProgressBarNeeded = true;
     }
 
@@ -246,6 +252,9 @@ public class PhotoViewFragment extends Fragment implements
 
     @Override
     public Loader<Bitmap> onCreateLoader(int id, Bundle args) {
+        if(mOnlyShowSpinner) {
+            return null;
+        }
         switch (id) {
             case LOADER_ID_PHOTO:
                 return new PhotoBitmapLoader(getActivity(), mResolvedPhotoUri);

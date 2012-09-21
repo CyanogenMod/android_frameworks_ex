@@ -33,7 +33,8 @@ import com.android.ex.photo.provider.PhotoContract;
 public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
     private int mContentUriIndex;
     private int mThumbnailUriIndex;
-    private float mMaxScale;
+    private int mLoadingIndex;
+    private final float mMaxScale;
 
     public PhotoPagerAdapter(Context context, FragmentManager fm, Cursor c, float maxScale) {
         super(context, fm, c);
@@ -44,6 +45,16 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
     public Fragment getItem(Context context, Cursor cursor, int position) {
         final String photoUri = cursor.getString(mContentUriIndex);
         final String thumbnailUri = cursor.getString(mThumbnailUriIndex);
+        boolean loading;
+        if(mLoadingIndex != -1) {
+            loading = Boolean.valueOf(cursor.getString(mLoadingIndex));
+        } else {
+            loading = false;
+        }
+        boolean onlyShowSpinner = false;
+        if(photoUri == null && loading) {
+            onlyShowSpinner = true;
+        }
 
         // create new PhotoViewFragment
         final PhotoViewIntentBuilder builder =
@@ -53,7 +64,7 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
             .setThumbnailUri(thumbnailUri)
             .setMaxInitialScale(mMaxScale);
 
-        return new PhotoViewFragment(builder.build(), position, this);
+        return new PhotoViewFragment(builder.build(), position, this, onlyShowSpinner);
     }
 
     @Override
@@ -63,9 +74,12 @@ public class PhotoPagerAdapter extends BaseCursorPagerAdapter {
                     newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.CONTENT_URI);
             mThumbnailUriIndex =
                     newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.THUMBNAIL_URI);
+            mLoadingIndex =
+                    newCursor.getColumnIndex(PhotoContract.PhotoViewColumns.LOADING_INDICATOR);
         } else {
             mContentUriIndex = -1;
             mThumbnailUriIndex = -1;
+            mLoadingIndex = -1;
         }
 
         return super.swapCursor(newCursor);
