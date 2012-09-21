@@ -28,7 +28,10 @@ import android.graphics.Paint.Style;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
+import android.support.v4.view.GestureDetectorCompat;
 import android.util.AttributeSet;
+import android.view.GestureDetector.OnGestureListener;
+import android.view.GestureDetector.OnDoubleTapListener;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -39,8 +42,8 @@ import com.android.ex.photo.fragments.PhotoViewFragment.HorizontallyScrollable;
 /**
  * Layout for the photo list view header.
  */
-public class PhotoView extends View implements GestureDetector.OnGestureListener,
-        GestureDetector.OnDoubleTapListener, ScaleGestureDetector.OnScaleGestureListener,
+public class PhotoView extends View implements OnGestureListener,
+        OnDoubleTapListener, ScaleGestureDetector.OnScaleGestureListener,
         HorizontallyScrollable {
     /** Zoom animation duration; in milliseconds */
     private final static long ZOOM_ANIMATION_DURATION = 300L;
@@ -107,7 +110,7 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     private int mCropSize;
 
     /** Gesture detector */
-    private GestureDetector mGestureDetector;
+    private GestureDetectorCompat mGestureDetector;
     /** Gesture detector that detects pinch gestures */
     private ScaleGestureDetector mScaleGetureDetector;
     /** An external click listener */
@@ -128,8 +131,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     private float mMinScale;
     /** Maximum scale to limit scaling to, 0 means no limit. */
     private float mMaxScale;
-    /** When {@code true}, prevents scale end gesture from falsely triggering a fling. */
-    private boolean mFlingDebounce;
 
     // To support translation [i.e. panning]
     /** Runnable that can move the image */
@@ -258,10 +259,7 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
         if (mTransformsEnabled) {
-            if (!mFlingDebounce) {
-                mTranslateRunnable.start(velocityX, velocityY);
-            }
-            mFlingDebounce = false;
+            mTranslateRunnable.start(velocityX, velocityY);
         }
         return true;
     }
@@ -292,7 +290,6 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
             mDoubleTapDebounce = true;
             resetTransformations();
         }
-        mFlingDebounce = true;
     }
 
     @Override
@@ -934,12 +931,9 @@ public class PhotoView extends View implements GestureDetector.OnGestureListener
             sCropPaint.setColor(resources.getColor(R.color.photo_crop_highlight_color));
             sCropPaint.setStyle(Style.STROKE);
             sCropPaint.setStrokeWidth(resources.getDimension(R.dimen.photo_crop_stroke_width));
-
-            sHasMultitouchDistinct = context.getPackageManager().hasSystemFeature(
-                    PackageManager.FEATURE_TOUCHSCREEN_MULTITOUCH_DISTINCT);
         }
 
-        mGestureDetector = new GestureDetector(context, this, null, !sHasMultitouchDistinct);
+        mGestureDetector = new GestureDetectorCompat(context, this, null);
         mScaleGetureDetector = new ScaleGestureDetector(context, this);
         mScaleRunnable = new ScaleRunnable(this);
         mTranslateRunnable = new TranslateRunnable(this);
