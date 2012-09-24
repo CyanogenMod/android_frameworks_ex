@@ -2344,10 +2344,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             if (start != -1) {
                                 end = oldText.getSpanEnd(chip);
                                 oldText.removeSpan(chip);
-                                // Leave a spot for the space!
                                 RecipientChip replacement = replacements.get(i);
-                                text.setSpan(replacement, start, end,
+                                // Trim any whitespace, as we will already have
+                                // it added if these are replacement chips.
+                                SpannableString displayText = new SpannableString(
+                                        createAddressText(replacement.getEntry()).trim());
+                                displayText.setSpan(replacement, 0, displayText.length(),
                                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                                text.replace(start, end, displayText);
                                 replacement.setOriginalText(text.toString().substring(start, end));
                             }
                             i++;
