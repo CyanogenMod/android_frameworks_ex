@@ -20,19 +20,25 @@ package com.android.ex.photo.util;
 import android.content.ContentResolver;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
+import android.util.DisplayMetrics;
 import android.util.Log;
 
 import com.android.ex.photo.PhotoViewActivity;
+import com.android.ex.photo.util.Exif;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+
 
 /**
  * Image utilities
@@ -93,7 +99,6 @@ public class ImageUtils {
         try {
             final BitmapFactory.Options opts = new BitmapFactory.Options();
             final Point bounds = getImageBounds(resolver, uri);
-
             inputStream = openInputStream(resolver, uri);
             opts.inSampleSize = Math.max(bounds.x / maxSize, bounds.y / maxSize);
 
@@ -139,11 +144,55 @@ public class ImageUtils {
      *         size be returned (in opts.outWidth and opts.outHeight)
      */
     public static Bitmap decodeStream(InputStream is, Rect outPadding, BitmapFactory.Options opts) {
+        ByteArrayOutputStream out = null;
+        InputStream byteStream = null;
         try {
-            return BitmapFactory.decodeStream(is, outPadding, opts);
+            out = new ByteArrayOutputStream();
+            final byte[] buffer = new byte[4096];
+            int n = is.read(buffer);
+            while (n >= 0) {
+                out.write(buffer, 0, n);
+                n = is.read(buffer);
+            }
+
+            final byte[] bitmapBytes = out.toByteArray();
+
+            // Determine the orientation for this image
+            final int orientation = Exif.getOrientation(bitmapBytes);
+
+            // Create an InputStream from this byte array
+            byteStream = new ByteArrayInputStream(bitmapBytes);
+
+            final Bitmap originalBitmap = BitmapFactory.decodeStream(byteStream, outPadding, opts);
+
+            if (originalBitmap != null && orientation != 0) {
+                final Matrix matrix = new Matrix();
+                matrix.postRotate(orientation);
+                return Bitmap.createBitmap(originalBitmap, 0, 0, originalBitmap.getWidth(),
+                        originalBitmap.getHeight(), matrix, true);
+            }
+            return originalBitmap;
         } catch (OutOfMemoryError oome) {
             Log.e(TAG, "ImageUtils#decodeStream(InputStream, Rect, Options) threw an OOME", oome);
             return null;
+        } catch (IOException ioe) {
+            Log.e(TAG, "ImageUtils#decodeStream(InputStream, Rect, Options) threw an IOE", ioe);
+            return null;
+        } finally {
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (IOException e) {
+                    // Do nothing
+                }
+            }
+            if (byteStream != null) {
+                try {
+                    byteStream.close();
+                } catch (IOException e) {
+                    // Do nothing
+                }
+            }
         }
     }
 
@@ -194,4 +243,3 @@ public class ImageUtils {
         return resolver.openInputStream(uri);
     }
 }
-
