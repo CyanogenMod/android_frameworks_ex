@@ -2352,7 +2352,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                 displayText.setSpan(replacement, 0, displayText.length(),
                                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                                 text.replace(start, end, displayText);
-                                replacement.setOriginalText(text.toString().substring(start, end));
+                                replacement.setOriginalText(displayText.toString());
                             }
                             i++;
                         }
