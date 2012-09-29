@@ -2334,8 +2334,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        SpannableStringBuilder text = new SpannableStringBuilder(getText()
-                                .toString());
                         Editable oldText = getText();
                         int start, end;
                         int i = 0;
@@ -2351,13 +2349,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                         createAddressText(replacement.getEntry()).trim());
                                 displayText.setSpan(replacement, 0, displayText.length(),
                                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                                text.replace(start, end, displayText);
+                                oldText.replace(start, end, displayText);
                                 replacement.setOriginalText(displayText.toString());
                             }
                             i++;
                         }
                         originalRecipients.clear();
-                        setText(text);
                     }
                 });
             }
