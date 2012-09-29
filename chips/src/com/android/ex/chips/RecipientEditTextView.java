@@ -2361,12 +2361,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        SpannableStringBuilder text = new SpannableStringBuilder(getText()
-                                .toString());
                         Editable oldText = getText();
                         int start, end;
                         int i = 0;
                         for (RecipientChip chip : originalRecipients) {
+                            // Find the location of the chip in the text currently shown.
                             start = oldText.getSpanStart(chip);
                             if (start != -1) {
                                 end = oldText.getSpanEnd(chip);
@@ -2378,13 +2377,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                         createAddressText(replacement.getEntry()).trim());
                                 displayText.setSpan(replacement, 0, displayText.length(),
                                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                                text.replace(start, end, displayText);
+                                // Replace the old text we found with with the new display text,
+                                // which now may also contain the display name of the recipient.
+                                oldText.replace(start, end, displayText);
                                 replacement.setOriginalText(displayText.toString());
                             }
                             i++;
                         }
                         originalRecipients.clear();
-                        setText(text);
                     }
                 });
             }
