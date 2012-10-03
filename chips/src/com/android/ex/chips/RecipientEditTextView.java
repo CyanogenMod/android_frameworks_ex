@@ -2049,8 +2049,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             } else {
                 if (!TextUtils.isEmpty(chipText)) {
                     // There may be a space to replace with this chip's new
-                    // associated
-                    // space. Check for it
+                    // associated space. Check for it
                     int toReplace = end;
                     while (toReplace >= 0 && toReplace < editable.length()
                             && editable.charAt(toReplace) == ' ') {
@@ -2263,7 +2262,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 int tokenEnd;
                 RecipientChip createdChip;
                 while (tokenStart < originalTokenStart) {
-                    tokenEnd = movePastTerminators(mTokenizer.findTokenEnd(text, tokenStart));
+                    tokenEnd = movePastTerminators(mTokenizer.findTokenEnd(getText().toString(),
+                            tokenStart));
                     commitChip(tokenStart, tokenEnd, getText());
                     createdChip = findChip(tokenStart);
                     if (createdChip == null) {
@@ -2415,8 +2415,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (RecipientEntry.isCreatedRecipient(temp.getEntry().getContactId())
                         && getSpannable().getSpanStart(temp) != -1) {
                     // Replace this.
-                    final RecipientEntry entry = createValidatedEntry(entries
-                            .get(tokenizeAddress(temp.getEntry().getDestination()).toLowerCase()));
+                    final RecipientEntry entry = createValidatedEntry(entries.get(tokenizeAddress(
+                            temp.getEntry().getDestination()).toLowerCase()));
                     if (entry != null) {
                         mHandler.post(new Runnable() {
                             @Override
