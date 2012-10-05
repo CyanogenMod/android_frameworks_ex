@@ -100,6 +100,9 @@ public class ImageUtils {
             final BitmapFactory.Options opts = new BitmapFactory.Options();
             final Point bounds = getImageBounds(resolver, uri);
             inputStream = openInputStream(resolver, uri);
+            if (bounds == null || inputStream == null) {
+                return null;
+            }
             opts.inSampleSize = Math.max(bounds.x / maxSize, bounds.y / maxSize);
 
             final Bitmap decodedBitmap = decodeStream(inputStream, null, opts);
@@ -212,6 +215,9 @@ public class ImageUtils {
         try {
             opts.inJustDecodeBounds = true;
             inputStream = openInputStream(resolver, uri);
+            if (inputStream == null) {
+                return null;
+            }
             decodeStream(inputStream, null, opts);
 
             return new Point(opts.outWidth, opts.outHeight);
