@@ -209,7 +209,7 @@ public class PhotoViewFragment extends Fragment implements
         mCallback.addScreenListener(this);
         mCallback.addCursorListener(this);
 
-        getLoaderManager().initLoader(LOADER_ID_PHOTO, null, this);
+        getLoaderManager().initLoader(LOADER_ID_THUMBNAIL, null, this);
 
         super.onResume();
     }
@@ -269,10 +269,6 @@ public class PhotoViewFragment extends Fragment implements
                     bindPhoto(data);
                     mPhotoPreviewAndProgress.setVisibility(View.GONE);
                     mProgressBarNeeded = false;
-                } else {
-                    // Received a null result for the full size image.  Instead attempt to load the
-                    // thumbnail
-                    getLoaderManager().initLoader(LOADER_ID_THUMBNAIL, null, this);
                 }
                 break;
             case LOADER_ID_THUMBNAIL:
@@ -282,18 +278,20 @@ public class PhotoViewFragment extends Fragment implements
                     mPhotoPreviewAndProgress.setVisibility(View.GONE);
                     mProgressBarNeeded = false;
                     return;
-                } else if (data == null) {
-                    // no preview, show default
-                    mPhotoPreviewImage.setVisibility(View.VISIBLE);
-                    mPhotoPreviewImage.setImageResource(R.drawable.default_image);
-                    mPhotoPreviewImage.setScaleType(ImageView.ScaleType.CENTER);
-
-                    mProgressBarNeeded = false;
                 } else {
+                    // Make the preview image view visible
                     mPhotoPreviewImage.setVisibility(View.VISIBLE);
-                    mPhotoPreviewImage.setImageBitmap(data);
 
-                    mProgressBarNeeded = false;
+                    if (data == null) {
+                        // no preview, show default
+                        mPhotoPreviewImage.setImageResource(R.drawable.default_image);
+                        mPhotoPreviewImage.setScaleType(ImageView.ScaleType.CENTER);
+                    } else {
+                        // Show the preview
+                        mPhotoPreviewImage.setImageBitmap(data);
+                    }
+                    // Now load the full size image
+                    getLoaderManager().initLoader(LOADER_ID_PHOTO, null, this);
                 }
                 break;
             default:
