@@ -88,6 +88,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * RecipientEditTextView is an auto complete text view for use with applications
@@ -193,6 +194,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     private boolean mTriedGettingScrollView;
 
     private boolean mDragEnabled = false;
+
+    // This pattern comes from android.util.Patterns. It has been tweaked to handle a "1" before
+    // parens, so numbers such as "1 (425) 222-2342" match.
+    private static final Pattern PHONE_PATTERN
+        = Pattern.compile(                                  // sdd = space, dot, or dash
+                "(\\+[0-9]+[\\- \\.]*)?"                    // +<digits><sdd>*
+                + "(1?[ ]*\\([0-9]+\\)[\\- \\.]*)?"         // 1(<digits>)<sdd>*
+                + "([0-9][0-9\\- \\.][0-9\\- \\.]+[0-9])"); // <digit><digit|sdd>+<digit>
+
 
     private final Runnable mAddTextWatcher = new Runnable() {
         @Override
@@ -912,7 +922,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return false;
         }
 
-        Matcher match = Patterns.PHONE.matcher(number);
+        Matcher match = PHONE_PATTERN.matcher(number);
         return match.matches();
     }
 
