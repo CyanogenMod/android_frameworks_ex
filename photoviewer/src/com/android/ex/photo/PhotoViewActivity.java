@@ -31,6 +31,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
 
@@ -112,6 +113,8 @@ public class PhotoViewActivity extends Activity implements
 
     /** The URI of the photos we're viewing; may be {@code null} */
     private String mPhotosUri;
+    /** The URI of the photo currently viewed photo */
+    private String mInitialPhotoUri;
     /** The index of the currently viewed photo */
     private int mPhotoIndex;
     /** The query projection to use; may be {@code null} */
@@ -178,6 +181,9 @@ public class PhotoViewActivity extends Activity implements
         // Set the current item from the intent if wasn't in the saved instance
         if (mIntent.hasExtra(Intents.EXTRA_PHOTO_INDEX) && currentItem < 0) {
             currentItem = mIntent.getIntExtra(Intents.EXTRA_PHOTO_INDEX, -1);
+        }
+        if (mIntent.hasExtra(Intents.EXTRA_INITIAL_PHOTO_URI) && currentItem < 0) {
+            mInitialPhotoUri = mIntent.getStringExtra(Intents.EXTRA_INITIAL_PHOTO_URI);
         }
 
         // Set the max initial scale, defaulting to 1x
@@ -312,6 +318,20 @@ public class PhotoViewActivity extends Activity implements
                 mIsEmpty = true;
             } else {
                 mAlbumCount = data.getCount();
+
+                if (mInitialPhotoUri != null) {
+                    int index = 0;
+                    int uriIndex = data.getColumnIndex(PhotoContract.PhotoViewColumns.URI);
+                    while (data.moveToNext()) {
+                        String uri = data.getString(uriIndex);
+                        if (TextUtils.equals(uri, mInitialPhotoUri)) {
+                            mInitialPhotoUri = null;
+                            mPhotoIndex = index;
+                            break;
+                        }
+                        index++;
+                    }
+                }
 
                 // We're paused; don't do anything now, we'll get re-invoked
                 // when the activity becomes active again
