@@ -2347,12 +2347,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int originalTokenStart = mTokenizer.findTokenStart(text, getSelectionEnd());
         String lastAddress = text.substring(originalTokenStart);
         int tokenStart = originalTokenStart;
-        int prevTokenStart = tokenStart;
+        int prevTokenStart = 0;
         DrawableRecipientChip findChip = null;
         ArrayList<DrawableRecipientChip> created = new ArrayList<DrawableRecipientChip>();
         if (tokenStart != 0) {
             // There are things before this!
-            while (tokenStart != 0 && findChip == null) {
+            while (tokenStart != 0 && findChip == null && tokenStart != prevTokenStart) {
                 prevTokenStart = tokenStart;
                 tokenStart = mTokenizer.findTokenStart(text, tokenStart);
                 findChip = findChip(tokenStart);
