@@ -532,4 +532,7 @@ public class PhotoViewActivity extends Activity implements
             postActionBarHideRunnableWithDelay();
         }
     }
+
+    public void onNewPhotoLoaded() {
+    }
 }
