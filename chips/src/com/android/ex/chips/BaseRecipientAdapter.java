@@ -204,6 +204,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             Cursor directoryCursor = null;
 
             if (TextUtils.isEmpty(constraint)) {
+                clearTempEntries();
                 // Return empty results.
                 return results;
             }
@@ -278,11 +279,20 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             // TODO: Fix it.
             mCurrentConstraint = constraint;
 
+            clearTempEntries();
+
             if (results.values != null) {
                 DefaultFilterResult defaultFilterResult = (DefaultFilterResult) results.values;
                 mEntryMap = defaultFilterResult.entryMap;
                 mNonAggregatedEntries = defaultFilterResult.nonAggregatedEntries;
                 mExistingDestinations = defaultFilterResult.existingDestinations;
+
+                // If there are no local results, in the new result set, cache off what had been
+                // shown to the user for use until the first directory result is returned
+                if (defaultFilterResult.entries.size() == 0 &&
+                        defaultFilterResult.paramsList != null) {
+                    cacheCurrentEntries();
+                }
 
                 updateEntries(defaultFilterResult.entries);
 
@@ -404,6 +414,13 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     }
                     mDelayedMessageHandler.sendDelayedLoadMessage();
                 }
+
+                // If this directory result has some items, or there are no more directories that
+                // we are waiting for, clear the temp results
+                if (results.count > 0 || mRemainingDirectoryCount == 0) {
+                    // Clear the temp entries
+                    clearTempEntries();
+                }
             }
 
             // Show the list again without "waiting" message.
@@ -442,6 +459,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private Set<String> mExistingDestinations;
     /** Note: use {@link #updateEntries(List)} to update this variable. */
     private List<RecipientEntry> mEntries;
+    private List<RecipientEntry> mTempEntries;
 
     /** The number of directories this adapter is waiting for results. */
     private int mRemainingDirectoryCount;
@@ -694,6 +712,18 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         notifyDataSetChanged();
     }
 
+    private void cacheCurrentEntries() {
+        mTempEntries = mEntries;
+    }
+
+    private void clearTempEntries() {
+        mTempEntries = null;
+    }
+
+    private List<RecipientEntry> getEntries() {
+        return mTempEntries != null ? mTempEntries : mEntries;
+    }
+
     private void tryFetchPhoto(final RecipientEntry entry) {
         final Uri photoThumbnailUri = entry.getPhotoThumbnailUri();
         if (photoThumbnailUri != null) {
@@ -799,12 +829,13 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     @Override
     public int getCount() {
-        return mEntries != null ? mEntries.size() : 0;
+        final List<RecipientEntry> entries = getEntries();
+        return entries != null ? entries.size() : 0;
     }
 
     @Override
     public Object getItem(int position) {
-        return mEntries.get(position);
+        return getEntries().get(position);
     }
 
     @Override
@@ -819,17 +850,17 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     @Override
     public int getItemViewType(int position) {
-        return mEntries.get(position).getEntryType();
+        return getEntries().get(position).getEntryType();
     }
 
     @Override
     public boolean isEnabled(int position) {
-        return mEntries.get(position).isSelectable();
+        return getEntries().get(position).isSelectable();
     }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        final RecipientEntry entry = mEntries.get(position);
+        final RecipientEntry entry = getEntries().get(position);
         String displayName = entry.getDisplayName();
         String destination = entry.getDestination();
         if (TextUtils.isEmpty(displayName) || TextUtils.equals(displayName, destination)) {
