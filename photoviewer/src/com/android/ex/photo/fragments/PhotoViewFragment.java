@@ -272,7 +272,7 @@ public class PhotoViewFragment extends Fragment implements
                 }
                 break;
             case LOADER_ID_THUMBNAIL:
-                if (isPhotoBound()) {
+              if (isPhotoBound()) {
                     // There is need to do anything with the thumbnail image, as the full size
                     // image is being shown.
                     mPhotoPreviewAndProgress.setVisibility(View.GONE);
@@ -346,6 +346,10 @@ public class PhotoViewFragment extends Fragment implements
             // we're not in the foreground; reset our view
             resetViews();
         } else {
+            if (!isPhotoBound()) {
+                // Restart the loader
+                getLoaderManager().restartLoader(LOADER_ID_THUMBNAIL, null, this);
+            }
             mCallback.onFragmentVisible(this);
         }
     }
