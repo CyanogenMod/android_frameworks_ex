@@ -577,4 +577,7 @@ public class PhotoViewActivity extends Activity implements
     protected void setPhotoIndex(int index) {
         mPhotoIndex = index;
     }
+
+    public void onNewPhotoLoaded() {
+    }
 }

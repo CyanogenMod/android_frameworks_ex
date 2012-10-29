@@ -309,8 +309,10 @@ public class PhotoViewFragment extends Fragment implements
             // Hide the progress bar as it isn't needed anymore.
             mPhotoProgressBar.setVisibility(View.GONE);
         }
+        if (data != null) {
+            mCallback.onNewPhotoLoaded();
+        }
 
-        mCallback.setViewActivated();
         setViewVisibility();
     }
 
