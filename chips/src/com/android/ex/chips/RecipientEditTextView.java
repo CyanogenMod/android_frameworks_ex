@@ -441,6 +441,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void expand() {
+        if (mShouldShrink) {
+            setMaxLines(Integer.MAX_VALUE);
+        }
         removeMoreChip();
         setCursorVisible(true);
         Editable text = getText();
@@ -2388,8 +2391,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (RecipientEntry.isCreatedRecipient(temp.getEntry().getContactId())
                         && getSpannable().getSpanStart(temp) != -1) {
                     // Replace this.
-                    final RecipientEntry entry = createValidatedEntry(entries.get(tokenizeAddress(
-                            temp.getEntry().getDestination()).toLowerCase()));
+                    final RecipientEntry entry = createValidatedEntry(entries.get(
+                            tokenizeAddress(temp.getEntry().getDestination()).toLowerCase()));
                     if (entry != null) {
                         mHandler.post(new Runnable() {
                             @Override
