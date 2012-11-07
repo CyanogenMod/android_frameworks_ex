@@ -2437,9 +2437,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     // Replace this.
                     RecipientEntry entry = createValidatedEntry(entries.get(tokenizeAddress(
                             temp.getEntry().getDestination()).toLowerCase()));
+                    // If we don't have a validated contact match, just use the
+                    // entry as it existed before.
                     if (entry == null && !isPhoneQuery()) {
-                        entry = RecipientEntry.constructFakeEntry(Rfc822Tokenizer.tokenize(temp
-                                .getEntry().getDestination())[0].getAddress());
+                        entry = temp.getEntry();
                     }
                     final RecipientEntry tempEntry = entry;
                     if (tempEntry != null) {
