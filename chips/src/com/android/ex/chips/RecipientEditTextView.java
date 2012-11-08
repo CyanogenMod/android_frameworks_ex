@@ -88,7 +88,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * RecipientEditTextView is an auto complete text view for use with applications
@@ -195,15 +194,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private boolean mDragEnabled = false;
 
-    // This pattern comes from android.util.Patterns. It has been tweaked to handle a "1" before
-    // parens, so numbers such as "1 (425) 222-2342" match.
-    private static final Pattern PHONE_PATTERN
-        = Pattern.compile(                                  // sdd = space, dot, or dash
-                "(\\+[0-9]+[\\- \\.]*)?"                    // +<digits><sdd>*
-                + "(1?[ ]*\\([0-9]+\\)[\\- \\.]*)?"         // 1(<digits>)<sdd>*
-                + "([0-9][0-9\\- \\.][0-9\\- \\.]+[0-9])"); // <digit><digit|sdd>+<digit>
-
-
     private final Runnable mAddTextWatcher = new Runnable() {
         @Override
         public void run() {
@@ -233,6 +223,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
 
     };
+
+    private int mMaxLines;
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -273,6 +265,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         addTextChangedListener(mTextWatcher);
         mGestureDetector = new GestureDetector(context, this);
         setOnEditorActionListener(this);
+        mMaxLines = getLineCount();
     }
 
     @Override
@@ -405,8 +398,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mTokenizer == null) {
             return;
         }
-        if (mSelectedChip != null
-                && mSelectedChip.getEntry().getContactId() != RecipientEntry.INVALID_CONTACT) {
+        long contactId = mSelectedChip != null ? mSelectedChip.getEntry().getContactId() : -1;
+        if (mSelectedChip != null && contactId != RecipientEntry.INVALID_CONTACT
+                && (!isPhoneQuery() && contactId != RecipientEntry.GENERATED_CONTACT)) {
             clearSelectedChip();
         } else {
             if (getWidth() <= 0) {
@@ -517,7 +511,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
 
-    private Bitmap createUnselectedChip(RecipientEntry contact, TextPaint paint, Layout layout) {
+    private Bitmap createUnselectedChip(RecipientEntry contact, TextPaint paint, Layout layout,
+            boolean leaveBlankIconSpacer) {
         // Ellipsize the text so that it takes AT MOST the entire width of the
         // autocomplete text entry area. Make sure to leave space for padding
         // on the sides.
@@ -541,8 +536,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             background.setBounds(0, 0, width, height);
             background.draw(canvas);
 
-            // Don't draw photos for recipients that have been typed in.
-            if (contact.getContactId() != RecipientEntry.INVALID_CONTACT) {
+            // Don't draw photos for recipients that have been typed in OR generated on the fly.
+            long contactId = contact.getContactId();
+            boolean drawPhotos = isPhoneQuery() ?
+                    contactId != RecipientEntry.INVALID_CONTACT
+                    : (contactId != RecipientEntry.INVALID_CONTACT
+                            && (contactId != RecipientEntry.GENERATED_CONTACT &&
+                                    !TextUtils.isEmpty(contact.getDisplayName())));
+            if (drawPhotos) {
                 byte[] photoBytes = contact.getPhotoBytes();
                 // There may not be a photo yet if anything but the first contact address
                 // was selected.
@@ -573,8 +574,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     matrix.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
                     canvas.drawBitmap(photo, matrix, paint);
                 }
-            } else {
-                // Don't leave any space for the icon. It isn't being drawn.
+            } else if (!leaveBlankIconSpacer || isPhoneQuery()) {
                 iconWidth = 0;
             }
             paint.setColor(getContext().getResources().getColor(android.R.color.black));
@@ -603,8 +603,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return height - ((height - textHeight) / 2) - (int)paint.descent();
     }
 
-    private RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed)
-            throws NullPointerException {
+    private RecipientChip constructChipSpan(RecipientEntry contact, int offset, boolean pressed,
+            boolean leaveIconSpace) throws NullPointerException {
         if (mChipBackground == null) {
             throw new NullPointerException(
                     "Unable to render any chips as setChipDimensions was not called.");
@@ -620,7 +620,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             tmpBitmap = createSelectedChip(contact, paint, layout);
 
         } else {
-            tmpBitmap = createUnselectedChip(contact, paint, layout);
+            tmpBitmap = createUnselectedChip(contact, paint, layout, leaveIconSpace);
         }
 
         // Pass the full text, un-ellipsized, to the chip.
@@ -820,7 +820,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     mIndividualReplacements = new IndividualReplacementTask();
                     mIndividualReplacements.execute(new ArrayList<RecipientChip>(
                             mTemporaryRecipients.subList(0, CHIP_LIMIT)));
-
+                    if (mTemporaryRecipients.size() > CHIP_LIMIT) {
+                        mTemporaryRecipients = new ArrayList<RecipientChip>(
+                                mTemporaryRecipients.subList(CHIP_LIMIT,
+                                        mTemporaryRecipients.size()));
+                    } else {
+                        mTemporaryRecipients = null;
+                    }
                     createMoreChip();
                 }
             } else {
@@ -899,7 +905,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             RecipientChip chip = null;
             try {
                 if (!mNoChips) {
-                    chip = constructChipSpan(entry, start, false);
+                    /* leave space for the contact icon if this is not just an email address */
+                    chip = constructChipSpan(
+                            entry,
+                            start,
+                            false,
+                            TextUtils.isEmpty(entry.getDisplayName())
+                                    || TextUtils.equals(entry.getDisplayName(),
+                                            entry.getDestination()));
                     chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             } catch (NullPointerException e) {
@@ -925,7 +938,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return false;
         }
 
-        Matcher match = PHONE_PATTERN.matcher(number);
+        Matcher match = Patterns.PHONE.matcher(number);
         return match.matches();
     }
 
@@ -933,43 +946,26 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (TextUtils.isEmpty(token)) {
             return null;
         }
+        if (isPhoneQuery() && isPhoneNumber(token)) {
+            return RecipientEntry
+                    .constructFakeEntry(token);
+        }
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
-        if (isPhoneQuery()) {
-            // The number often arrives as "(800) 123-1231, ".
-            // Trim the space and trailing comma if necessary.
-            token = token.trim();
-            char charAt = token.charAt(token.length() - 1);
-            if (charAt == COMMIT_CHAR_COMMA || charAt == COMMIT_CHAR_SEMICOLON) {
-                token = token.substring(0, token.length() - 1);
-            }
-
-            // look for something that looks like a phone number. At this point, the original
-            // token might have looked like this: "Fred Flinstone <(800) 425-2323>"
-            if (!isPhoneNumber(token) && isValid(token) && tokens != null && tokens.length > 0) {
-                for (int i = 0; i < tokens.length; i++) {
-                    // If we can get a phone number from tokenizing, then generate an entry from
-                    // this.
-                    display = tokens[i].getName();
-                    if (!TextUtils.isEmpty(display) && isPhoneNumber(display)) {
-                        return RecipientEntry.constructGeneratedEntry(display, display);
-                    } else {
-                        display = tokens[i].getAddress();
-                        if (!TextUtils.isEmpty(display) && isPhoneNumber(display)) {
-                            return RecipientEntry.constructFakeEntry(display);
-                        }
-                    }
-                }
-            }
-            // If the original token is a phone number to start with or as a last resort, use the
-            // original token.
-            return RecipientEntry.constructFakeEntry(token);
-        }
         if (isValid(token) && tokens != null && tokens.length > 0) {
             // If we can get a name from tokenizing, then generate an entry from
             // this.
             display = tokens[0].getName();
             if (!TextUtils.isEmpty(display)) {
+                if (!isPhoneQuery()) {
+                    if (!TextUtils.isEmpty(token)) {
+                        token = token.trim();
+                    }
+                    char charAt = token.charAt(token.length() - 1);
+                    if (charAt == COMMIT_CHAR_COMMA || charAt == COMMIT_CHAR_SEMICOLON) {
+                        token = token.substring(0, token.length() - 1);
+                    }
+                }
                 return RecipientEntry.constructGeneratedEntry(display, token);
             } else {
                 display = tokens[0].getAddress();
@@ -1376,8 +1372,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 }
                 chipWasSelected = true;
                 handled = true;
-            } else if (mSelectedChip != null
-                    && mSelectedChip.getContactId() == RecipientEntry.INVALID_CONTACT) {
+            } else if (mSelectedChip != null && shouldShowEditableText(mSelectedChip)) {
                 chipWasSelected = true;
             }
         }
@@ -1562,7 +1557,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         chipText = new SpannableString(displayText);
         if (!mNoChips) {
             try {
-                RecipientChip chip = constructChipSpan(entry, start, pressed);
+                RecipientChip chip = constructChipSpan(entry, start, pressed,
+                        false /* leave space for contact icon */);
                 chipText.setSpan(chip, 0, textLength,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 chip.setOriginalText(chipText.toString());
@@ -1612,7 +1608,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // valid contact, but the destination is invalid, then make this a fake
         // recipient that is editable.
         String destination = item.getDestination();
-        if (RecipientEntry.isCreatedRecipient(item.getContactId())
+        if (!isPhoneQuery() && item.getContactId() == RecipientEntry.GENERATED_CONTACT) {
+            entry = RecipientEntry.constructGeneratedEntry(item.getDisplayName(),
+                    destination);
+        } else if (RecipientEntry.isCreatedRecipient(item.getContactId())
                 && (TextUtils.isEmpty(item.getDisplayName())
                         || TextUtils.equals(item.getDisplayName(), destination)
                         || (mValidator != null && !mValidator.isValid(destination)))) {
@@ -1773,7 +1772,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (!mShouldShrink) {
             return;
         }
-
         ImageSpan[] tempMore = getSpannable().getSpans(0, getText().length(), MoreImageSpan.class);
         if (tempMore.length > 0) {
             getSpannable().removeSpan(tempMore[0]);
@@ -1816,6 +1814,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         chipText.setSpan(moreSpan, 0, chipText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         text.replace(start, end, chipText);
         mMoreChip = moreSpan;
+        // If adding the +more chip goes over the limit, resize accordingly.
+        if (!isPhoneQuery() && getLineCount() > mMaxLines) {
+            setMaxLines(getLineCount());
+        }
     }
 
     /**
@@ -1875,7 +1877,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * just contained an email address.
      */
     private RecipientChip selectChip(RecipientChip currentChip) {
-        if (currentChip.getContactId() == RecipientEntry.INVALID_CONTACT) {
+        if (shouldShowEditableText(currentChip)) {
             CharSequence text = currentChip.getValue();
             Editable editable = getText();
             removeChip(currentChip);
@@ -1892,7 +1894,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (mNoChips) {
                     return null;
                 }
-                newChip = constructChipSpan(currentChip.getEntry(), start, true);
+                newChip = constructChipSpan(currentChip.getEntry(), start, true, false);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
                 return null;
@@ -1905,7 +1907,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 editable.setSpan(newChip, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
             newChip.setSelected(true);
-            if (newChip.getEntry().getContactId() == RecipientEntry.INVALID_CONTACT) {
+            if (shouldShowEditableText(newChip)) {
                 scrollLineIntoView(getLayout().getLineForOffset(getChipStart(newChip)));
             }
             showAddress(newChip, mAddressPopup, getWidth(), getContext());
@@ -1917,7 +1919,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             getSpannable().removeSpan(currentChip);
             RecipientChip newChip;
             try {
-                newChip = constructChipSpan(currentChip.getEntry(), start, true);
+                newChip = constructChipSpan(currentChip.getEntry(), start, true, false);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
                 return null;
@@ -1930,7 +1932,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 editable.setSpan(newChip, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
             newChip.setSelected(true);
-            if (newChip.getEntry().getContactId() == RecipientEntry.INVALID_CONTACT) {
+            if (shouldShowEditableText(newChip)) {
                 scrollLineIntoView(getLayout().getLineForOffset(getChipStart(newChip)));
             }
             showAlternates(newChip, mAlternatesPopup, getWidth(), getContext());
@@ -1939,6 +1941,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    private boolean shouldShowEditableText(RecipientChip currentChip) {
+        long contactId = currentChip.getContactId();
+        return contactId == RecipientEntry.INVALID_CONTACT
+                || (!isPhoneQuery() && contactId == RecipientEntry.GENERATED_CONTACT);
+    }
 
     private void showAddress(final RecipientChip currentChip, final ListPopupWindow popup,
             int width, Context context) {
@@ -1983,8 +1990,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             editable.removeSpan(chip);
             try {
                 if (!mNoChips) {
-                    editable.setSpan(constructChipSpan(chip.getEntry(), start, false), start, end,
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    editable.setSpan(constructChipSpan(chip.getEntry(), start, false, false),
+                            start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
@@ -2129,7 +2136,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
             // If the user is editing a chip, don't clear it.
             if (mSelectedChip != null
-                    && mSelectedChip.getContactId() != RecipientEntry.INVALID_CONTACT) {
+                    && shouldShowEditableText(mSelectedChip)) {
                 setCursorVisible(true);
                 setSelection(getText().length());
                 clearSelectedChip();
@@ -2189,7 +2196,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     getSpannable().removeSpan(repl[0]);
                 }
             } else if (count > before) {
-                // Only scroll when the user is adding text, not clearing text.
                 scrollBottomIntoView();
             }
         }
@@ -2322,7 +2328,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (mNoChips) {
                     return null;
                 }
-                return constructChipSpan(entry, -1, false);
+                return constructChipSpan(entry, -1, false,
+                        false /*leave space for contact icon */);
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
                 return null;
@@ -2413,7 +2420,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // If there is a match, replace that chip with the matching
             // chip.
             final ArrayList<RecipientChip> originalRecipients =
-                (ArrayList<RecipientChip>) params[0];
+                    (ArrayList<RecipientChip>) params[0];
             ArrayList<String> addresses = new ArrayList<String>();
             RecipientChip chip;
             for (int i = 0; i < originalRecipients.size(); i++) {
@@ -2428,13 +2435,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (RecipientEntry.isCreatedRecipient(temp.getEntry().getContactId())
                         && getSpannable().getSpanStart(temp) != -1) {
                     // Replace this.
-                    final RecipientEntry entry = createValidatedEntry(entries.get(
-                            tokenizeAddress(temp.getEntry().getDestination()).toLowerCase()));
-                    if (entry != null) {
+                    RecipientEntry entry = createValidatedEntry(entries.get(tokenizeAddress(
+                            temp.getEntry().getDestination()).toLowerCase()));
+                    // If we don't have a validated contact match, just use the
+                    // entry as it existed before.
+                    if (entry == null && !isPhoneQuery()) {
+                        entry = temp.getEntry();
+                    }
+                    final RecipientEntry tempEntry = entry;
+                    if (tempEntry != null) {
                         mHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                replaceChip(temp, entry);
+                                replaceChip(temp, tempEntry);
                             }
                         });
                     }
