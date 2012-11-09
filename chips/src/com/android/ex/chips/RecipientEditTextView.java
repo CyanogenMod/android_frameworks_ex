@@ -427,7 +427,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     int whatEnd = mTokenizer.findTokenEnd(text, start);
                     // This token was already tokenized, so skip past the ending token.
                     if (whatEnd < text.length() && text.charAt(whatEnd) == ',') {
-                        whatEnd++;
+                        whatEnd = movePastTerminators(whatEnd);
                     }
                     // In the middle of chip; treat this as an edit
                     // and commit the whole token.
@@ -1117,6 +1117,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             int whatEnd = mTokenizer.findTokenEnd(getText(), start);
             // In the middle of chip; treat this as an edit
             // and commit the whole token.
+            whatEnd = movePastTerminators(whatEnd);
             if (whatEnd != getSelectionEnd()) {
                 handleEdit(start, whatEnd);
                 return true;
@@ -1880,8 +1881,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (shouldShowEditableText(currentChip)) {
             CharSequence text = currentChip.getValue();
             Editable editable = getText();
-            removeChip(currentChip);
-            editable.append(text);
+            getSpannable().removeSpan(currentChip);
             setCursorVisible(true);
             setSelection(editable.length());
             return new RecipientChip(null, RecipientEntry.constructFakeEntry((String) text), -1);
@@ -2208,7 +2208,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void scrollBottomIntoView() {
         if (mScrollView != null) {
-            mScrollView.scrollBy(0, (int)(getLineCount() * mChipHeight));
+            mScrollView.scrollBy(0, (int) (getLineCount() * mChipHeight));
         }
     }
 
