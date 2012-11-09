@@ -897,8 +897,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         RecipientEntry entry = createTokenizedEntry(token);
         if (entry != null) {
             String destText = createAddressText(entry);
-            // Always leave a blank space at the end of a chip.
-            int textLength = destText.length() - 1;
             SpannableString chipText = new SpannableString(destText);
             int end = getSelectionEnd();
             int start = mTokenizer != null ? mTokenizer.findTokenStart(getText(), end) : 0;
@@ -913,12 +911,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             TextUtils.isEmpty(entry.getDisplayName())
                                     || TextUtils.equals(entry.getDisplayName(),
                                             entry.getDestination()));
-                    chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
             }
-            editable.replace(tokenStart, tokenEnd, chipText);
+            editable.setSpan(chip, tokenStart, tokenEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             // Add this chip to the list of entries "to replace"
             if (chip != null) {
                 if (mTemporaryRecipients == null) {
@@ -2391,11 +2388,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                 end = oldText.getSpanEnd(chip);
                                 oldText.removeSpan(chip);
                                 RecipientChip replacement = replacements.get(i);
-                                // Trim any whitespace, as we will already have
-                                // it added if these are replacement chips.
+                                // Make sure we always have just 1 space at the
+                                // end to separate this chip from the next chip.
                                 SpannableString displayText = new SpannableString(
-                                        createAddressText(replacement.getEntry()).trim());
-                                displayText.setSpan(replacement, 0, displayText.length(),
+                                        createAddressText(replacement.getEntry()).trim() + " ");
+                                displayText.setSpan(replacement, 0, displayText.length()-1,
                                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                                 // Replace the old text we found with with the new display text,
                                 // which now may also contain the display name of the recipient.
