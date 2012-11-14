@@ -896,15 +896,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (entry != null) {
             String destText = createAddressText(entry);
             SpannableString chipText = new SpannableString(destText);
-            int end = getSelectionEnd();
-            int start = mTokenizer != null ? mTokenizer.findTokenStart(getText(), end) : 0;
             RecipientChip chip = null;
             try {
                 if (!mNoChips) {
                     /* leave space for the contact icon if this is not just an email address */
                     chip = constructChipSpan(
                             entry,
-                            start,
+                            tokenStart,
                             false,
                             TextUtils.isEmpty(entry.getDisplayName())
                                     || TextUtils.equals(entry.getDisplayName(),
