@@ -646,7 +646,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
         } else if (entryMap.containsKey(entry.contactId)) {
             // We already have a section for the person.
             final List<RecipientEntry> entryList = entryMap.get(entry.contactId);
@@ -654,14 +654,14 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
         } else {
             final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
             entryList.add(RecipientEntry.constructTopLevelEntry(
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
             entryMap.put(entry.contactId, entryList);
         }
     }

@@ -43,7 +43,6 @@ import android.text.InputType;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
@@ -591,9 +590,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * Get the background drawable for a RecipientChip.
      */
     // Visible for testing.
-    /*package*/ Drawable getChipBackground(RecipientEntry contact) {
-        return (mValidator != null && mValidator.isValid(contact.getDestination())) ?
-                mChipBackground : mInvalidChipBackground;
+    /* package */Drawable getChipBackground(RecipientEntry contact) {
+        return contact.isValid() ? mChipBackground : mInvalidChipBackground;
     }
 
     private float getTextYOffset(String text, TextPaint paint, int height) {
@@ -944,12 +942,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return null;
         }
         if (isPhoneQuery() && isPhoneNumber(token)) {
-            return RecipientEntry
-                    .constructFakeEntry(token);
+            return RecipientEntry.constructFakeEntry(token, true);
         }
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
-        if (isValid(token) && tokens != null && tokens.length > 0) {
+        boolean isValid = isValid(token);
+        if (isValid && tokens != null && tokens.length > 0) {
             // If we can get a name from tokenizing, then generate an entry from
             // this.
             display = tokens[0].getName();
@@ -963,39 +961,44 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                         token = token.substring(0, token.length() - 1);
                     }
                 }
-                return RecipientEntry.constructGeneratedEntry(display, token);
+                return RecipientEntry.constructGeneratedEntry(display, token, isValid);
             } else {
                 display = tokens[0].getAddress();
                 if (!TextUtils.isEmpty(display)) {
-                    return RecipientEntry.constructFakeEntry(display);
+                    return RecipientEntry.constructFakeEntry(display, isValid);
                 }
             }
         }
         // Unable to validate the token or to create a valid token from it.
         // Just create a chip the user can edit.
         String validatedToken = null;
-        if (mValidator != null && !mValidator.isValid(token)) {
+        if (mValidator != null && !isValid) {
             // Try fixing up the entry using the validator.
             validatedToken = mValidator.fixText(token).toString();
             if (!TextUtils.isEmpty(validatedToken)) {
                 if (validatedToken.contains(token)) {
-                    // protect against the case of a validator with a null domain,
+                    // protect against the case of a validator with a null
+                    // domain,
                     // which doesn't add a domain to the token
                     Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(validatedToken);
                     if (tokenized.length > 0) {
                         validatedToken = tokenized[0].getAddress();
+                        isValid = true;
                     }
                 } else {
-                    // We ran into a case where the token was invalid and removed
-                    // by the validator. In this case, just use the original token
+                    // We ran into a case where the token was invalid and
+                    // removed
+                    // by the validator. In this case, just use the original
+                    // token
                     // and let the user sort out the error chip.
                     validatedToken = null;
+                    isValid = false;
                 }
             }
         }
         // Otherwise, fallback to just creating an editable email address chip.
-        return RecipientEntry
-                .constructFakeEntry(!TextUtils.isEmpty(validatedToken) ? validatedToken : token);
+        return RecipientEntry.constructFakeEntry(
+                !TextUtils.isEmpty(validatedToken) ? validatedToken : token, isValid);
     }
 
     private boolean isValid(String text) {
@@ -1239,7 +1242,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         setSelection(end);
         String text = getText().toString().substring(start, end);
         if (!TextUtils.isEmpty(text)) {
-            RecipientEntry entry = RecipientEntry.constructFakeEntry(text);
+            RecipientEntry entry = RecipientEntry.constructFakeEntry(text, isValid(text));
             QwertyKeyListener.markAsReplaced(editable, start, end, "");
             CharSequence chipText = createChip(entry, false);
             int selEnd = getSelectionEnd();
@@ -1608,12 +1611,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         String destination = item.getDestination();
         if (!isPhoneQuery() && item.getContactId() == RecipientEntry.GENERATED_CONTACT) {
             entry = RecipientEntry.constructGeneratedEntry(item.getDisplayName(),
-                    destination);
+                    destination, item.isValid());
         } else if (RecipientEntry.isCreatedRecipient(item.getContactId())
                 && (TextUtils.isEmpty(item.getDisplayName())
                         || TextUtils.equals(item.getDisplayName(), destination)
                         || (mValidator != null && !mValidator.isValid(destination)))) {
-            entry = RecipientEntry.constructFakeEntry(destination);
+            entry = RecipientEntry.constructFakeEntry(destination, item.isValid());
         } else {
             entry = item;
         }
@@ -1881,7 +1884,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             getSpannable().removeSpan(currentChip);
             setCursorVisible(true);
             setSelection(editable.length());
-            return new RecipientChip(null, RecipientEntry.constructFakeEntry((String) text), -1);
+            return new RecipientChip(null, RecipientEntry.constructFakeEntry((String) text,
+                    isValid(text.toString())), -1);
         } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT) {
             int start = getChipStart(currentChip);
             int end = getChipEnd(currentChip);
