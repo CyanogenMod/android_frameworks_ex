@@ -1888,11 +1888,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (shouldShowEditableText(currentChip)) {
             CharSequence text = currentChip.getValue();
             Editable editable = getText();
-            getSpannable().removeSpan(currentChip);
+            Spannable spannable = getSpannable();
+            int spanStart = spannable.getSpanStart(currentChip);
+            int spanEnd = spannable.getSpanEnd(currentChip);
+            spannable.removeSpan(currentChip);
+            editable.delete(spanStart, spanEnd);
             setCursorVisible(true);
             setSelection(editable.length());
-            return new RecipientChip(null, RecipientEntry.constructFakeEntry((String) text,
-                    isValid(text.toString())), -1);
+            editable.append(text);
+            return constructChipSpan(
+                    RecipientEntry.constructFakeEntry((String) text, isValid(text.toString())),
+                    getSelectionStart(), true, false);
         } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT) {
             int start = getChipStart(currentChip);
             int end = getChipEnd(currentChip);
@@ -2143,16 +2149,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 return;
             }
             // If the user is editing a chip, don't clear it.
-            if (mSelectedChip != null
-                    && shouldShowEditableText(mSelectedChip)) {
-                setCursorVisible(true);
-                setSelection(getText().length());
-                clearSelectedChip();
+            if (mSelectedChip != null) {
+                if (!isGeneratedContact(mSelectedChip)) {
+                    setCursorVisible(true);
+                    setSelection(getText().length());
+                    clearSelectedChip();
+                } else {
+                    return;
+                }
             }
             int length = s.length();
             // Make sure there is content there to parse and that it is
             // not just the commit character.
             if (length > 1) {
+                if (lastCharacterIsCommitCharacter(s)) {
+                    commitByCharacter();
+                    return;
+                }
                 char last;
                 int end = getSelectionEnd() == 0 ? 0 : getSelectionEnd() - 1;
                 int len = length() - 1;
@@ -2161,9 +2174,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 } else {
                     last = s.charAt(len);
                 }
-                if (last == COMMIT_CHAR_SEMICOLON || last == COMMIT_CHAR_COMMA) {
-                    commitByCharacter();
-                } else if (last == COMMIT_CHAR_SPACE) {
+                if (last == COMMIT_CHAR_SPACE) {
                     if (!isPhoneQuery()) {
                         // Check if this is a valid email address. If it is,
                         // commit it.
@@ -2204,6 +2215,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     getSpannable().removeSpan(repl[0]);
                 }
             } else if (count > before) {
+                if (mSelectedChip != null
+                    && isGeneratedContact(mSelectedChip)) {
+                    if (lastCharacterIsCommitCharacter(s)) {
+                        commitByCharacter();
+                        return;
+                    }
+                }
                 scrollBottomIntoView();
             }
         }
@@ -2218,6 +2236,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mScrollView != null) {
             mScrollView.scrollBy(0, (int) (getLineCount() * mChipHeight));
         }
+    }
+
+    public boolean lastCharacterIsCommitCharacter(CharSequence s) {
+        char last;
+        int end = getSelectionEnd() == 0 ? 0 : getSelectionEnd() - 1;
+        int len = length() - 1;
+        if (end != len) {
+            last = s.charAt(end);
+        } else {
+            last = s.charAt(len);
+        }
+        return last == COMMIT_CHAR_COMMA || last == COMMIT_CHAR_SEMICOLON;
+    }
+
+    public boolean isGeneratedContact(RecipientChip chip) {
+        long contactId = chip.getContactId();
+        return contactId == RecipientEntry.INVALID_CONTACT
+                || (!isPhoneQuery() && contactId == RecipientEntry.GENERATED_CONTACT);
     }
 
     /**
