@@ -273,7 +273,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         addTextChangedListener(mTextWatcher);
         mGestureDetector = new GestureDetector(context, this);
         setOnEditorActionListener(this);
-        mMaxLines = getLineCount();
     }
 
     @Override
@@ -633,7 +632,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // Pass the full text, un-ellipsized, to the chip.
         Drawable result = new BitmapDrawable(getResources(), tmpBitmap);
         result.setBounds(0, 0, tmpBitmap.getWidth(), tmpBitmap.getHeight());
-        RecipientChip recipientChip = new RecipientChip(result, contact, offset);
+        RecipientChip recipientChip = new VisibleRecipientChip(result, contact, offset);
         // Return text to the original size.
         paint.setTextSize(defaultSize);
         paint.setColor(defaultColor);
@@ -707,7 +706,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mInvalidChipBackground == null) {
             mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         }
-        mLineSpacingExtra =  context.getResources().getDimension(R.dimen.line_spacing_extra);
+        mLineSpacingExtra =  r.getDimension(R.dimen.line_spacing_extra);
+        mMaxLines = r.getInteger(R.integer.chips_max_lines);
         a.recycle();
     }
 
@@ -772,7 +772,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (chips != null) {
             Rect bounds;
             for (RecipientChip chip : chips) {
-                bounds = chip.getDrawable().getBounds();
+                bounds = chip.getBounds();
                 if (getWidth() > 0 && bounds.right - bounds.left > getWidth()) {
                     // Need to redraw that chip.
                     replaceChip(chip, chip.getEntry());
@@ -808,7 +808,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                 && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
                             tokenEnd++;
                         }
-                        createReplacementChip(tokenStart, tokenEnd, editable);
+                        createReplacementChip(tokenStart, tokenEnd, editable, i < CHIP_LIMIT);
                     }
                     mPendingChipsCount--;
                 }
@@ -863,16 +863,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         // Find the last chip; eliminate any commit characters after it.
         RecipientChip[] chips = getSortedRecipients();
+        Spannable spannable = getSpannable();
         if (chips != null && chips.length > 0) {
             int end;
-            ImageSpan lastSpan;
             mMoreChip = getMoreChip();
             if (mMoreChip != null) {
-                lastSpan = mMoreChip;
+                end = spannable.getSpanEnd(mMoreChip);
             } else {
-                lastSpan = getLastChip();
+                end = getSpannable().getSpanEnd(getLastChip());
             }
-            end = getSpannable().getSpanEnd(lastSpan);
             Editable editable = getText();
             int length = editable.length();
             if (length > end) {
@@ -890,7 +889,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * Create a chip that represents just the email address of a recipient. At some later
      * point, this chip will be attached to a real contact entry, if one exists.
      */
-    private void createReplacementChip(int tokenStart, int tokenEnd, Editable editable) {
+    private void createReplacementChip(int tokenStart, int tokenEnd, Editable editable,
+            boolean visible) {
         if (alreadyHasChip(tokenStart, tokenEnd)) {
             // There is already a chip present at this location.
             // Don't recreate it.
@@ -908,14 +908,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             RecipientChip chip = null;
             try {
                 if (!mNoChips) {
-                    /* leave space for the contact icon if this is not just an email address */
-                    chip = constructChipSpan(
-                            entry,
-                            tokenStart,
-                            false,
-                            TextUtils.isEmpty(entry.getDisplayName())
-                                    || TextUtils.equals(entry.getDisplayName(),
-                                            entry.getDestination()));
+                    /*
+                     * leave space for the contact icon if this is not just an
+                     * email address
+                     */
+                    boolean leaveSpace = TextUtils.isEmpty(entry.getDisplayName())
+                            || TextUtils.equals(entry.getDisplayName(),
+                                    entry.getDestination());
+                    chip = visible ?
+                            constructChipSpan(entry, tokenStart, false, leaveSpace)
+                            : new InvisibleRecipientChip(entry, commitCharIndex);
                 }
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
@@ -2580,14 +2582,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
         @Override
         public void onProvideShadowMetrics(Point shadowSize, Point shadowTouchPoint) {
-            Rect rect = mChip.getDrawable().getBounds();
+            Rect rect = mChip.getBounds();
             shadowSize.set(rect.width(), rect.height());
             shadowTouchPoint.set(rect.centerX(), rect.centerY());
         }
 
         @Override
         public void onDrawShadow(Canvas canvas) {
-            mChip.getDrawable().draw(canvas);
+            mChip.draw(canvas);
         }
     }
 
