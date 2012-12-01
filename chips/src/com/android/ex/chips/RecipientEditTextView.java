@@ -959,16 +959,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             // this.
             display = tokens[0].getName();
             if (!TextUtils.isEmpty(display)) {
-                if (!isPhoneQuery()) {
-                    if (!TextUtils.isEmpty(token)) {
-                        token = token.trim();
-                    }
-                    char charAt = token.charAt(token.length() - 1);
-                    if (charAt == COMMIT_CHAR_COMMA || charAt == COMMIT_CHAR_SEMICOLON) {
-                        token = token.substring(0, token.length() - 1);
-                    }
-                }
-                return RecipientEntry.constructGeneratedEntry(display, token, isValid);
+                return RecipientEntry.constructGeneratedEntry(display, tokens[0].getAddress(),
+                        isValid);
             } else {
                 display = tokens[0].getAddress();
                 if (!TextUtils.isEmpty(display)) {
@@ -1534,14 +1526,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         String address = entry.getDestination();
         if (TextUtils.isEmpty(display) || TextUtils.equals(display, address)) {
             display = null;
-        }
-        if (address != null && !(isPhoneQuery() && isPhoneNumber(address))) {
-            // Tokenize out the address in case the address already
-            // contained the username as well.
-            Rfc822Token[] tokenized = Rfc822Tokenizer.tokenize(address);
-            if (tokenized != null && tokenized.length > 0) {
-                address = tokenized[0].getAddress();
-            }
         }
         if (!TextUtils.isEmpty(display)) {
             return display;
