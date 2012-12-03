@@ -808,7 +808,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                 && editable.charAt(tokenEnd) == COMMIT_CHAR_COMMA) {
                             tokenEnd++;
                         }
-                        createReplacementChip(tokenStart, tokenEnd, editable, i < CHIP_LIMIT);
+                        createReplacementChip(tokenStart, tokenEnd, editable, i < CHIP_LIMIT
+                                || !mShouldShrink);
                     }
                     mPendingChipsCount--;
                 }
