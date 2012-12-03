@@ -2180,9 +2180,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
         @Override
         public void onTextChanged(CharSequence s, int start, int before, int count) {
-            // This is a delete; check to see if the insertion point is on a space
+            // The user deleted some text OR some text was replaced; check to
+            // see if the insertion point is on a space
             // following a chip.
-            if (before > count) {
+            if (before - count == 1) {
                 // If the item deleted is a space, and the thing before the
                 // space is a chip, delete the entire span.
                 int selStart = getSelectionStart();
