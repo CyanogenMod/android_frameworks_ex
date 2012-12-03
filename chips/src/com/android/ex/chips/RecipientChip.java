@@ -16,97 +16,69 @@
 
 package com.android.ex.chips;
 
-import android.graphics.drawable.Drawable;
-import android.text.TextUtils;
-import android.text.style.DynamicDrawableSpan;
-import android.text.style.ImageSpan;
+import android.graphics.Canvas;
+import android.graphics.Rect;
 
 /**
- * RecipientChip defines an ImageSpan that contains information relevant to a
+ * RecipientChip defines a drawable object that contains information relevant to a
  * particular recipient.
  */
-/* package */class RecipientChip extends ImageSpan {
-    private final CharSequence mDisplay;
-
-    private final CharSequence mValue;
-
-    private final long mContactId;
-
-    private final long mDataId;
-
-    private RecipientEntry mEntry;
-
-    private boolean mSelected = false;
-
-    private CharSequence mOriginalText;
-
-    public RecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
-        super(drawable, DynamicDrawableSpan.ALIGN_BOTTOM);
-        mDisplay = entry.getDisplayName();
-        mValue = entry.getDestination().trim();
-        mContactId = entry.getContactId();
-        mDataId = entry.getDataId();
-        mEntry = entry;
-    }
+/* package */interface RecipientChip {
 
     /**
      * Set the selected state of the chip.
      * @param selected
      */
-    public void setSelected(boolean selected) {
-        mSelected = selected;
-    }
-
+    public void setSelected(boolean selected);
     /**
      * Return true if the chip is selected.
      */
-    public boolean isSelected() {
-        return mSelected;
-    }
+    public boolean isSelected();
 
     /**
      * Get the text displayed in the chip.
      */
-    public CharSequence getDisplay() {
-        return mDisplay;
-    }
+    public CharSequence getDisplay();
 
     /**
      * Get the text value this chip represents.
      */
-    public CharSequence getValue() {
-        return mValue;
-    }
+    public CharSequence getValue();
 
     /**
      * Get the id of the contact associated with this chip.
      */
-    public long getContactId() {
-        return mContactId;
-    }
+    public long getContactId();
 
     /**
      * Get the id of the data associated with this chip.
      */
-    public long getDataId() {
-        return mDataId;
-    }
+    public long getDataId();
 
     /**
      * Get associated RecipientEntry.
      */
-    public RecipientEntry getEntry() {
-        return mEntry;
-    }
+    public RecipientEntry getEntry();
 
-    public void setOriginalText(String text) {
-        if (!TextUtils.isEmpty(text)) {
-            text = text.trim();
-        }
-        mOriginalText = text;
-    }
+    /**
+     * Set the text in the edittextview originally associated with this chip
+     * before any reverse lookups.
+     */
+    public void setOriginalText(String text);
 
-    public CharSequence getOriginalText() {
-        return !TextUtils.isEmpty(mOriginalText) ? mOriginalText : mEntry.getDestination();
-    }
+    /**
+     * Set the text in the edittextview originally associated with this chip
+     * before any reverse lookups.
+     */
+    public CharSequence getOriginalText();
+
+    /**
+     * Get the bounds of the chip; may be 0,0 if it is not visibly rendered.
+     */
+    public Rect getBounds();
+
+    /**
+     * Draw the chip.
+     */
+    public void draw(Canvas canvas);
 }

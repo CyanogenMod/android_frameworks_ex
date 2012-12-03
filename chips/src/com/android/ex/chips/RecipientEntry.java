@@ -65,29 +65,16 @@ public class RecipientEntry {
 
     private final Uri mPhotoThumbnailUri;
 
+    private boolean mIsValid;
     /**
      * This can be updated after this object being constructed, when the photo is fetched
      * from remote directories.
      */
     private byte[] mPhotoBytes;
 
-    private RecipientEntry(int entryType) {
-        mEntryType = entryType;
-        mDisplayName = null;
-        mDestination = null;
-        mDestinationType = INVALID_DESTINATION_TYPE;
-        mDestinationLabel = null;
-        mContactId = -1;
-        mDataId = -1;
-        mPhotoThumbnailUri = null;
-        mPhotoBytes = null;
-        mIsDivider = true;
-    }
-
-    private RecipientEntry(
-            int entryType, String displayName,
-            String destination, int destinationType, String destinationLabel,
-            long contactId, long dataId, Uri photoThumbnailUri, boolean isFirstLevel) {
+    private RecipientEntry(int entryType, String displayName, String destination,
+            int destinationType, String destinationLabel, long contactId, long dataId,
+            Uri photoThumbnailUri, boolean isFirstLevel, boolean isValid) {
         mEntryType = entryType;
         mIsFirstLevel = isFirstLevel;
         mDisplayName = displayName;
@@ -99,6 +86,11 @@ public class RecipientEntry {
         mPhotoThumbnailUri = photoThumbnailUri;
         mPhotoBytes = null;
         mIsDivider = false;
+        mIsValid = isValid;
+    }
+
+    public boolean isValid() {
+        return mIsValid;
     }
 
     /**
@@ -114,10 +106,10 @@ public class RecipientEntry {
      * This address has not been resolved to a contact and therefore does not
      * have a contact id or photo.
      */
-    public static RecipientEntry constructFakeEntry(String address) {
+    public static RecipientEntry constructFakeEntry(String address, boolean isValid) {
         return new RecipientEntry(ENTRY_TYPE_PERSON, address, address,
                 INVALID_DESTINATION_TYPE, null,
-                INVALID_CONTACT, INVALID_CONTACT, null, true);
+                INVALID_CONTACT, INVALID_CONTACT, null, true, isValid);
     }
 
     /**
@@ -136,41 +128,37 @@ public class RecipientEntry {
      * with both an associated display name. This address has not been resolved
      * to a contact and therefore does not have a contact id or photo.
      */
-    public static RecipientEntry constructGeneratedEntry(String display, String address) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, display,
-                address, INVALID_DESTINATION_TYPE, null,
-                GENERATED_CONTACT, GENERATED_CONTACT, null, true);
+    public static RecipientEntry constructGeneratedEntry(String display, String address,
+            boolean isValid) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, display, address, INVALID_DESTINATION_TYPE,
+                null, GENERATED_CONTACT, GENERATED_CONTACT, null, true, isValid);
     }
 
-    public static RecipientEntry constructTopLevelEntry(
-            String displayName, int displayNameSource, String destination, int destinationType,
-            String destinationLabel, long contactId, long dataId, Uri photoThumbnailUri) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource, displayName,
-                    destination),
-                destination, destinationType, destinationLabel,
-                contactId, dataId,
-                photoThumbnailUri, true);
+    public static RecipientEntry constructTopLevelEntry(String displayName, int displayNameSource,
+            String destination, int destinationType, String destinationLabel, long contactId,
+            long dataId, Uri photoThumbnailUri, boolean isValid) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource,
+                displayName, destination), destination, destinationType, destinationLabel,
+                contactId, dataId, photoThumbnailUri, true, isValid);
     }
 
-    public static RecipientEntry constructTopLevelEntry(
-            String displayName, int displayNameSource, String destination, int destinationType,
-            String destinationLabel, long contactId, long dataId,
-            String thumbnailUriAsString) {
-        return new RecipientEntry(
-                ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource, displayName, destination),
-                destination, destinationType, destinationLabel,
-                contactId, dataId,
-                (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), true);
+    public static RecipientEntry constructTopLevelEntry(String displayName, int displayNameSource,
+            String destination, int destinationType, String destinationLabel, long contactId,
+            long dataId, String thumbnailUriAsString, boolean isValid) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource,
+                displayName, destination), destination, destinationType, destinationLabel,
+                contactId, dataId, (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString)
+                        : null), true, isValid);
     }
 
-    public static RecipientEntry constructSecondLevelEntry(
-            String displayName, int displayNameSource, String destination, int destinationType,
-            String destinationLabel, long contactId, long dataId, String thumbnailUriAsString) {
-        return new RecipientEntry(
-                ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource, displayName, destination),
-                destination, destinationType, destinationLabel,
-                contactId, dataId,
-                (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString) : null), false);
+    public static RecipientEntry constructSecondLevelEntry(String displayName,
+            int displayNameSource, String destination, int destinationType,
+            String destinationLabel, long contactId, long dataId, String thumbnailUriAsString,
+            boolean isValid) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource,
+                displayName, destination), destination, destinationType, destinationLabel,
+                contactId, dataId, (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString)
+                        : null), false, isValid);
     }
 
     public int getEntryType() {

@@ -114,7 +114,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                                 c.getString(Queries.Query.DESTINATION_LABEL),
                                 c.getLong(Queries.Query.CONTACT_ID),
                                 c.getLong(Queries.Query.DATA_ID),
-                                c.getString(Queries.Query.PHOTO_THUMBNAIL_URI)));
+                                c.getString(Queries.Query.PHOTO_THUMBNAIL_URI),
+                                true));
                         if (Log.isLoggable(TAG, Log.DEBUG)) {
                             Log.d(TAG, "Received reverse look up information for " + address
                                     + " RESULTS: "
@@ -233,7 +234,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                 c.getString(Queries.Query.DESTINATION_LABEL),
                 c.getLong(Queries.Query.CONTACT_ID),
                 c.getLong(Queries.Query.DATA_ID),
-                c.getString(Queries.Query.PHOTO_THUMBNAIL_URI));
+                c.getString(Queries.Query.PHOTO_THUMBNAIL_URI),
+                true);
     }
 
     @Override
