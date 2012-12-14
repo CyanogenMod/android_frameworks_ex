@@ -54,6 +54,7 @@ import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.TypedValue;
 import android.util.Patterns;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
@@ -72,6 +73,7 @@ import android.view.inputmethod.InputConnection;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
+import android.widget.Filterable;
 import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
 import android.widget.ListView;
@@ -86,6 +88,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -235,6 +238,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     };
 
     private int mMaxLines;
+
+    private static int sExcessTopPadding = -1;
+
+    private int mActionBarHeight;
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -396,6 +403,44 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             shrink();
         } else {
             expand();
+        }
+    }
+
+    private int getExcessTopPadding() {
+        if (sExcessTopPadding == -1) {
+            sExcessTopPadding = (int) mChipHeight;
+        }
+        return sExcessTopPadding;
+    }
+
+    public <T extends ListAdapter & Filterable> void setAdapter(T adapter) {
+        super.setAdapter(adapter);
+        ((BaseRecipientAdapter) adapter)
+                .registerUpdateObserver(new BaseRecipientAdapter.EntriesUpdatedObserver() {
+                    @Override
+                    public void onChanged(List<RecipientEntry> entries) {
+                        // Scroll the chips field to the top of the screen so
+                        // that the user can see as many results as possible.
+                        if (entries != null && entries.size() > 0) {
+                            scrollBottomIntoView();
+                        }
+                    }
+                });
+    }
+
+    private void scrollBottomIntoView() {
+        if (mScrollView != null && mShouldShrink) {
+            int[] location = new int[2];
+            getLocationOnScreen(location);
+            int height = getHeight();
+            int currentPos = location[1] + height;
+            // Desired position shows at least 1 line of chips below the action
+            // bar. We add excess padding to make sure this is always below other
+            // content.
+            int desiredPos = (int) mChipHeight + mActionBarHeight + getExcessTopPadding();
+            if (currentPos > desiredPos) {
+                mScrollView.scrollBy(0, currentPos - desiredPos);
+            }
         }
     }
 
@@ -711,6 +756,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         }
         mLineSpacingExtra =  context.getResources().getDimension(R.dimen.line_spacing_extra);
+        TypedValue tv = new TypedValue();
+        if (context.getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
+            mActionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data, getResources()
+                    .getDisplayMetrics());
+        }
         a.recycle();
     }
 
@@ -1302,7 +1352,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     @Override
     protected void performFiltering(CharSequence text, int keyCode) {
-        if (enoughToFilter() && !isCompletedToken(text)) {
+        boolean isCompletedToken = isCompletedToken(text);
+        if (enoughToFilter() && !isCompletedToken) {
             int end = getSelectionEnd();
             int start = mTokenizer.findTokenStart(text, end);
             // If this is a RecipientChip, don't filter
@@ -1312,6 +1363,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (chips != null && chips.length > 0) {
                 return;
             }
+        } else if (isCompletedToken) {
+            return;
         }
         super.performFiltering(text, keyCode);
     }
@@ -1392,7 +1445,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void scrollLineIntoView(int line) {
         if (mScrollView != null) {
-            mScrollView.scrollBy(0, calculateOffsetFromBottom(line));
+            mScrollView.smoothScrollBy(0, calculateOffsetFromBottom(line));
         }
     }
 
@@ -1888,10 +1941,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (shouldShowEditableText(currentChip)) {
             CharSequence text = currentChip.getValue();
             Editable editable = getText();
-            getSpannable().removeSpan(currentChip);
+            Spannable spannable = getSpannable();
+            int spanStart = spannable.getSpanStart(currentChip);
+            int spanEnd = spannable.getSpanEnd(currentChip);
+            spannable.removeSpan(currentChip);
+            editable.delete(spanStart, spanEnd);
             setCursorVisible(true);
             setSelection(editable.length());
-            return new RecipientChip(null, RecipientEntry.constructFakeEntry((String) text), -1);
+            editable.append(text);
+            return constructChipSpan(
+                    RecipientEntry.constructFakeEntry((String) text),
+                    getSelectionStart(), true, false);
         } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT) {
             int start = getChipStart(currentChip);
             int end = getChipEnd(currentChip);
@@ -2183,7 +2243,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         public void onTextChanged(CharSequence s, int start, int before, int count) {
             // This is a delete; check to see if the insertion point is on a space
             // following a chip.
-            if (before > count) {
+            if (before - count == 1) {
                 // If the item deleted is a space, and the thing before the
                 // space is a chip, delete the entire span.
                 int selStart = getSelectionStart();
@@ -2202,20 +2262,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
                 }
-            } else if (count > before) {
-                scrollBottomIntoView();
             }
         }
 
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             // Do nothing.
-        }
-    }
-
-    private void scrollBottomIntoView() {
-        if (mScrollView != null) {
-            mScrollView.scrollBy(0, (int) (getLineCount() * mChipHeight));
         }
     }
 
