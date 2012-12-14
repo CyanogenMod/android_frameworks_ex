@@ -499,6 +499,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
     private final DelayedMessageHandler mDelayedMessageHandler = new DelayedMessageHandler();
 
+    private EntriesUpdatedObserver mEntriesUpdatedObserver;
+
     /**
      * Constructor for email queries.
      */
@@ -707,9 +709,19 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         return entries;
     }
 
+
+    protected interface EntriesUpdatedObserver {
+        public void onChanged(List<RecipientEntry> entries);
+    }
+
+    public void registerUpdateObserver(EntriesUpdatedObserver observer) {
+        mEntriesUpdatedObserver = observer;
+    }
+
     /** Resets {@link #mEntries} and notify the event to its parent ListView. */
     private void updateEntries(List<RecipientEntry> newEntries) {
         mEntries = newEntries;
+        mEntriesUpdatedObserver.onChanged(newEntries);
         notifyDataSetChanged();
     }
 
