@@ -21,4 +21,5 @@
     <dimen name="photo_crop_stroke_width">1dip</dimen>
     <dimen name="photo_preview_size">200dip</dimen>
     <dimen name="retry_button_size">48dip</dimen>
+    <dimen name="photo_page_margin">32dip</dimen>
 </resources>

@@ -25,6 +25,7 @@ import android.app.Fragment;
 import android.app.LoaderManager.LoaderCallbacks;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -183,18 +184,19 @@ public class PhotoViewActivity extends Activity implements
         // Create the adapter and add the view pager
         mAdapter = new PhotoPagerAdapter(this, getFragmentManager(), null);
 
+        final Resources resources = getResources();
         mViewPager = (PhotoViewPager) findViewById(R.id.photo_view_pager);
         mViewPager.setAdapter(mAdapter);
         mViewPager.setOnPageChangeListener(this);
         mViewPager.setOnInterceptTouchListener(this);
+        mViewPager.setPageMargin(resources.getDimensionPixelSize(R.dimen.photo_page_margin));
 
         // Kick off the loader
         getLoaderManager().initLoader(LOADER_PHOTO_LIST, null, this);
 
         final ActionBar actionBar = getActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
-        mActionBarHideDelayTime = getResources().getInteger(
-                R.integer.action_bar_delay_time_in_millis);
+        mActionBarHideDelayTime = resources.getInteger(R.integer.action_bar_delay_time_in_millis);
         actionBar.addOnMenuVisibilityListener(this);
         actionBar.setDisplayOptions(0, ActionBar.DISPLAY_SHOW_TITLE);
     }
