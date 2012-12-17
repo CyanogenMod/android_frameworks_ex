@@ -240,7 +240,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private static int sExcessTopPadding = -1;
 
-    private int mActionBarHeight = -1;
+    private int mActionBarHeight;
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -2268,7 +2268,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private int getExcessTopPadding() {
         if (sExcessTopPadding == -1) {
-            sExcessTopPadding = (int) mChipHeight;
+            sExcessTopPadding = (int) (mChipHeight + mLineSpacingExtra);
         }
         return sExcessTopPadding;
     }
