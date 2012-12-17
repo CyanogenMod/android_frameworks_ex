@@ -408,7 +408,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private int getExcessTopPadding() {
         if (sExcessTopPadding == -1) {
-            sExcessTopPadding = (int) mChipHeight;
+            sExcessTopPadding = (int) (mChipHeight + mLineSpacingExtra);
         }
         return sExcessTopPadding;
     }
