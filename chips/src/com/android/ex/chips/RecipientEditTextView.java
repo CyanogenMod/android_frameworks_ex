@@ -814,7 +814,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 for (int i = 0; i < mPendingChips.size(); i++) {
                     String current = mPendingChips.get(i);
                     int tokenStart = editable.toString().indexOf(current);
-                    int tokenEnd = tokenStart + current.length();
+                    // Always leave a space at the end between tokens.
+                    int tokenEnd = tokenStart + current.length() - 1;
                     if (tokenStart >= 0) {
                         // When we have a valid token, include it with the token
                         // to the left.
@@ -2477,7 +2478,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                             if (start != -1) {
                                                 RecipientChip replacement = replacements.get(i);
                                                 if (replacement != null) {
-                                                    end = oldText.getSpanEnd(chip);
+                                                    // Replacing the entirety of
+                                                    // what the chip
+                                                    // represented, including
+                                                    // the extra space dividing
+                                                    // it from other chips.
+                                                    end = oldText.getSpanEnd(chip) + 1;
                                                     oldText.removeSpan(chip);
                                                     // Make sure we always have just 1 space at the
                                                     // end to separate this chip from the next chip.
