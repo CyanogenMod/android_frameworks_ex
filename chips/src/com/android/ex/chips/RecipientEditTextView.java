@@ -2344,6 +2344,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 prevTokenStart = tokenStart;
                 tokenStart = mTokenizer.findTokenStart(text, tokenStart);
                 findChip = findChip(tokenStart);
+                if (tokenStart == originalTokenStart && findChip == null) {
+                    break;
+                }
             }
             if (tokenStart != originalTokenStart) {
                 if (findChip != null) {
