@@ -312,6 +312,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if ((outAttrs.imeOptions&EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0) {
             outAttrs.imeOptions &= ~EditorInfo.IME_FLAG_NO_ENTER_ACTION;
         }
+
+        outAttrs.actionId = EditorInfo.IME_ACTION_DONE;
         outAttrs.actionLabel = getContext().getString(R.string.done);
         return connection;
     }
