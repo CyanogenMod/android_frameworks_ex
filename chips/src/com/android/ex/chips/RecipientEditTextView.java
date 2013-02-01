@@ -1077,6 +1077,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         switch (keyCode) {
+            case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_DPAD_CENTER:
                 if (event.hasNoModifiers()) {
                     if (commitDefault()) {
