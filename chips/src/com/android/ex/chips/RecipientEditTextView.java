@@ -54,6 +54,7 @@ import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.TypedValue;
 import android.util.Patterns;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
@@ -72,6 +73,7 @@ import android.view.inputmethod.InputConnection;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
+import android.widget.Filterable;
 import android.widget.ListAdapter;
 import android.widget.ListPopupWindow;
 import android.widget.ListView;
@@ -86,8 +88,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * RecipientEditTextView is an auto complete text view for use with applications
@@ -194,6 +198,15 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private boolean mDragEnabled = false;
 
+    // This pattern comes from android.util.Patterns. It has been tweaked to handle a "1" before
+    // parens, so numbers such as "1 (425) 222-2342" match.
+    private static final Pattern PHONE_PATTERN
+        = Pattern.compile(                                  // sdd = space, dot, or dash
+                "(\\+[0-9]+[\\- \\.]*)?"                    // +<digits><sdd>*
+                + "(1?[ ]*\\([0-9]+\\)[\\- \\.]*)?"         // 1(<digits>)<sdd>*
+                + "([0-9][0-9\\- \\.][0-9\\- \\.]+[0-9])"); // <digit><digit|sdd>+<digit>
+
+
     private final Runnable mAddTextWatcher = new Runnable() {
         @Override
         public void run() {
@@ -225,6 +238,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     };
 
     private int mMaxLines;
+
+    private static int sExcessTopPadding = -1;
+
+    private int mActionBarHeight;
 
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -389,6 +406,44 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    private int getExcessTopPadding() {
+        if (sExcessTopPadding == -1) {
+            sExcessTopPadding = (int) (mChipHeight + mLineSpacingExtra);
+        }
+        return sExcessTopPadding;
+    }
+
+    public <T extends ListAdapter & Filterable> void setAdapter(T adapter) {
+        super.setAdapter(adapter);
+        ((BaseRecipientAdapter) adapter)
+                .registerUpdateObserver(new BaseRecipientAdapter.EntriesUpdatedObserver() {
+                    @Override
+                    public void onChanged(List<RecipientEntry> entries) {
+                        // Scroll the chips field to the top of the screen so
+                        // that the user can see as many results as possible.
+                        if (entries != null && entries.size() > 0) {
+                            scrollBottomIntoView();
+                        }
+                    }
+                });
+    }
+
+    private void scrollBottomIntoView() {
+        if (mScrollView != null && mShouldShrink) {
+            int[] location = new int[2];
+            getLocationOnScreen(location);
+            int height = getHeight();
+            int currentPos = location[1] + height;
+            // Desired position shows at least 1 line of chips below the action
+            // bar. We add excess padding to make sure this is always below other
+            // content.
+            int desiredPos = (int) mChipHeight + mActionBarHeight + getExcessTopPadding();
+            if (currentPos > desiredPos) {
+                mScrollView.scrollBy(0, currentPos - desiredPos);
+            }
+        }
+    }
+
     @Override
     public void performValidation() {
         // Do nothing. Chips handles its own validation.
@@ -427,7 +482,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     int whatEnd = mTokenizer.findTokenEnd(text, start);
                     // This token was already tokenized, so skip past the ending token.
                     if (whatEnd < text.length() && text.charAt(whatEnd) == ',') {
-                        whatEnd++;
+                        whatEnd = movePastTerminators(whatEnd);
                     }
                     // In the middle of chip; treat this as an edit
                     // and commit the whole token.
@@ -701,6 +756,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         }
         mLineSpacingExtra =  context.getResources().getDimension(R.dimen.line_spacing_extra);
+        TypedValue tv = new TypedValue();
+        if (context.getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
+            mActionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data, getResources()
+                    .getDisplayMetrics());
+        }
         a.recycle();
     }
 
@@ -897,8 +957,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         RecipientEntry entry = createTokenizedEntry(token);
         if (entry != null) {
             String destText = createAddressText(entry);
-            // Always leave a blank space at the end of a chip.
-            int textLength = destText.length() - 1;
             SpannableString chipText = new SpannableString(destText);
             int end = getSelectionEnd();
             int start = mTokenizer != null ? mTokenizer.findTokenStart(getText(), end) : 0;
@@ -913,12 +971,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             TextUtils.isEmpty(entry.getDisplayName())
                                     || TextUtils.equals(entry.getDisplayName(),
                                             entry.getDestination()));
-                    chipText.setSpan(chip, 0, textLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
             }
-            editable.replace(tokenStart, tokenEnd, chipText);
+            editable.setSpan(chip, tokenStart, tokenEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             // Add this chip to the list of entries "to replace"
             if (chip != null) {
                 if (mTemporaryRecipients == null) {
@@ -938,7 +995,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return false;
         }
 
-        Matcher match = Patterns.PHONE.matcher(number);
+        Matcher match = PHONE_PATTERN.matcher(number);
         return match.matches();
     }
 
@@ -1117,6 +1174,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             int whatEnd = mTokenizer.findTokenEnd(getText(), start);
             // In the middle of chip; treat this as an edit
             // and commit the whole token.
+            whatEnd = movePastTerminators(whatEnd);
             if (whatEnd != getSelectionEnd()) {
                 handleEdit(start, whatEnd);
                 return true;
@@ -1294,7 +1352,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      */
     @Override
     protected void performFiltering(CharSequence text, int keyCode) {
-        if (enoughToFilter() && !isCompletedToken(text)) {
+        boolean isCompletedToken = isCompletedToken(text);
+        if (enoughToFilter() && !isCompletedToken) {
             int end = getSelectionEnd();
             int start = mTokenizer.findTokenStart(text, end);
             // If this is a RecipientChip, don't filter
@@ -1304,6 +1363,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             if (chips != null && chips.length > 0) {
                 return;
             }
+        } else if (isCompletedToken) {
+            return;
         }
         super.performFiltering(text, keyCode);
     }
@@ -1384,7 +1445,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void scrollLineIntoView(int line) {
         if (mScrollView != null) {
-            mScrollView.scrollBy(0, calculateOffsetFromBottom(line));
+            mScrollView.smoothScrollBy(0, calculateOffsetFromBottom(line));
         }
     }
 
@@ -1880,11 +1941,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (shouldShowEditableText(currentChip)) {
             CharSequence text = currentChip.getValue();
             Editable editable = getText();
-            removeChip(currentChip);
-            editable.append(text);
+            Spannable spannable = getSpannable();
+            int spanStart = spannable.getSpanStart(currentChip);
+            int spanEnd = spannable.getSpanEnd(currentChip);
+            spannable.removeSpan(currentChip);
+            editable.delete(spanStart, spanEnd);
             setCursorVisible(true);
             setSelection(editable.length());
-            return new RecipientChip(null, RecipientEntry.constructFakeEntry((String) text), -1);
+            editable.append(text);
+            return constructChipSpan(
+                    RecipientEntry.constructFakeEntry((String) text),
+                    getSelectionStart(), true, false);
         } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT) {
             int start = getChipStart(currentChip);
             int end = getChipEnd(currentChip);
@@ -2176,7 +2243,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         public void onTextChanged(CharSequence s, int start, int before, int count) {
             // This is a delete; check to see if the insertion point is on a space
             // following a chip.
-            if (before > count) {
+            if (before - count == 1) {
                 // If the item deleted is a space, and the thing before the
                 // space is a chip, delete the entire span.
                 int selStart = getSelectionStart();
@@ -2195,20 +2262,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
                 }
-            } else if (count > before) {
-                scrollBottomIntoView();
             }
         }
 
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             // Do nothing.
-        }
-    }
-
-    private void scrollBottomIntoView() {
-        if (mScrollView != null) {
-            mScrollView.scrollBy(0, (int)(getLineCount() * mChipHeight));
         }
     }
 
@@ -2391,11 +2450,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                 end = oldText.getSpanEnd(chip);
                                 oldText.removeSpan(chip);
                                 RecipientChip replacement = replacements.get(i);
-                                // Trim any whitespace, as we will already have
-                                // it added if these are replacement chips.
+                                // Make sure we always have just 1 space at the
+                                // end to separate this chip from the next chip.
                                 SpannableString displayText = new SpannableString(
-                                        createAddressText(replacement.getEntry()).trim());
-                                displayText.setSpan(replacement, 0, displayText.length(),
+                                        createAddressText(replacement.getEntry()).trim() + " ");
+                                displayText.setSpan(replacement, 0, displayText.length()-1,
                                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                                 // Replace the old text we found with with the new display text,
                                 // which now may also contain the display name of the recipient.
