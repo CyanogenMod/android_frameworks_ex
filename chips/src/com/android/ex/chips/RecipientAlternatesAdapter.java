@@ -16,9 +16,13 @@
 
 package com.android.ex.chips;
 
+import android.accounts.Account;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.net.Uri;
+import android.provider.ContactsContract;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Log;
@@ -29,11 +33,14 @@ import android.widget.CursorAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.android.ex.chips.BaseRecipientAdapter.DirectoryListQuery;
+import com.android.ex.chips.BaseRecipientAdapter.DirectorySearchParams;
 import com.android.ex.chips.Queries.Query;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 
 /**
  * RecipientAlternatesAdapter backs the RecipientEditTextView for managing contacts
@@ -55,9 +62,13 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     public static final int QUERY_TYPE_PHONE = 1;
     private Query mQuery;
 
-    public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
-            ArrayList<String> inAddresses) {
-        return getMatchingRecipients(context, inAddresses, QUERY_TYPE_EMAIL);
+    public interface RecipientMatchCallback {
+        public void matchesFound(HashMap<String, RecipientEntry> results);
+    }
+
+    public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
+            Account account, RecipientMatchCallback callback) {
+        getMatchingRecipients(context, inAddresses, QUERY_TYPE_EMAIL, account, callback);
     }
 
     /**
@@ -67,10 +78,11 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      *
      * @param context Context.
      * @param inAddresses Array of addresses on which to perform the lookup.
+     * @param callback RecipientMatchCallback called when a match or matches are found.
      * @return HashMap<String,RecipientEntry>
      */
-    public static HashMap<String, RecipientEntry> getMatchingRecipients(Context context,
-            ArrayList<String> inAddresses, int addressType) {
+    public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
+            int addressType, Account account, RecipientMatchCallback callback) {
         Queries.Query query;
         if (addressType == QUERY_TYPE_EMAIL) {
             query = Queries.EMAIL;
@@ -78,12 +90,12 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             query = Queries.PHONE;
         }
         int addressesSize = Math.min(MAX_LOOKUPS, inAddresses.size());
-        String[] addresses = new String[addressesSize];
+        HashSet<String> addresses = new HashSet<String>();
         StringBuilder bindString = new StringBuilder();
         // Create the "?" string and set up arguments.
         for (int i = 0; i < addressesSize; i++) {
             Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(inAddresses.get(i).toLowerCase());
-            addresses[i] = (tokens.length > 0 ? tokens[0].getAddress() : inAddresses.get(i));
+            addresses.add(tokens.length > 0 ? tokens[0].getAddress() : inAddresses.get(i));
             bindString.append("?");
             if (i < addressesSize - 1) {
                 bindString.append(",");
@@ -94,42 +106,113 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             Log.d(TAG, "Doing reverse lookup for " + addresses.toString());
         }
 
-        HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
-        Cursor c = context.getContentResolver().query(
-                query.getContentUri(),
-                query.getProjection(),
-                query.getProjection()[Queries.Query.DESTINATION] + " IN (" + bindString.toString()
-                        + ")", addresses, null);
+        String[] addressArray = new String[addresses.size()];
+        addresses.toArray(addressArray);
+        HashMap<String, RecipientEntry> recipientEntries = null;
+        Cursor c = null;
 
-        if (c != null) {
-            try {
-                if (c.moveToFirst()) {
-                    do {
-                        String address = c.getString(Queries.Query.DESTINATION);
-                        recipientEntries.put(address, RecipientEntry.constructTopLevelEntry(
-                                c.getString(Queries.Query.NAME),
-                                c.getInt(Queries.Query.DISPLAY_NAME_SOURCE),
-                                c.getString(Queries.Query.DESTINATION),
-                                c.getInt(Queries.Query.DESTINATION_TYPE),
-                                c.getString(Queries.Query.DESTINATION_LABEL),
-                                c.getLong(Queries.Query.CONTACT_ID),
-                                c.getLong(Queries.Query.DATA_ID),
-                                c.getString(Queries.Query.PHOTO_THUMBNAIL_URI),
-                                true));
-                        if (Log.isLoggable(TAG, Log.DEBUG)) {
-                            Log.d(TAG, "Received reverse look up information for " + address
-                                    + " RESULTS: "
-                                    + " NAME : " + c.getString(Queries.Query.NAME)
-                                    + " CONTACT ID : " + c.getLong(Queries.Query.CONTACT_ID)
-                                    + " ADDRESS :" + c.getString(Queries.Query.DESTINATION));
-                        }
-                    } while (c.moveToNext());
-                }
-            } finally {
+        try {
+            c = context.getContentResolver().query(
+                    query.getContentUri(),
+                    query.getProjection(),
+                    query.getProjection()[Queries.Query.DESTINATION] + " IN ("
+                            + bindString.toString() + ")", addressArray, null);
+            recipientEntries = processContactEntries(c);
+            callback.matchesFound(recipientEntries);
+        } finally {
+            if (c != null) {
                 c.close();
             }
         }
+        // See if any entries did not resolve; if so, we need to check other
+        // directories
+        if (recipientEntries.size() < addresses.size()) {
+            final List<DirectorySearchParams> paramsList;
+            Cursor directoryCursor = context.getContentResolver().query(DirectoryListQuery.URI,
+                    DirectoryListQuery.PROJECTION, null, null, null);
+            paramsList = BaseRecipientAdapter.setupOtherDirectories(context, directoryCursor,
+                    account);
+            // Run a directory query for each unmatched recipient.
+            HashSet<String> unresolvedAddresses = new HashSet<String>();
+            for (String address : addresses) {
+                if (!recipientEntries.containsKey(address)) {
+                    unresolvedAddresses.add(address);
+                }
+            }
+            Cursor directoryContactsCursor = null;
+            for (String unresolvedAddress : unresolvedAddresses) {
+                for (int i = 0; i < paramsList.size(); i++) {
+                    try {
+                        directoryContactsCursor = doQuery(unresolvedAddress, 1,
+                                paramsList.get(i).directoryId, account,
+                                context.getContentResolver(), query);
+                    } finally {
+                        if (directoryContactsCursor != null
+                                && directoryContactsCursor.getCount() == 0) {
+                            directoryContactsCursor.close();
+                            directoryContactsCursor = null;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                if (directoryContactsCursor != null) {
+                    try {
+                        callback.matchesFound(processContactEntries(directoryContactsCursor));
+                    } finally {
+                        directoryContactsCursor.close();
+                    }
+                }
+            }
+        }
+    }
+
+    private static HashMap<String, RecipientEntry> processContactEntries(Cursor c) {
+        HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
+        if (c != null && c.moveToFirst()) {
+            do {
+                String address = c.getString(Queries.Query.DESTINATION);
+                recipientEntries.put(address, RecipientEntry.constructTopLevelEntry(
+                        c.getString(Queries.Query.NAME),
+                        c.getInt(Queries.Query.DISPLAY_NAME_SOURCE),
+                        c.getString(Queries.Query.DESTINATION),
+                        c.getInt(Queries.Query.DESTINATION_TYPE),
+                        c.getString(Queries.Query.DESTINATION_LABEL),
+                        c.getLong(Queries.Query.CONTACT_ID),
+                        c.getLong(Queries.Query.DATA_ID),
+                        c.getString(Queries.Query.PHOTO_THUMBNAIL_URI),
+                        true));
+                if (Log.isLoggable(TAG, Log.DEBUG)) {
+                    Log.d(TAG, "Received reverse look up information for " + address
+                            + " RESULTS: "
+                            + " NAME : " + c.getString(Queries.Query.NAME)
+                            + " CONTACT ID : " + c.getLong(Queries.Query.CONTACT_ID)
+                            + " ADDRESS :" + c.getString(Queries.Query.DESTINATION));
+                }
+            } while (c.moveToNext());
+        }
         return recipientEntries;
+    }
+
+    private static Cursor doQuery(CharSequence constraint, int limit, Long directoryId,
+            Account account, ContentResolver resolver, Query query) {
+        final Uri.Builder builder = query
+                .getContentFilterUri()
+                .buildUpon()
+                .appendPath(constraint.toString())
+                .appendQueryParameter(ContactsContract.LIMIT_PARAM_KEY,
+                        String.valueOf(limit + BaseRecipientAdapter.ALLOWANCE_FOR_DUPLICATES));
+        if (directoryId != null) {
+            builder.appendQueryParameter(ContactsContract.DIRECTORY_PARAM_KEY,
+                    String.valueOf(directoryId));
+        }
+        if (account != null) {
+            builder.appendQueryParameter(BaseRecipientAdapter.PRIMARY_ACCOUNT_NAME, account.name);
+            builder.appendQueryParameter(BaseRecipientAdapter.PRIMARY_ACCOUNT_TYPE, account.type);
+        }
+        final Cursor cursor = resolver.query(builder.build(), query.getProjection(), null, null,
+                null);
+        return cursor;
     }
 
     public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,

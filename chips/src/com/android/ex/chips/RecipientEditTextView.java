@@ -54,7 +54,6 @@ import android.text.util.Rfc822Tokenizer;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
-import android.util.Patterns;
 import android.view.ActionMode;
 import android.view.ActionMode.Callback;
 import android.view.DragEvent;
@@ -79,6 +78,8 @@ import android.widget.ListView;
 import android.widget.MultiAutoCompleteTextView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import com.android.ex.chips.RecipientAlternatesAdapter.RecipientMatchCallback;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -311,6 +312,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if ((outAttrs.imeOptions&EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0) {
             outAttrs.imeOptions &= ~EditorInfo.IME_FLAG_NO_ENTER_ACTION;
         }
+
+        outAttrs.actionId = EditorInfo.IME_ACTION_DONE;
         outAttrs.actionLabel = getContext().getString(R.string.done);
         return connection;
     }
@@ -711,6 +714,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.RecipientEditTextView, 0,
                 0);
         Resources r = getContext().getResources();
+
         mChipBackground = a.getDrawable(R.styleable.RecipientEditTextView_chipBackground);
         if (mChipBackground == null) {
             mChipBackground = r.getDrawable(R.drawable.chip_background);
@@ -758,7 +762,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mActionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data, getResources()
                     .getDisplayMetrics());
         }
-
         a.recycle();
     }
 
@@ -851,7 +854,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 for (int i = 0; i < mPendingChips.size(); i++) {
                     String current = mPendingChips.get(i);
                     int tokenStart = editable.toString().indexOf(current);
-                    int tokenEnd = tokenStart + current.length();
+                    // Always leave a space at the end between tokens.
+                    int tokenEnd = tokenStart + current.length() - 1;
                     if (tokenStart >= 0) {
                         // When we have a valid token, include it with the token
                         // to the left.
@@ -1317,10 +1321,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 mAlternatesPopup.dismiss();
             }
             removeChip(mSelectedChip);
-        }
-
-        if (keyCode == KeyEvent.KEYCODE_ENTER && event.hasNoModifiers()) {
-            return true;
         }
 
         return super.onKeyDown(keyCode, event);
@@ -1904,6 +1904,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     end = chipEnd = Math.min(editable.length(), chipStart + token.length());
                     // Only set the span if we found a matching token.
                     if (chipStart != -1) {
+                        if (chip instanceof InvisibleRecipientChip) {
+                            /*
+                             * We want the original text to be displayed until we can replace it
+                             * with a real chip
+                             */
+                            ((InvisibleRecipientChip) chip).setDisplayOriginalText(true);
+                        }
                         editable.setSpan(chip, chipStart, chipEnd,
                                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }
@@ -2256,6 +2263,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     editable.delete(tokenStart, tokenEnd);
                     getSpannable().removeSpan(repl[0]);
                 }
+            } else if (count > before) {
+                if (mSelectedChip != null
+                    && isGeneratedContact(mSelectedChip)) {
+                    if (lastCharacterIsCommitCharacter(s)) {
+                        commitByCharacter();
+                        return;
+                    }
+                }
             }
         }
 
@@ -2434,54 +2449,80 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     addresses.add(createAddressText(chip.getEntry()));
                 }
             }
-            HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
-                    .getMatchingRecipients(getContext(), addresses);
-            final ArrayList<RecipientChip> replacements = new ArrayList<RecipientChip>();
-            for (final RecipientChip temp : originalRecipients) {
-                RecipientEntry entry = null;
-                if (RecipientEntry.isCreatedRecipient(temp.getEntry().getContactId())
-                        && getSpannable().getSpanStart(temp) != -1) {
-                    // Replace this.
-                    entry = createValidatedEntry(entries.get(tokenizeAddress(temp.getEntry()
-                            .getDestination())));
-                }
-                if (entry != null) {
-                    replacements.add(createFreeChip(entry));
-                } else {
-                    replacements.add(temp);
-                }
-            }
-            if (replacements != null && replacements.size() > 0) {
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Editable oldText = getText();
-                        int start, end;
-                        int i = 0;
-                        for (RecipientChip chip : originalRecipients) {
-                            // Find the location of the chip in the text currently shown.
-                            start = oldText.getSpanStart(chip);
-                            if (start != -1) {
-                                end = oldText.getSpanEnd(chip);
-                                oldText.removeSpan(chip);
-                                RecipientChip replacement = replacements.get(i);
-                                // Make sure we always have just 1 space at the
-                                // end to separate this chip from the next chip.
-                                SpannableString displayText = new SpannableString(
-                                        createAddressText(replacement.getEntry()).trim() + " ");
-                                displayText.setSpan(replacement, 0, displayText.length()-1,
-                                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                                // Replace the old text we found with with the new display text,
-                                // which now may also contain the display name of the recipient.
-                                oldText.replace(start, end, displayText);
-                                replacement.setOriginalText(displayText.toString());
+            RecipientAlternatesAdapter.getMatchingRecipients(getContext(), addresses,
+                    ((BaseRecipientAdapter) getAdapter()).getAccount(),
+                    new RecipientMatchCallback() {
+
+                        @Override
+                        public void matchesFound(HashMap<String, RecipientEntry> entries) {
+                            final ArrayList<RecipientChip> replacements =
+                                    new ArrayList<RecipientChip>();
+                            for (final RecipientChip temp : originalRecipients) {
+                                RecipientEntry entry = null;
+                                if (RecipientEntry.isCreatedRecipient(temp.getEntry()
+                                        .getContactId())
+                                        && getSpannable().getSpanStart(temp) != -1) {
+                                    // Replace this.
+                                    entry = createValidatedEntry(
+                                            entries.get(tokenizeAddress(temp.getEntry()
+                                                    .getDestination())));
+                                }
+                                if (entry != null) {
+                                    replacements.add(createFreeChip(entry));
+                                } else {
+                                    replacements.add(null);
+                                }
                             }
-                            i++;
+                            if (replacements != null && replacements.size() > 0) {
+                                mHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Editable oldText = getText();
+                                        int start, end;
+                                        int i = 0;
+                                        for (RecipientChip chip : originalRecipients) {
+                                            // Find the location of the chip in
+                                            // the text currently shown.
+                                            start = oldText.getSpanStart(chip);
+                                            if (start != -1) {
+                                                RecipientChip replacement = replacements.get(i);
+                                                if (replacement != null) {
+                                                    // Replacing the entirety of
+                                                    // what the chip
+                                                    // represented, including
+                                                    // the extra space dividing
+                                                    // it from other chips.
+                                                    end = oldText.getSpanEnd(chip) + 1;
+                                                    oldText.removeSpan(chip);
+                                                    // Make sure we always have just 1 space at the
+                                                    // end to separate this chip from the next chip.
+                                                    SpannableString displayText =
+                                                            new SpannableString(
+                                                            createAddressText(
+                                                                    replacement.getEntry()).trim()
+                                                                    + " ");
+                                                    displayText.setSpan(replacement, 0,
+                                                            displayText.length() - 1,
+                                                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                                                    // Replace the old text we
+                                                    // found with with the new
+                                                    // display text, which now
+                                                    // may also contain the
+                                                    // display name of the
+                                                    // recipient.
+                                                    oldText.replace(start, end, displayText);
+                                                    replacement.setOriginalText(displayText
+                                                            .toString());
+                                                    replacements.set(i, null);
+                                                }
+                                            }
+                                            i++;
+                                        }
+                                    }
+                                });
+                            }
                         }
-                        originalRecipients.clear();
-                    }
-                });
-            }
+                    });
             return null;
         }
     }
@@ -2503,30 +2544,40 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     addresses.add(createAddressText(chip.getEntry()));
                 }
             }
-            HashMap<String, RecipientEntry> entries = RecipientAlternatesAdapter
-                    .getMatchingRecipients(getContext(), addresses);
-            for (final RecipientChip temp : originalRecipients) {
-                if (RecipientEntry.isCreatedRecipient(temp.getEntry().getContactId())
-                        && getSpannable().getSpanStart(temp) != -1) {
-                    // Replace this.
-                    RecipientEntry entry = createValidatedEntry(entries.get(tokenizeAddress(
-                            temp.getEntry().getDestination()).toLowerCase()));
-                    // If we don't have a validated contact match, just use the
-                    // entry as it existed before.
-                    if (entry == null && !isPhoneQuery()) {
-                        entry = temp.getEntry();
-                    }
-                    final RecipientEntry tempEntry = entry;
-                    if (tempEntry != null) {
-                        mHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                replaceChip(temp, tempEntry);
+            RecipientAlternatesAdapter.getMatchingRecipients(getContext(), addresses,
+                    ((BaseRecipientAdapter) getAdapter()).getAccount(),
+                    new RecipientMatchCallback() {
+
+                        @Override
+                        public void matchesFound(HashMap<String, RecipientEntry> entries) {
+                            for (final RecipientChip temp : originalRecipients) {
+                                if (RecipientEntry.isCreatedRecipient(temp.getEntry()
+                                        .getContactId())
+                                        && getSpannable().getSpanStart(temp) != -1) {
+                                    // Replace this.
+                                    RecipientEntry entry = createValidatedEntry(entries
+                                            .get(tokenizeAddress(temp.getEntry().getDestination())
+                                                    .toLowerCase()));
+                                    // If we don't have a validated contact
+                                    // match, just use the
+                                    // entry as it existed before.
+                                    if (entry == null && !isPhoneQuery()) {
+                                        entry = temp.getEntry();
+                                    }
+                                    final RecipientEntry tempEntry = entry;
+                                    if (tempEntry != null) {
+                                        mHandler.post(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                replaceChip(temp, tempEntry);
+                                            }
+                                        });
+                                    }
+                                }
                             }
-                        });
-                    }
-                }
-            }
+                        }
+
+                    });
             return null;
         }
     }

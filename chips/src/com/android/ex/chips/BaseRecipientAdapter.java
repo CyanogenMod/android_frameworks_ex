@@ -73,12 +73,12 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * The number of extra entries requested to allow for duplicates. Duplicates
      * are removed from the overall result.
      */
-    private static final int ALLOWANCE_FOR_DUPLICATES = 5;
+    static final int ALLOWANCE_FOR_DUPLICATES = 5;
 
     // This is ContactsContract.PRIMARY_ACCOUNT_NAME. Available from ICS as hidden
-    private static final String PRIMARY_ACCOUNT_NAME = "name_for_primary_account";
+    static final String PRIMARY_ACCOUNT_NAME = "name_for_primary_account";
     // This is ContactsContract.PRIMARY_ACCOUNT_TYPE. Available from ICS as hidden
-    private static final String PRIMARY_ACCOUNT_TYPE = "type_for_primary_account";
+    static final String PRIMARY_ACCOUNT_TYPE = "type_for_primary_account";
 
     /** The number of photos cached in this Adapter. */
     private static final int PHOTO_CACHE_SIZE = 20;
@@ -118,7 +118,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public static final int PHOTO = 0;
     }
 
-    private static class DirectoryListQuery {
+    protected static class DirectoryListQuery {
 
         public static final Uri URI =
                 Uri.withAppendedPath(ContactsContract.AUTHORITY_URI, "directories");
@@ -250,7 +250,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                         directoryCursor = mContentResolver.query(
                                 DirectoryListQuery.URI, DirectoryListQuery.PROJECTION,
                                 null, null, null);
-                        paramsList = setupOtherDirectories(directoryCursor);
+                        paramsList = setupOtherDirectories(mContext, directoryCursor, mAccount);
                     } else {
                         // We don't need to search other directories.
                         paramsList = null;
@@ -556,8 +556,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         return new DefaultFilter();
     }
 
-    private List<DirectorySearchParams> setupOtherDirectories(Cursor directoryCursor) {
-        final PackageManager packageManager = mContext.getPackageManager();
+    public static List<DirectorySearchParams> setupOtherDirectories(Context context,
+            Cursor directoryCursor, Account account) {
+        final PackageManager packageManager = context.getPackageManager();
         final List<DirectorySearchParams> paramsList = new ArrayList<DirectorySearchParams>();
         DirectorySearchParams preferredDirectory = null;
         while (directoryCursor.moveToNext()) {
@@ -594,8 +595,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             // If an account has been provided and we found a directory that
             // corresponds to that account, place that directory second, directly
             // underneath the local contacts.
-            if (mAccount != null && mAccount.name.equals(params.accountName) &&
-                    mAccount.type.equals(params.accountType)) {
+            if (account != null && account.name.equals(params.accountName) &&
+                    account.type.equals(params.accountType)) {
                 preferredDirectory = params;
             } else {
                 paramsList.add(params);
@@ -706,6 +707,11 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         }
 
         return entries;
+    }
+
+
+    protected interface EntriesUpdatedObserver {
+        public void onChanged(List<RecipientEntry> entries);
     }
 
     public void registerUpdateObserver(EntriesUpdatedObserver observer) {
@@ -975,11 +981,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         return android.R.id.icon;
     }
 
-    /**
-     * Interface called before the BaseRecipientAdapter updates recipient
-     * results in the popup window.
-     */
-    protected interface EntriesUpdatedObserver {
-        public void onChanged(List<RecipientEntry> entries);
+    public Account getAccount() {
+        return mAccount;
     }
 }
