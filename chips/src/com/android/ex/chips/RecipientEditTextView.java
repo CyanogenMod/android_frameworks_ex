@@ -1077,20 +1077,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         switch (keyCode) {
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-                if (event.hasNoModifiers()) {
-                    if (commitDefault()) {
-                        return true;
-                    }
-                    if (mSelectedChip != null) {
-                        clearSelectedChip();
-                        return true;
-                    } else if (focusNext()) {
-                        return true;
-                    }
-                }
-                break;
             case KeyEvent.KEYCODE_TAB:
                 if (event.hasNoModifiers()) {
                     if (mSelectedChip != null) {
@@ -1280,6 +1266,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 mAlternatesPopup.dismiss();
             }
             removeChip(mSelectedChip);
+        }
+
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+                if (event.hasNoModifiers()) {
+                    if (commitDefault()) {
+                        return true;
+                    }
+                    if (mSelectedChip != null) {
+                        clearSelectedChip();
+                        return true;
+                    } else if (focusNext()) {
+                        return true;
+                    }
+                }
+                break;
         }
 
         return super.onKeyDown(keyCode, event);
