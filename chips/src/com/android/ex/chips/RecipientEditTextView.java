@@ -1098,9 +1098,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     } else {
                         commitDefault();
                     }
-                    if (focusNext()) {
-                        return true;
-                    }
                 }
                 break;
         }
