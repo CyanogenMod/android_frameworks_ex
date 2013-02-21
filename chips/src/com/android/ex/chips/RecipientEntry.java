@@ -214,4 +214,9 @@ public class RecipientEntry {
     public boolean isSelectable() {
         return mEntryType == ENTRY_TYPE_PERSON;
     }
+
+    @Override
+    public String toString() {
+        return mDisplayName + " <" + mDestination + ">, isValid=" + mIsValid;
+    }
 }

@@ -41,6 +41,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * RecipientAlternatesAdapter backs the RecipientEditTextView for managing contacts
@@ -63,7 +65,11 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     private Query mQuery;
 
     public interface RecipientMatchCallback {
-        public void matchesFound(HashMap<String, RecipientEntry> results);
+        public void matchesFound(Map<String, RecipientEntry> results);
+        /**
+         * Called with all addresses that could not be resolved to valid recipients.
+         */
+        public void matchesNotFound(Set<String> addresses);
     }
 
     public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
@@ -126,6 +132,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         }
         // See if any entries did not resolve; if so, we need to check other
         // directories
+        final Set<String> matchesNotFound = new HashSet<String>();
         if (recipientEntries.size() < addresses.size()) {
             final List<DirectorySearchParams> paramsList;
             Cursor directoryCursor = context.getContentResolver().query(DirectoryListQuery.URI,
@@ -139,6 +146,9 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                     unresolvedAddresses.add(address);
                 }
             }
+
+            matchesNotFound.addAll(unresolvedAddresses);
+
             Cursor directoryContactsCursor = null;
             for (String unresolvedAddress : unresolvedAddresses) {
                 for (int i = 0; i < paramsList.size(); i++) {
@@ -158,13 +168,22 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                 }
                 if (directoryContactsCursor != null) {
                     try {
-                        callback.matchesFound(processContactEntries(directoryContactsCursor));
+                        final Map<String, RecipientEntry> entries =
+                                processContactEntries(directoryContactsCursor);
+
+                        for (final String address : entries.keySet()) {
+                            matchesNotFound.remove(address);
+                        }
+
+                        callback.matchesFound(entries);
                     } finally {
                         directoryContactsCursor.close();
                     }
                 }
             }
         }
+
+        callback.matchesNotFound(matchesNotFound);
     }
 
     private static HashMap<String, RecipientEntry> processContactEntries(Cursor c) {

@@ -86,9 +86,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -2454,7 +2454,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     new RecipientMatchCallback() {
 
                         @Override
-                        public void matchesFound(HashMap<String, RecipientEntry> entries) {
+                        public void matchesFound(Map<String, RecipientEntry> entries) {
                             final ArrayList<RecipientChip> replacements =
                                     new ArrayList<RecipientChip>();
                             for (final RecipientChip temp : originalRecipients) {
@@ -2473,6 +2473,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                     replacements.add(null);
                                 }
                             }
+                            processReplacements(replacements);
+                        }
+
+                        private void processReplacements(final List<RecipientChip> replacements) {
                             if (replacements != null && replacements.size() > 0) {
                                 mHandler.post(new Runnable() {
                                     @Override
@@ -2522,6 +2526,28 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                 });
                             }
                         }
+
+                        @Override
+                        public void matchesNotFound(final Set<String> addresses) {
+                            final List<RecipientChip> replacements =
+                                    new ArrayList<RecipientChip>(addresses.size());
+
+                            for (final RecipientChip temp : originalRecipients) {
+                                if (RecipientEntry.isCreatedRecipient(temp.getEntry()
+                                        .getContactId())
+                                        && getSpannable().getSpanStart(temp) != -1) {
+                                    if (addresses.contains(temp.getEntry().getDestination())) {
+                                        replacements.add(createFreeChip(temp.getEntry()));
+                                    } else {
+                                        replacements.add(null);
+                                    }
+                                } else {
+                                    replacements.add(null);
+                                }
+                            }
+
+                            processReplacements(replacements);
+                        }
                     });
             return null;
         }
@@ -2549,7 +2575,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     new RecipientMatchCallback() {
 
                         @Override
-                        public void matchesFound(HashMap<String, RecipientEntry> entries) {
+                        public void matchesFound(Map<String, RecipientEntry> entries) {
                             for (final RecipientChip temp : originalRecipients) {
                                 if (RecipientEntry.isCreatedRecipient(temp.getEntry()
                                         .getContactId())
@@ -2577,6 +2603,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             }
                         }
 
+                        @Override
+                        public void matchesNotFound(final Set<String> addresses) {
+                            // No action required
+                        }
                     });
             return null;
         }
