@@ -23,6 +23,7 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.provider.ContactsContract;
+import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Log;
@@ -191,7 +192,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         if (c != null && c.moveToFirst()) {
             do {
                 String address = c.getString(Queries.Query.DESTINATION);
-                recipientEntries.put(address, RecipientEntry.constructTopLevelEntry(
+
+                final RecipientEntry newRecipientEntry = RecipientEntry.constructTopLevelEntry(
                         c.getString(Queries.Query.NAME),
                         c.getInt(Queries.Query.DISPLAY_NAME_SOURCE),
                         c.getString(Queries.Query.DESTINATION),
@@ -200,7 +202,17 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                         c.getLong(Queries.Query.CONTACT_ID),
                         c.getLong(Queries.Query.DATA_ID),
                         c.getString(Queries.Query.PHOTO_THUMBNAIL_URI),
-                        true));
+                        true);
+
+                /*
+                 * In certain situations, we may have two results for one address, where one of the
+                 * results is just the email address, and the other has a name and photo, so we want
+                 * to use the better one.
+                 */
+                final RecipientEntry recipientEntry =
+                        getBetterRecipient(recipientEntries.get(address), newRecipientEntry);
+
+                recipientEntries.put(address, recipientEntry);
                 if (Log.isLoggable(TAG, Log.DEBUG)) {
                     Log.d(TAG, "Received reverse look up information for " + address
                             + " RESULTS: "
@@ -211,6 +223,60 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             } while (c.moveToNext());
         }
         return recipientEntries;
+    }
+
+    /**
+     * Given two {@link RecipientEntry}s for the same email address, this will return the one that
+     * contains more complete information for display purposes. Defaults to <code>entry2</code> if
+     * no significant differences are found.
+     * TODO(skennedy) Add tests
+     */
+    private static RecipientEntry getBetterRecipient(final RecipientEntry entry1,
+            final RecipientEntry entry2) {
+        // If only one has passed in, use it
+        if (entry2 == null) {
+            return entry1;
+        }
+
+        if (entry1 == null) {
+            return entry2;
+        }
+
+        // If only one has a display name, use it
+        if (!TextUtils.isEmpty(entry1.getDisplayName())
+                && TextUtils.isEmpty(entry2.getDisplayName())) {
+            return entry1;
+        }
+
+        if (!TextUtils.isEmpty(entry2.getDisplayName())
+                && TextUtils.isEmpty(entry1.getDisplayName())) {
+            return entry2;
+        }
+
+        // If only one has a display name that is not the same as the destination, use it
+        if (!TextUtils.equals(entry1.getDisplayName(), entry1.getDestination())
+                && TextUtils.equals(entry2.getDisplayName(), entry2.getDestination())) {
+            return entry1;
+        }
+
+        if (!TextUtils.equals(entry2.getDisplayName(), entry2.getDestination())
+                && TextUtils.equals(entry1.getDisplayName(), entry1.getDestination())) {
+            return entry2;
+        }
+
+        // If only one has a photo, use it
+        if ((entry1.getPhotoThumbnailUri() != null || entry1.getPhotoBytes() != null)
+                && (entry2.getPhotoThumbnailUri() == null && entry2.getPhotoBytes() == null)) {
+            return entry1;
+        }
+
+        if ((entry2.getPhotoThumbnailUri() != null || entry2.getPhotoBytes() != null)
+                && (entry1.getPhotoThumbnailUri() == null && entry1.getPhotoBytes() == null)) {
+            return entry2;
+        }
+
+        // Go with the second option as a default
+        return entry2;
     }
 
     private static Cursor doQuery(CharSequence constraint, int limit, Long directoryId,
