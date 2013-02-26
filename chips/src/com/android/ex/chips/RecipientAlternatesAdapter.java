@@ -229,7 +229,6 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      * Given two {@link RecipientEntry}s for the same email address, this will return the one that
      * contains more complete information for display purposes. Defaults to <code>entry2</code> if
      * no significant differences are found.
-     * TODO(skennedy) Add tests
      */
     static RecipientEntry getBetterRecipient(final RecipientEntry entry1,
             final RecipientEntry entry2) {
