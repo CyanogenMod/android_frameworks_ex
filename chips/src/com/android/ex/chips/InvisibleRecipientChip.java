@@ -18,7 +18,6 @@ package com.android.ex.chips;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Paint.FontMetricsInt;
 import android.graphics.Rect;
 import android.text.TextUtils;
 import android.text.style.ReplacementSpan;
@@ -147,5 +146,10 @@ import android.text.style.ReplacementSpan;
     @Override
     public void draw(Canvas canvas) {
         // do nothing.
+    }
+
+    @Override
+    public String toString() {
+        return mDisplay + " <" + mValue + ">";
     }
 }

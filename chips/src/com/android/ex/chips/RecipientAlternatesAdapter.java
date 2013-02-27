@@ -231,7 +231,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      * no significant differences are found.
      * TODO(skennedy) Add tests
      */
-    private static RecipientEntry getBetterRecipient(final RecipientEntry entry1,
+    static RecipientEntry getBetterRecipient(final RecipientEntry entry1,
             final RecipientEntry entry2) {
         // If only one has passed in, use it
         if (entry2 == null) {

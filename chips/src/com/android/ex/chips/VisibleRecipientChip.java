@@ -121,4 +121,9 @@ import android.text.style.ImageSpan;
     public void draw(Canvas canvas) {
         getDrawable().draw(canvas);
     }
+
+    @Override
+    public String toString() {
+        return mDisplay + " <" + mValue + ">";
+    }
 }
