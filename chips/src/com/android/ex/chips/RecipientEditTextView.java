@@ -111,6 +111,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private static final char COMMIT_CHAR_SPACE = ' ';
 
+    private static final String SEPARATOR = String.valueOf(COMMIT_CHAR_COMMA)
+            + String.valueOf(COMMIT_CHAR_SPACE);
+
     private static final String TAG = "RecipientEditTextView";
 
     private static int DISMISS = "dismiss".hashCode();
@@ -371,22 +374,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         super.append(text, start, end);
         if (!TextUtils.isEmpty(text) && TextUtils.getTrimmedLength(text) > 0) {
             String displayString = text.toString();
-            int separatorPos = displayString.lastIndexOf(COMMIT_CHAR_COMMA);
-            // Verify that the separator pos is not within ""; if it is, look
-            // past the closing quote. If there is no comma past ", this string
-            // will resolve to an error chip.
-            if (separatorPos > -1) {
-                String parseDisplayString = displayString.substring(separatorPos);
-                int endQuotedTextPos = parseDisplayString.indexOf(NAME_WRAPPER_CHAR);
-                if (endQuotedTextPos > separatorPos) {
-                    separatorPos = parseDisplayString.lastIndexOf(COMMIT_CHAR_COMMA,
-                            endQuotedTextPos);
-                }
+
+            if (!displayString.trim().endsWith(String.valueOf(COMMIT_CHAR_COMMA))) {
+                // We have no separator, so we should add it
+                super.append(SEPARATOR, 0, SEPARATOR.length());
+                displayString += SEPARATOR;
             }
+
             if (!TextUtils.isEmpty(displayString)
                     && TextUtils.getTrimmedLength(displayString) > 0) {
                 mPendingChipsCount++;
-                mPendingChips.add(text.toString());
+                mPendingChips.add(displayString);
             }
         }
         // Put a message on the queue to make sure we ALWAYS handle pending
