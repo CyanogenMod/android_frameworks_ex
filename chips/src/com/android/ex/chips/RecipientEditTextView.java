@@ -2243,6 +2243,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    @Override
     public <T extends ListAdapter & Filterable> void setAdapter(T adapter) {
         super.setAdapter(adapter);
         ((BaseRecipientAdapter) adapter)
@@ -2484,8 +2485,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                     new ArrayList<RecipientChip>();
                             for (final RecipientChip temp : recipients) {
                                 RecipientEntry entry = null;
-                                if (RecipientEntry.isCreatedRecipient(temp.getEntry()
-                                        .getContactId())
+                                if (temp != null && RecipientEntry.isCreatedRecipient(
+                                        temp.getEntry().getContactId())
                                         && getSpannable().getSpanStart(temp) != -1) {
                                     // Replace this.
                                     entry = createValidatedEntry(
