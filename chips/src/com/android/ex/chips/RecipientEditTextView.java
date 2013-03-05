@@ -985,7 +985,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (mTemporaryRecipients == null) {
                     mTemporaryRecipients = new ArrayList<RecipientChip>();
                 }
-                chip.setOriginalText(chipText.toString());
+                chip.setOriginalText(token);
                 mTemporaryRecipients.add(chip);
             }
         }
