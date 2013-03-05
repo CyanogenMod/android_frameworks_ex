@@ -2511,8 +2511,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                     new ArrayList<RecipientChip>(addresses.size());
 
                             for (final RecipientChip temp : recipients) {
-                                if (RecipientEntry.isCreatedRecipient(temp.getEntry()
-                                        .getContactId())
+                                if (temp != null && RecipientEntry.isCreatedRecipient(
+                                        temp.getEntry().getContactId())
                                         && getSpannable().getSpanStart(temp) != -1) {
                                     if (addresses.contains(temp.getEntry().getDestination())) {
                                         replacements.add(createFreeChip(temp.getEntry()));
