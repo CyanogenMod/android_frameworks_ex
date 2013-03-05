@@ -1910,7 +1910,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                              * We want the original text to be displayed until we can replace it
                              * with a real chip
                              */
-                            ((InvisibleRecipientChip) chip).setDisplayOriginalText(true);
+                            // ((InvisibleRecipientChip) chip).setDisplayOriginalText(true);
                         }
                         editable.setSpan(chip, chipStart, chipEnd,
                                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
