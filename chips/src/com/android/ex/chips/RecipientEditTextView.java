@@ -2281,7 +2281,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
-    public boolean lastCharacterIsCommitCharacter(CharSequence s) {
+   public boolean lastCharacterIsCommitCharacter(CharSequence s) {
         char last;
         int end = getSelectionEnd() == 0 ? 0 : getSelectionEnd() - 1;
         int len = length() - 1;
@@ -2488,8 +2488,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                     new ArrayList<RecipientChip>();
                             for (final RecipientChip temp : recipients) {
                                 RecipientEntry entry = null;
-                                if (RecipientEntry.isCreatedRecipient(temp.getEntry()
-                                        .getContactId())
+                                if (temp != null && RecipientEntry.isCreatedRecipient(
+                                        temp.getEntry().getContactId())
                                         && getSpannable().getSpanStart(temp) != -1) {
                                     // Replace this.
                                     entry = createValidatedEntry(
