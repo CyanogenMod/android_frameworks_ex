@@ -1865,13 +1865,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     end = chipEnd = Math.min(editable.length(), chipStart + token.length());
                     // Only set the span if we found a matching token.
                     if (chipStart != -1) {
-                        if (chip instanceof InvisibleRecipientChip) {
-                            /*
-                             * We want the original text to be displayed until we can replace it
-                             * with a real chip
-                             */
-                            // ((InvisibleRecipientChip) chip).setDisplayOriginalText(true);
-                        }
                         editable.setSpan(chip, chipStart, chipEnd,
                                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }

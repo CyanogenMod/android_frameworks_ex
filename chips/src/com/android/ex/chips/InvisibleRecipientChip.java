@@ -41,9 +41,6 @@ import android.text.style.ReplacementSpan;
 
     private CharSequence mOriginalText;
 
-    /** <code>true</code> to display the original text, <code>false</code> to display nothing */
-    private boolean mDisplayOriginalText = false;
-
     public InvisibleRecipientChip(RecipientEntry entry, int offset) {
         super();
         mDisplay = entry.getDisplayName();
@@ -114,28 +111,16 @@ import android.text.style.ReplacementSpan;
         return !TextUtils.isEmpty(mOriginalText) ? mOriginalText : mEntry.getDestination();
     }
 
-    public void setDisplayOriginalText(final boolean displayOriginalText) {
-        mDisplayOriginalText = displayOriginalText;
-    }
-
     @Override
     public void draw(Canvas canvas, CharSequence text, int start, int end, float x, int top, int y,
             int bottom, Paint paint) {
-        if (mDisplayOriginalText) {
-            canvas.drawText(text, start, end, x, y, paint);
-        } else {
-            // Do nothing.
-        }
+        // Do nothing.
     }
 
     @Override
     public int getSize(
             Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
-        if (mDisplayOriginalText) {
-            return (int) paint.measureText(text, start, end);
-        } else {
-            return 0;
-        }
+        return 0;
     }
 
     @Override
