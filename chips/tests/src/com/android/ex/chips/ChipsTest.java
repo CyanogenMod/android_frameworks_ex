@@ -133,9 +133,10 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testCreateDisplayText() {
+        android.os.Debug.waitForDebugger();
         RecipientEditTextView view = createViewForTesting();
         RecipientEntry entry = RecipientEntry.constructGeneratedEntry("User Name, Jr",
-                "user@username.com");
+                "user@username.com", true);
         String testAddress = view.createAddressText(entry);
         String testDisplay = view.createChipDisplayText(entry);
         assertEquals("Expected a properly formatted RFC email address",
@@ -143,7 +144,8 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals("Expected a displayable name", "User Name, Jr", testDisplay);
 
 
-        RecipientEntry alreadyFormatted = RecipientEntry.constructFakeEntry("user@username.com, ");
+        RecipientEntry alreadyFormatted =
+                RecipientEntry.constructFakeEntry("user@username.com, ", true);
         testAddress = view.createAddressText(alreadyFormatted);
         testDisplay = view.createChipDisplayText(alreadyFormatted);
         assertEquals("Expected a properly formatted RFC email address", "<user@username.com>, ",
@@ -151,13 +153,13 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals("Expected a displayable name", "user@username.com", testDisplay);
 
         RecipientEntry alreadyFormattedNoSpace = RecipientEntry
-                .constructFakeEntry("user@username.com,");
+                .constructFakeEntry("user@username.com,", true);
         testAddress = view.createAddressText(alreadyFormattedNoSpace);
         assertEquals("Expected a properly formatted RFC email address", "<user@username.com>, ",
                 testAddress);
 
         RecipientEntry alreadyNamed = RecipientEntry.constructGeneratedEntry("User Name",
-                "\"User Name, Jr\" <user@username.com>");
+                "\"User Name, Jr\" <user@username.com>", true);
         testAddress = view.createAddressText(alreadyNamed);
         testDisplay = view.createChipDisplayText(alreadyNamed);
         assertEquals(
@@ -620,7 +622,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
         assertEquals(mEditable.toString(), first + second + third);
         view.replaceChip(mMockRecips[mMockRecips.length - 3], RecipientEntry
-                .constructGeneratedEntry("replacement", "replacement@replacement.com"));
+                .constructGeneratedEntry("replacement", "replacement@replacement.com", true));
         assertEquals(mEditable.toString(), mTokenizer
                 .terminateToken("replacement <replacement@replacement.com>")
                 + second + third);
@@ -657,7 +659,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
         assertEquals(mEditable.toString(), first + second + third);
         view.replaceChip(mMockRecips[mMockRecips.length - 2], RecipientEntry
-                .constructGeneratedEntry("replacement", "replacement@replacement.com"));
+                .constructGeneratedEntry("replacement", "replacement@replacement.com", true));
         assertEquals(mEditable.toString(), first + mTokenizer
                 .terminateToken("replacement <replacement@replacement.com>") + third);
         assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 3]), firstStart);
@@ -690,7 +692,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.setSpan(mMockRecips[mMockRecips.length - 1], thirdStart, thirdEnd, 0);
         assertEquals(mEditable.toString(), first + second + third);
         view.replaceChip(mMockRecips[mMockRecips.length - 1], RecipientEntry
-                .constructGeneratedEntry("replacement", "replacement@replacement.com"));
+                .constructGeneratedEntry("replacement", "replacement@replacement.com", true));
         assertEquals(mEditable.toString(), first + second + mTokenizer
                 .terminateToken("replacement <replacement@replacement.com>"));
         assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 3]), firstStart);
@@ -922,11 +924,11 @@ public class ChipsTest extends AndroidTestCase {
         mMockEntries = new RecipientEntry[size];
         for (int i = 0; i < size; i++) {
             mMockEntries[i] = RecipientEntry.constructGeneratedEntry("user",
-                    "user@username.com");
+                    "user@username.com", true);
         }
         mMockRecips = new RecipientChip[size];
         for (int i = 0; i < size; i++) {
-            mMockRecips[i] = new RecipientChip(null, mMockEntries[i], i);
+            mMockRecips[i] = new VisibleRecipientChip(null, mMockEntries[i], i);
         }
     }
 }
