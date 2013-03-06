@@ -133,7 +133,6 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     public void testCreateDisplayText() {
-        android.os.Debug.waitForDebugger();
         RecipientEditTextView view = createViewForTesting();
         RecipientEntry entry = RecipientEntry.constructGeneratedEntry("User Name, Jr",
                 "user@username.com", true);
