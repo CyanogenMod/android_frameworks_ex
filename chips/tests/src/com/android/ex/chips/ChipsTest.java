@@ -30,10 +30,12 @@ import android.widget.TextView;
 
 import com.android.ex.chips.RecipientEditTextView;
 import com.android.ex.chips.RecipientEntry;
+import com.android.ex.chips.recipientchip.DrawableRecipientChip;
+import com.android.ex.chips.recipientchip.VisibleRecipientChip;;
 
 @SmallTest
 public class ChipsTest extends AndroidTestCase {
-    private RecipientChip[] mMockRecips;
+    private DrawableRecipientChip[] mMockRecips;
 
     private RecipientEntry[] mMockEntries;
 
@@ -50,7 +52,7 @@ public class ChipsTest extends AndroidTestCase {
         }
 
         @Override
-        public RecipientChip[] getSortedRecipients() {
+        public DrawableRecipientChip[] getSortedRecipients() {
             return mMockRecips;
         }
 
@@ -79,7 +81,7 @@ public class ChipsTest extends AndroidTestCase {
         }
 
         @Override
-        public RecipientChip[] getSortedRecipients() {
+        public DrawableRecipientChip[] getSortedRecipients() {
             return mMockRecips;
         }
 
@@ -636,10 +638,11 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), mEditable
                 .toString().indexOf(third)
                 + third.trim().length());
-        RecipientChip[] spans = mEditable.getSpans(0, mEditable.length(), RecipientChip.class);
+        DrawableRecipientChip[] spans =
+                mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class);
         assertEquals(spans.length, 3);
         spans = mEditable
-                .getSpans(0, mEditable.toString().indexOf(second) - 1, RecipientChip.class);
+                .getSpans(0, mEditable.toString().indexOf(second) - 1, DrawableRecipientChip.class);
         assertEquals((String) spans[0].getDisplay(), "replacement");
 
 
@@ -669,10 +672,10 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), mEditable
                 .toString().indexOf(third)
                 + third.trim().length());
-        spans = mEditable.getSpans(0, mEditable.length(), RecipientChip.class);
+        spans = mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class);
         assertEquals(spans.length, 3);
-        spans = mEditable
-                .getSpans(firstEnd, mEditable.toString().indexOf(third) - 1, RecipientChip.class);
+        spans = mEditable.getSpans(firstEnd, mEditable.toString().indexOf(third) - 1,
+                DrawableRecipientChip.class);
         assertEquals((String) spans[0].getDisplay(), "replacement");
 
 
@@ -699,10 +702,10 @@ public class ChipsTest extends AndroidTestCase {
         assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 2]), secondEnd);
         assertEquals(mEditable.getSpanStart(mMockRecips[mMockRecips.length - 1]), -1);
         assertEquals(mEditable.getSpanEnd(mMockRecips[mMockRecips.length - 1]), -1);
-        spans = mEditable.getSpans(0, mEditable.length(), RecipientChip.class);
+        spans = mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class);
         assertEquals(spans.length, 3);
         spans = mEditable
-                .getSpans(secondEnd, mEditable.length(), RecipientChip.class);
+                .getSpans(secondEnd, mEditable.length(), DrawableRecipientChip.class);
         assertEquals((String) spans[0].getDisplay(), "replacement");
     }
 
@@ -717,7 +720,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append("user@user.com");
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length, 0);
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length, 0);
         assertEquals(mEditable.toString(), "user@user.com");
 
         // Test adding a single address to an empty chips field with a space at
@@ -727,7 +730,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append(tokenizedUser);
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length, 0);
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length, 0);
         assertEquals(mEditable.toString(), tokenizedUser);
 
         // Test adding a single address to an empty chips field with a semicolon at
@@ -737,7 +740,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append(tokenizedUser);
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length, 1);
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length, 1);
 
         // Test adding 2 address to an empty chips field. The second to last
         // address should become a chip and the last address should stay as
@@ -746,9 +749,9 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append("user1,user2@user.com");
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length, 1);
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length, 1);
         assertEquals(mEditable.getSpans(0, mEditable.toString().indexOf("user2@user.com"),
-                RecipientChip.class).length, 1);
+                DrawableRecipientChip.class).length, 1);
         assertEquals(mEditable.toString(), "<user1>, user2@user.com");
 
         // Test adding a single address to the end of existing chips. The existing
@@ -773,7 +776,7 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append("user@user.com");
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length,
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length,
                 mMockRecips.length);
         assertEquals(mEditable.toString(), first + second + third + "user@user.com");
 
@@ -790,12 +793,12 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append("user1, user2@user.com");
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length,
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length,
                 mMockRecips.length + 1);
         assertEquals(mEditable.getSpans(mEditable.toString().indexOf("<user1>"), mEditable
-                .toString().indexOf("user2@user.com") - 1, RecipientChip.class).length, 1);
+                .toString().indexOf("user2@user.com") - 1, DrawableRecipientChip.class).length, 1);
         assertEquals(mEditable.getSpans(mEditable.toString().indexOf("user2@user.com"), mEditable
-                .length(), RecipientChip.class).length, 0);
+                .length(), DrawableRecipientChip.class).length, 0);
         assertEquals(mEditable.toString(), first + second + third + "<user1>, user2@user.com");
 
         // Paste 2 addresses after existing chips. We expect the first address to be turned into
@@ -812,12 +815,12 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append("user1,user2@user.com");
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length,
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length,
                 mMockRecips.length + 1);
         assertEquals(mEditable.getSpans(mEditable.toString().indexOf("<user1>"), mEditable
-                .toString().indexOf("user2@user.com") - 1, RecipientChip.class).length, 1);
+                .toString().indexOf("user2@user.com") - 1, DrawableRecipientChip.class).length, 1);
         assertEquals(mEditable.getSpans(mEditable.toString().indexOf("user2@user.com"), mEditable
-                .length(), RecipientChip.class).length, 0);
+                .length(), DrawableRecipientChip.class).length, 0);
         assertEquals(mEditable.toString(), first + second + third + "<user1>, user2@user.com");
 
         // Test a complete token pasted in at the end. It should be turned into a chip.
@@ -825,11 +828,11 @@ public class ChipsTest extends AndroidTestCase {
         mEditable.append("user1, user2@user.com,");
         view.setSelection(mEditable.length());
         view.handlePaste();
-        assertEquals(mEditable.getSpans(0, mEditable.length(), RecipientChip.class).length, 2);
+        assertEquals(mEditable.getSpans(0, mEditable.length(), DrawableRecipientChip.class).length, 2);
         assertEquals(mEditable.getSpans(mEditable.toString().indexOf("<user1>"), mEditable
-                .toString().indexOf("user2@user.com") - 1, RecipientChip.class).length, 1);
+                .toString().indexOf("user2@user.com") - 1, DrawableRecipientChip.class).length, 1);
         assertEquals(mEditable.getSpans(mEditable.toString().indexOf("user2@user.com"), mEditable
-                .length(), RecipientChip.class).length, 1);
+                .length(), DrawableRecipientChip.class).length, 1);
         assertEquals(mEditable.toString(), "<user1>, <user2@user.com>, ");
     }
 
@@ -924,7 +927,7 @@ public class ChipsTest extends AndroidTestCase {
             mMockEntries[i] = RecipientEntry.constructGeneratedEntry("user",
                     "user@username.com", true);
         }
-        mMockRecips = new RecipientChip[size];
+        mMockRecips = new DrawableRecipientChip[size];
         for (int i = 0; i < size; i++) {
             mMockRecips[i] = new VisibleRecipientChip(null, mMockEntries[i]);
         }
