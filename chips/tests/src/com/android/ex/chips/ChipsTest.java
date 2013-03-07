@@ -255,8 +255,8 @@ public class ChipsTest extends AndroidTestCase {
         String first = (String) mTokenizer.terminateToken("FIRST");
         String second = (String) mTokenizer.terminateToken("SECOND");
         String third = (String) mTokenizer.terminateToken("THIRD");
-        String fourth = (String) ("FOURTH,");
-        String fifth = (String) ("FIFTH,");
+        String fourth = "FOURTH,";
+        String fifth = "FIFTH,";
         mEditable = new SpannableStringBuilder();
         mEditable.append(first+second+third+fourth+fifth);
         assertEquals(view.countTokens(mEditable), 5);
@@ -927,7 +927,7 @@ public class ChipsTest extends AndroidTestCase {
         }
         mMockRecips = new RecipientChip[size];
         for (int i = 0; i < size; i++) {
-            mMockRecips[i] = new VisibleRecipientChip(null, mMockEntries[i], i);
+            mMockRecips[i] = new VisibleRecipientChip(null, mMockEntries[i]);
         }
     }
 }
