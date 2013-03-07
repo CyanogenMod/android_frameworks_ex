@@ -157,7 +157,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private TextView mMoreItem;
 
-    private final ArrayList<String> mPendingChips = new ArrayList<String>();
+    // VisibleForTesting
+    final ArrayList<String> mPendingChips = new ArrayList<String>();
 
     private Handler mHandler;
 
@@ -169,7 +170,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private ListPopupWindow mAddressPopup;
 
-    private ArrayList<RecipientChip> mTemporaryRecipients;
+    // VisibleForTesting
+    ArrayList<RecipientChip> mTemporaryRecipients;
 
     private ArrayList<RecipientChip> mRemovedSpans;
 
@@ -903,7 +905,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
      * Create a chip that represents just the email address of a recipient. At some later
      * point, this chip will be attached to a real contact entry, if one exists.
      */
-    private void createReplacementChip(int tokenStart, int tokenEnd, Editable editable,
+    // VisibleForTesting
+    void createReplacementChip(int tokenStart, int tokenEnd, Editable editable,
             boolean visible) {
         if (alreadyHasChip(tokenStart, tokenEnd)) {
             // There is already a chip present at this location.
@@ -911,9 +914,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return;
         }
         String token = editable.toString().substring(tokenStart, tokenEnd);
-        int commitCharIndex = token.trim().lastIndexOf(COMMIT_CHAR_COMMA);
-        if (commitCharIndex == token.length() - 1) {
-            token = token.substring(0, token.length() - 1);
+        final String trimmedToken = token.trim();
+        int commitCharIndex = trimmedToken.lastIndexOf(COMMIT_CHAR_COMMA);
+        if (commitCharIndex == trimmedToken.length() - 1) {
+            token = trimmedToken.substring(0, trimmedToken.length() - 1);
         }
         RecipientEntry entry = createTokenizedEntry(token);
         if (entry != null) {

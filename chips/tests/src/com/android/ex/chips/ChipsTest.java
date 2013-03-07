@@ -929,4 +929,62 @@ public class ChipsTest extends AndroidTestCase {
             mMockRecips[i] = new VisibleRecipientChip(null, mMockEntries[i]);
         }
     }
+
+    /**
+     * <p>
+     * Ensure the original text is always accurate, regardless of the type of email. The original
+     * text is used to determine where to display the chip span. If this test fails, it means some
+     * text that should be turned into one whole chip may behave unexpectedly.
+     * </p>
+     * <p>
+     * For example, a bug was seen where
+     *
+     * <pre>
+     * "Android User" <android@example.com>
+     * </pre>
+     *
+     * was converted to
+     *
+     * <pre>
+     * Android User [android@example.com]
+     * </pre>
+     *
+     * where text inside [] is a chip.
+     * </p>
+     */
+    public void testCreateReplacementChipOriginalText() {
+        // Name in quotes + email address
+        testCreateReplacementChipOriginalText("\"Android User\" <android@example.com>,");
+        // Name in quotes + email address without brackets
+        testCreateReplacementChipOriginalText("\"Android User\" android@example.com,");
+        // Name in quotes
+        testCreateReplacementChipOriginalText("\"Android User\",");
+        // Name without quotes + email address
+        testCreateReplacementChipOriginalText("Android User <android@example.com>,");
+        // Name without quotes
+        testCreateReplacementChipOriginalText("Android User,");
+        // Email address
+        testCreateReplacementChipOriginalText("<android@example.com>,");
+        // Email address without brackets
+        testCreateReplacementChipOriginalText("android@example.com,");
+    }
+
+    private void testCreateReplacementChipOriginalText(final String email) {
+        // No trailing space
+        attemptCreateReplacementChipOriginalText(email.trim());
+        // Trailing space
+        attemptCreateReplacementChipOriginalText(email.trim() + " ");
+    }
+
+    private void attemptCreateReplacementChipOriginalText(final String email) {
+        final RecipientEditTextView view = new RecipientEditTextView(getContext(), null);
+
+        view.setText(email);
+        view.mPendingChips.add(email);
+
+        view.createReplacementChip(0, email.length(), view.getText(), true);
+        // The "original text" should be the email without the comma or space(s)
+        assertEquals(email.replaceAll(",\\s*$", ""),
+                view.mTemporaryRecipients.get(0).getOriginalText().toString().trim());
+    }
 }
