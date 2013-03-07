@@ -142,7 +142,6 @@ public class ChipsTest extends AndroidTestCase {
                 "\"User Name, Jr\" <user@username.com>, ", testAddress);
         assertEquals("Expected a displayable name", "User Name, Jr", testDisplay);
 
-
         RecipientEntry alreadyFormatted =
                 RecipientEntry.constructFakeEntry("user@username.com, ", true);
         testAddress = view.createAddressText(alreadyFormatted);
