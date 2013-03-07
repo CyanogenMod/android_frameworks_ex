@@ -42,7 +42,7 @@ import android.text.style.ImageSpan;
 
     private CharSequence mOriginalText;
 
-    public VisibleRecipientChip(Drawable drawable, RecipientEntry entry, int offset) {
+    public VisibleRecipientChip(Drawable drawable, RecipientEntry entry) {
         super(drawable, DynamicDrawableSpan.ALIGN_BOTTOM);
         mDisplay = entry.getDisplayName();
         mValue = entry.getDestination().trim();
@@ -55,6 +55,7 @@ import android.text.style.ImageSpan;
      * Set the selected state of the chip.
      * @param selected
      */
+    @Override
     public void setSelected(boolean selected) {
         mSelected = selected;
     }
@@ -62,6 +63,7 @@ import android.text.style.ImageSpan;
     /**
      * Return true if the chip is selected.
      */
+    @Override
     public boolean isSelected() {
         return mSelected;
     }
@@ -69,6 +71,7 @@ import android.text.style.ImageSpan;
     /**
      * Get the text displayed in the chip.
      */
+    @Override
     public CharSequence getDisplay() {
         return mDisplay;
     }
@@ -76,6 +79,7 @@ import android.text.style.ImageSpan;
     /**
      * Get the text value this chip represents.
      */
+    @Override
     public CharSequence getValue() {
         return mValue;
     }
@@ -83,6 +87,7 @@ import android.text.style.ImageSpan;
     /**
      * Get the id of the contact associated with this chip.
      */
+    @Override
     public long getContactId() {
         return mContactId;
     }
@@ -90,6 +95,7 @@ import android.text.style.ImageSpan;
     /**
      * Get the id of the data associated with this chip.
      */
+    @Override
     public long getDataId() {
         return mDataId;
     }
@@ -97,17 +103,21 @@ import android.text.style.ImageSpan;
     /**
      * Get associated RecipientEntry.
      */
+    @Override
     public RecipientEntry getEntry() {
         return mEntry;
     }
 
+    @Override
     public void setOriginalText(String text) {
-        if (!TextUtils.isEmpty(text)) {
-            text = text.trim();
+        if (TextUtils.isEmpty(text)) {
+            mOriginalText = text;
+        } else {
+            mOriginalText = text.trim();
         }
-        mOriginalText = text;
     }
 
+    @Override
     public CharSequence getOriginalText() {
         return !TextUtils.isEmpty(mOriginalText) ? mOriginalText : mEntry.getDestination();
     }

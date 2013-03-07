@@ -70,7 +70,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         /**
          * Called with all addresses that could not be resolved to valid recipients.
          */
-        public void matchesNotFound(Set<String> addresses);
+        public void matchesNotFound(Set<String> unfoundAddresses);
     }
 
     public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
@@ -299,12 +299,12 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         return cursor;
     }
 
-    public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,
+    public RecipientAlternatesAdapter(Context context, long contactId, long currentId,
             OnCheckedItemChangedListener listener) {
-        this(context, contactId, currentId, viewId, QUERY_TYPE_EMAIL, listener);
+        this(context, contactId, currentId, QUERY_TYPE_EMAIL, listener);
     }
 
-    public RecipientAlternatesAdapter(Context context, long contactId, long currentId, int viewId,
+    public RecipientAlternatesAdapter(Context context, long contactId, long currentId,
             int queryMode, OnCheckedItemChangedListener listener) {
         super(context, getCursorForConstruction(context, contactId, queryMode), 0);
         mLayoutInflater = LayoutInflater.from(context);

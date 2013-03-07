@@ -234,8 +234,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     }
 
                     // We'll copy this result to mEntry in publicResults() (run in the UX thread).
-                    final List<RecipientEntry> entries = constructEntryList(false,
-                            entryMap, nonAggregatedEntries, existingDestinations);
+                    final List<RecipientEntry> entries = constructEntryList(
+                            entryMap, nonAggregatedEntries);
 
                     // After having local results, check the size of results. If the results are
                     // not enough, we search remote directories, which will take longer time.
@@ -424,8 +424,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
 
             // Show the list again without "waiting" message.
-            updateEntries(constructEntryList(false,
-                    mEntryMap, mNonAggregatedEntries, mExistingDestinations));
+            updateEntries(constructEntryList(mEntryMap, mNonAggregatedEntries));
         }
     }
 
@@ -482,8 +481,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         @Override
         public void handleMessage(Message msg) {
             if (mRemainingDirectoryCount > 0) {
-                updateEntries(constructEntryList(true,
-                        mEntryMap, mNonAggregatedEntries, mExistingDestinations));
+                updateEntries(constructEntryList(mEntryMap, mNonAggregatedEntries));
             }
         }
 
@@ -634,7 +632,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mDelayedMessageHandler.sendDelayedLoadMessage();
     }
 
-    private void putOneEntry(TemporaryEntry entry, boolean isAggregatedEntry,
+    private static void putOneEntry(TemporaryEntry entry, boolean isAggregatedEntry,
             LinkedHashMap<Long, List<RecipientEntry>> entryMap,
             List<RecipientEntry> nonAggregatedEntries,
             Set<String> existingDestinations) {
@@ -675,10 +673,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * thread to get one from directories.
      */
     private List<RecipientEntry> constructEntryList(
-            boolean showMessageIfDirectoryLoadRemaining,
             LinkedHashMap<Long, List<RecipientEntry>> entryMap,
-            List<RecipientEntry> nonAggregatedEntries,
-            Set<String> existingDestinations) {
+            List<RecipientEntry> nonAggregatedEntries) {
         final List<RecipientEntry> entries = new ArrayList<RecipientEntry>();
         int validEntryCount = 0;
         for (Map.Entry<Long, List<RecipientEntry>> mapEntry : entryMap.entrySet()) {
@@ -912,7 +908,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             if (imageView != null) {
                 imageView.setVisibility(View.VISIBLE);
                 final byte[] photoBytes = entry.getPhotoBytes();
-                if (photoBytes != null && imageView != null) {
+                if (photoBytes != null) {
                     final Bitmap photo = BitmapFactory.decodeByteArray(photoBytes, 0,
                             photoBytes.length);
                     imageView.setImageBitmap(photo);
