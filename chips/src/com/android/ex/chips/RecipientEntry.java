@@ -19,6 +19,8 @@ package com.android.ex.chips;
 import android.net.Uri;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.DisplayNameSources;
+import android.text.util.Rfc822Token;
+import android.text.util.Rfc822Tokenizer;
 
 /**
  * Represents one entry inside recipient auto-complete list.
@@ -106,8 +108,11 @@ public class RecipientEntry {
      * This address has not been resolved to a contact and therefore does not
      * have a contact id or photo.
      */
-    public static RecipientEntry constructFakeEntry(String address, boolean isValid) {
-        return new RecipientEntry(ENTRY_TYPE_PERSON, address, address,
+    public static RecipientEntry constructFakeEntry(final String address, final boolean isValid) {
+        final Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(address);
+        final String tokenizedAddress = tokens[0].getAddress();
+
+        return new RecipientEntry(ENTRY_TYPE_PERSON, tokenizedAddress, tokenizedAddress,
                 INVALID_DESTINATION_TYPE, null,
                 INVALID_CONTACT, INVALID_CONTACT, null, true, isValid);
     }
