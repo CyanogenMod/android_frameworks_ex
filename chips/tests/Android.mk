@@ -20,7 +20,6 @@ LOCAL_PACKAGE_NAME := ChipsTests
 LOCAL_MODULE_TAGS := tests
 LOCAL_SDK_VERSION := current
 LOCAL_CERTIFICATE := platform
-LOCAL_JAVA_LIBRARIES := android.test.runner
 LOCAL_STATIC_JAVA_LIBRARIES += android-common-chips
 LOCAL_RESOURCE_DIR := frameworks/ex/chips/res/
 LOCAL_AAPT_FLAGS := --auto-add-overlay

@@ -18,7 +18,12 @@ package com.android.ex.chips;
 
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.net.Uri;
+import android.provider.ContactsContract.DisplayNameSources;
 import android.test.AndroidTestCase;
+
+import com.android.ex.chips.RecipientAlternatesAdapter;
+import com.android.ex.chips.RecipientEntry;
 
 public class RecipientAlternatesAdapterTest extends AndroidTestCase {
 
@@ -98,5 +103,56 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         assertEquals(dataId, c.getLong(5));
         assertEquals(photoUri, c.getString(6));
         assertEquals(displayNameSource, c.getInt(7));
+    }
+
+    public void testGetBetterRecipient() {
+        // Ensure that if either (but not both) parameters are null, the other is returned
+        {
+            final RecipientEntry entry1 =
+                    RecipientEntry.constructFakeEntry("1@android.com", true);
+            final RecipientEntry entry2 = null;
+
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
+        }
+
+        // Ensure that if only one has a display name, it is used
+        {
+            final RecipientEntry entry1 =
+                    RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
+                            "1@android.com", 0, null, 0, 0, (Uri) null, true);
+            final RecipientEntry entry2 = RecipientEntry.constructFakeEntry("1@android.com", true);
+
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
+        }
+
+        // Ensure that if one has a display name different from its destination, and the other's
+        // is equal to its destination, we use the unique one
+        {
+            final RecipientEntry entry1 =
+                    RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
+                            "1@android.com", 0, null, 0, 0, (Uri) null, true);
+            final RecipientEntry entry2 =
+                    RecipientEntry.constructTopLevelEntry("2@android.com", DisplayNameSources.EMAIL,
+                            "2@android.com", 0, null, 0, 0, (Uri) null, true);
+
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
+        }
+
+        // Ensure that if only one has a photo, it is used
+        {
+            final RecipientEntry entry1 =
+                    RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
+                            "1@android.com", 0, null, 0, 0, Uri.parse("http://www.android.com"),
+                            true);
+            final RecipientEntry entry2 =
+                    RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.EMAIL,
+                            "2@android.com", 0, null, 0, 0, (Uri) null, true);
+
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
+            assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
+        }
     }
 }

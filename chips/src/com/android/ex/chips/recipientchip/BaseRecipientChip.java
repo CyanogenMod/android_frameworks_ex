@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,71 +14,60 @@
  * limitations under the License.
  */
 
-package com.android.ex.chips;
+package com.android.ex.chips.recipientchip;
 
-import android.graphics.Canvas;
-import android.graphics.Rect;
+import com.android.ex.chips.RecipientEntry;
 
 /**
- * RecipientChip defines a drawable object that contains information relevant to a
+ * BaseRecipientChip defines an object that contains information relevant to a
  * particular recipient.
  */
-/* package */interface RecipientChip {
+interface BaseRecipientChip {
 
     /**
      * Set the selected state of the chip.
-     * @param selected
      */
-    public void setSelected(boolean selected);
+    void setSelected(boolean selected);
+
     /**
      * Return true if the chip is selected.
      */
-    public boolean isSelected();
+    boolean isSelected();
 
     /**
      * Get the text displayed in the chip.
      */
-    public CharSequence getDisplay();
+    CharSequence getDisplay();
 
     /**
      * Get the text value this chip represents.
      */
-    public CharSequence getValue();
+    CharSequence getValue();
 
     /**
      * Get the id of the contact associated with this chip.
      */
-    public long getContactId();
+    long getContactId();
 
     /**
      * Get the id of the data associated with this chip.
      */
-    public long getDataId();
+    long getDataId();
 
     /**
      * Get associated RecipientEntry.
      */
-    public RecipientEntry getEntry();
+    RecipientEntry getEntry();
 
     /**
      * Set the text in the edittextview originally associated with this chip
      * before any reverse lookups.
      */
-    public void setOriginalText(String text);
+    void setOriginalText(String text);
 
     /**
      * Set the text in the edittextview originally associated with this chip
      * before any reverse lookups.
      */
-    public CharSequence getOriginalText();
-
-    /**
-     * Get the bounds of the chip; may be 0,0 if it is not visibly rendered.
-     */
-    public Rect getBounds();
-
-    /**
-     * Draw the chip.
-     */
-    public void draw(Canvas canvas);
+    CharSequence getOriginalText();
 }
