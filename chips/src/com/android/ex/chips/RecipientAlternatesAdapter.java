@@ -136,10 +136,17 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         final Set<String> matchesNotFound = new HashSet<String>();
         if (recipientEntries.size() < addresses.size()) {
             final List<DirectorySearchParams> paramsList;
-            Cursor directoryCursor = context.getContentResolver().query(DirectoryListQuery.URI,
-                    DirectoryListQuery.PROJECTION, null, null, null);
-            paramsList = BaseRecipientAdapter.setupOtherDirectories(context, directoryCursor,
-                    account);
+            Cursor directoryCursor = null;
+            try {
+                directoryCursor = context.getContentResolver().query(DirectoryListQuery.URI,
+                        DirectoryListQuery.PROJECTION, null, null, null);
+                paramsList = BaseRecipientAdapter.setupOtherDirectories(context, directoryCursor,
+                        account);
+            } finally {
+                if (directoryCursor != null) {
+                    directoryCursor.close();
+                }
+            }
             // Run a directory query for each unmatched recipient.
             HashSet<String> unresolvedAddresses = new HashSet<String>();
             for (String address : addresses) {
