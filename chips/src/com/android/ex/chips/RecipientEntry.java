@@ -110,7 +110,7 @@ public class RecipientEntry {
      */
     public static RecipientEntry constructFakeEntry(final String address, final boolean isValid) {
         final Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(address);
-        final String tokenizedAddress = tokens[0].getAddress();
+        final String tokenizedAddress = tokens.length > 0 ? tokens[0].getAddress() : address;
 
         return new RecipientEntry(ENTRY_TYPE_PERSON, tokenizedAddress, tokenizedAddress,
                 INVALID_DESTINATION_TYPE, null,
