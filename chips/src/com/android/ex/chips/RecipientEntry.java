@@ -118,6 +118,16 @@ public class RecipientEntry {
     }
 
     /**
+     * Construct a RecipientEntry from just a phone number.
+     */
+    public static RecipientEntry constructFakePhoneEntry(final String phoneNumber,
+            final boolean isValid) {
+        return new RecipientEntry(ENTRY_TYPE_PERSON, phoneNumber, phoneNumber,
+                INVALID_DESTINATION_TYPE, null,
+                INVALID_CONTACT, INVALID_CONTACT, null, true, isValid);
+    }
+
+    /**
      * @return the display name for the entry.  If the display name source is larger than
      * {@link DisplayNameSources#PHONE} we use the contact's display name, but if not,
      * i.e. the display name came from an email address or a phone number, we don't use it
