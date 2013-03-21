@@ -1010,7 +1010,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return null;
         }
         if (isPhoneQuery() && isPhoneNumber(token)) {
-            return RecipientEntry.constructFakeEntry(token, true);
+            return RecipientEntry.constructFakePhoneEntry(token, true);
         }
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(token);
         String display = null;
