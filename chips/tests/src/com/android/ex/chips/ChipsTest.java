@@ -28,10 +28,13 @@ import android.text.style.ImageSpan;
 import android.text.util.Rfc822Tokenizer;
 import android.widget.TextView;
 
+import com.android.ex.chips.BaseRecipientAdapter;
 import com.android.ex.chips.RecipientEditTextView;
 import com.android.ex.chips.RecipientEntry;
 import com.android.ex.chips.recipientchip.DrawableRecipientChip;
 import com.android.ex.chips.recipientchip.VisibleRecipientChip;;
+
+import java.util.regex.Pattern;
 
 @SmallTest
 public class ChipsTest extends AndroidTestCase {
@@ -122,8 +125,13 @@ public class ChipsTest extends AndroidTestCase {
     }
 
     private class TestBaseRecipientAdapter extends BaseRecipientAdapter {
-        public TestBaseRecipientAdapter(Context context) {
+        public TestBaseRecipientAdapter(final Context context) {
             super(context);
+        }
+
+        public TestBaseRecipientAdapter(final Context context, final int preferredMaxResultCount,
+                final int queryMode) {
+            super(context, preferredMaxResultCount, queryMode);
         }
     }
 
@@ -989,5 +997,32 @@ public class ChipsTest extends AndroidTestCase {
         // The "original text" should be the email without the comma or space(s)
         assertEquals(email.replaceAll(",\\s*$", ""),
                 view.mTemporaryRecipients.get(0).getOriginalText().toString().trim());
+    }
+
+    public void testCreateTokenizedEntryForPhone() {
+        final String phonePattern = "[^\\d]*888[^\\d]*555[^\\d]*1234[^\\d]*";
+        final String phone1 = "8885551234";
+        final String phone2 = "888-555-1234";
+        final String phone3 = "(888) 555-1234";
+
+        final RecipientEditTextView view = new RecipientEditTextView(getContext(), null);
+        final BaseRecipientAdapter adapter = new TestBaseRecipientAdapter(getContext(), 10,
+                BaseRecipientAdapter.QUERY_TYPE_PHONE);
+        view.setAdapter(adapter);
+
+        final RecipientEntry entry1 = view.createTokenizedEntry(phone1);
+        final String destination1 = entry1.getDestination();
+        assertTrue(phone1 + " failed with " + destination1,
+                Pattern.matches(phonePattern, destination1));
+
+        final RecipientEntry entry2 = view.createTokenizedEntry(phone2);
+        final String destination2 = entry2.getDestination();
+        assertTrue(phone2 + " failed with " + destination2,
+                Pattern.matches(phonePattern, destination2));
+
+        final RecipientEntry entry3 = view.createTokenizedEntry(phone3);
+        final String destination3 = entry3.getDestination();
+        assertTrue(phone3 + " failed with " + destination3,
+                Pattern.matches(phonePattern, destination3));
     }
 }

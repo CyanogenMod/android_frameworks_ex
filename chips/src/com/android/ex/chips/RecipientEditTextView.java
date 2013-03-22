@@ -967,7 +967,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return match.matches();
     }
 
-    private RecipientEntry createTokenizedEntry(String token) {
+    // VisibleForTesting
+    RecipientEntry createTokenizedEntry(final String token) {
         if (TextUtils.isEmpty(token)) {
             return null;
         }
