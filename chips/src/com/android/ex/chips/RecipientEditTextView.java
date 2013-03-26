@@ -959,7 +959,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         String token = editable.toString().substring(tokenStart, tokenEnd);
         final String trimmedToken = token.trim();
         int commitCharIndex = trimmedToken.lastIndexOf(COMMIT_CHAR_COMMA);
-        if (commitCharIndex == trimmedToken.length() - 1) {
+        if (commitCharIndex != -1 && commitCharIndex == trimmedToken.length() - 1) {
             token = trimmedToken.substring(0, trimmedToken.length() - 1);
         }
         RecipientEntry entry = createTokenizedEntry(token);
