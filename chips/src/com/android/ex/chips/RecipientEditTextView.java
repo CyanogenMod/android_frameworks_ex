@@ -1450,36 +1450,45 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
-    private void showAlternates(DrawableRecipientChip currentChip, ListPopupWindow alternatesPopup,
-            int width) {
-        int line = getLayout().getLineForOffset(getChipStart(currentChip));
-        int bottom;
-        if (line == getLineCount() -1) {
-            bottom = 0;
-        } else {
-            bottom = -(int) ((mChipHeight + (2 * mLineSpacingExtra)) * (Math.abs(getLineCount() - 1
-                    - line)));
-        }
-        // Align the alternates popup with the left side of the View,
-        // regardless of the position of the chip tapped.
-        alternatesPopup.setWidth(width);
-        alternatesPopup.setAnchorView(this);
-        alternatesPopup.setVerticalOffset(bottom);
-        alternatesPopup.setAdapter(createAlternatesAdapter(currentChip));
-        alternatesPopup.setOnItemClickListener(mAlternatesListener);
-        // Clear the checked item.
-        mCheckedItem = -1;
-        alternatesPopup.show();
-        ListView listView = alternatesPopup.getListView();
-        listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        // Checked item would be -1 if the adapter has not
-        // loaded the view that should be checked yet. The
-        // variable will be set correctly when onCheckedItemChanged
-        // is called in a separate thread.
-        if (mCheckedItem != -1) {
-            listView.setItemChecked(mCheckedItem, true);
-            mCheckedItem = -1;
-        }
+    private void showAlternates(final DrawableRecipientChip currentChip,
+            final ListPopupWindow alternatesPopup, final int width) {
+        new AsyncTask<Void, Void, ListAdapter>() {
+            @Override
+            protected ListAdapter doInBackground(final Void... params) {
+                return createAlternatesAdapter(currentChip);
+            }
+
+            protected void onPostExecute(final ListAdapter result) {
+                int line = getLayout().getLineForOffset(getChipStart(currentChip));
+                int bottom;
+                if (line == getLineCount() -1) {
+                    bottom = 0;
+                } else {
+                    bottom = -(int) ((mChipHeight + (2 * mLineSpacingExtra)) * (Math
+                            .abs(getLineCount() - 1 - line)));
+                }
+                // Align the alternates popup with the left side of the View,
+                // regardless of the position of the chip tapped.
+                alternatesPopup.setWidth(width);
+                alternatesPopup.setAnchorView(RecipientEditTextView.this);
+                alternatesPopup.setVerticalOffset(bottom);
+                alternatesPopup.setAdapter(result);
+                alternatesPopup.setOnItemClickListener(mAlternatesListener);
+                // Clear the checked item.
+                mCheckedItem = -1;
+                alternatesPopup.show();
+                ListView listView = alternatesPopup.getListView();
+                listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+                // Checked item would be -1 if the adapter has not
+                // loaded the view that should be checked yet. The
+                // variable will be set correctly when onCheckedItemChanged
+                // is called in a separate thread.
+                if (mCheckedItem != -1) {
+                    listView.setItemChecked(mCheckedItem, true);
+                    mCheckedItem = -1;
+                }
+            }
+        }.execute((Void[]) null);
     }
 
     private ListAdapter createAlternatesAdapter(DrawableRecipientChip chip) {
