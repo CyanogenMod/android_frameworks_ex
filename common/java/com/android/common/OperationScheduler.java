@@ -42,6 +42,9 @@ public class OperationScheduler {
         /** Wait this long times the number of consecutive errors so far before retrying. */
         public long backoffIncrementalMillis = 5000;
 
+        /** Wait this long times 2^(number of consecutive errors so far) before retrying. */
+        public int backoffExponentialMillis = 0;
+
         /** Maximum duration of moratorium to honor.  Mostly an issue for clock rollbacks. */
         public long maxMoratoriumMillis = 24 * 3600 * 1000;
 
@@ -53,11 +56,20 @@ public class OperationScheduler {
 
         @Override
         public String toString() {
-            return String.format(
+            if (backoffExponentialMillis > 0) {
+                return String.format(
+                    "OperationScheduler.Options[backoff=%.1f+%.1f+%.1f max=%.1f min=%.1f period=%.1f]",
+                    backoffFixedMillis / 1000.0, backoffIncrementalMillis / 1000.0,
+                    backoffExponentialMillis / 1000.0,
+                    maxMoratoriumMillis / 1000.0, minTriggerMillis / 1000.0,
+                    periodicIntervalMillis / 1000.0);
+            } else {
+                return String.format(
                     "OperationScheduler.Options[backoff=%.1f+%.1f max=%.1f min=%.1f period=%.1f]",
                     backoffFixedMillis / 1000.0, backoffIncrementalMillis / 1000.0,
                     maxMoratoriumMillis / 1000.0, minTriggerMillis / 1000.0,
                     periodicIntervalMillis / 1000.0);
+            }
         }
     }
 
@@ -76,7 +88,7 @@ public class OperationScheduler {
      * Parse scheduler options supplied in this string form:
      *
      * <pre>
-     * backoff=(fixed)+(incremental) max=(maxmoratorium) min=(mintrigger) [period=](interval)
+     * backoff=(fixed)+(incremental)[+(exponential)] max=(maxmoratorium) min=(mintrigger) [period=](interval)
      * </pre>
      *
      * All values are times in (possibly fractional) <em>seconds</em> (not milliseconds).
@@ -97,14 +109,18 @@ public class OperationScheduler {
         for (String param : spec.split(" +")) {
             if (param.length() == 0) continue;
             if (param.startsWith("backoff=")) {
-                int plus = param.indexOf('+', 8);
-                if (plus < 0) {
-                    options.backoffFixedMillis = parseSeconds(param.substring(8));
-                } else {
-                    if (plus > 8) {
-                        options.backoffFixedMillis = parseSeconds(param.substring(8, plus));
-                    }
-                    options.backoffIncrementalMillis = parseSeconds(param.substring(plus + 1));
+                String[] pieces = param.substring(8).split("\\+");
+                if (pieces.length > 3) {
+                    throw new IllegalArgumentException("bad value for backoff: [" + spec + "]");
+                }
+                if (pieces.length > 0 && pieces[0].length() > 0) {
+                    options.backoffFixedMillis = parseSeconds(pieces[0]);
+                }
+                if (pieces.length > 1 && pieces[1].length() > 0) {
+                    options.backoffIncrementalMillis = parseSeconds(pieces[1]);
+                }
+                if (pieces.length > 2 && pieces[2].length() > 0) {
+                    options.backoffExponentialMillis = (int)parseSeconds(pieces[2]);
                 }
             } else if (param.startsWith("max=")) {
                 options.maxMoratoriumMillis = parseSeconds(param.substring(4));
@@ -160,8 +176,21 @@ public class OperationScheduler {
         time = Math.max(time, moratoriumTimeMillis);
         time = Math.max(time, lastSuccessTimeMillis + options.minTriggerMillis);
         if (errorCount > 0) {
-            time = Math.max(time, lastErrorTimeMillis + options.backoffFixedMillis +
-                    options.backoffIncrementalMillis * errorCount);
+            int shift = errorCount-1;
+            // backoffExponentialMillis is an int, so we can safely
+            // double it 30 times without overflowing a long.
+            if (shift > 30) shift = 30;
+            long backoff = options.backoffFixedMillis +
+                (options.backoffIncrementalMillis * errorCount) +
+                (((long)options.backoffExponentialMillis) << shift);
+
+            // Treat backoff like a moratorium: don't let the backoff
+            // time grow too large.
+            if (moratoriumTimeMillis > 0 && backoff > moratoriumTimeMillis) {
+                backoff = moratoriumTimeMillis;
+            }
+
+            time = Math.max(time, lastErrorTimeMillis + backoff);
         }
         return time;
     }

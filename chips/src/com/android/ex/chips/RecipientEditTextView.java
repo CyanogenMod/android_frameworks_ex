@@ -409,6 +409,44 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
+    private int getExcessTopPadding() {
+        if (sExcessTopPadding == -1) {
+            sExcessTopPadding = (int) (mChipHeight + mLineSpacingExtra);
+        }
+        return sExcessTopPadding;
+    }
+
+    public <T extends ListAdapter & Filterable> void setAdapter(T adapter) {
+        super.setAdapter(adapter);
+        ((BaseRecipientAdapter) adapter)
+                .registerUpdateObserver(new BaseRecipientAdapter.EntriesUpdatedObserver() {
+                    @Override
+                    public void onChanged(List<RecipientEntry> entries) {
+                        // Scroll the chips field to the top of the screen so
+                        // that the user can see as many results as possible.
+                        if (entries != null && entries.size() > 0) {
+                            scrollBottomIntoView();
+                        }
+                    }
+                });
+    }
+
+    private void scrollBottomIntoView() {
+        if (mScrollView != null && mShouldShrink) {
+            int[] location = new int[2];
+            getLocationOnScreen(location);
+            int height = getHeight();
+            int currentPos = location[1] + height;
+            // Desired position shows at least 1 line of chips below the action
+            // bar. We add excess padding to make sure this is always below other
+            // content.
+            int desiredPos = (int) mChipHeight + mActionBarHeight + getExcessTopPadding();
+            if (currentPos > desiredPos) {
+                mScrollView.scrollBy(0, currentPos - desiredPos);
+            }
+        }
+    }
+
     @Override
     public void performValidation() {
         // Do nothing. Chips handles its own validation.
@@ -921,7 +959,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         String token = editable.toString().substring(tokenStart, tokenEnd);
         final String trimmedToken = token.trim();
         int commitCharIndex = trimmedToken.lastIndexOf(COMMIT_CHAR_COMMA);
-        if (commitCharIndex == trimmedToken.length() - 1) {
+        if (commitCharIndex != -1 && commitCharIndex == trimmedToken.length() - 1) {
             token = trimmedToken.substring(0, trimmedToken.length() - 1);
         }
         RecipientEntry entry = createTokenizedEntry(token);
@@ -2249,45 +2287,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
     }
 
-    @Override
-    public <T extends ListAdapter & Filterable> void setAdapter(T adapter) {
-        super.setAdapter(adapter);
-        ((BaseRecipientAdapter) adapter)
-                .registerUpdateObserver(new BaseRecipientAdapter.EntriesUpdatedObserver() {
-                    @Override
-                    public void onChanged(List<RecipientEntry> entries) {
-                        if (entries != null && entries.size() > 0) {
-                            scrollBottomIntoView();
-                        }
-                    }
-                });
-    }
-
-    private void scrollBottomIntoView() {
-        if (mScrollView != null && mShouldShrink) {
-            int[] location = new int[2];
-            getLocationOnScreen(location);
-            int height = getHeight();
-            int currentPos = location[1] + height;
-            // Desired position shows at least 1 line of chips below the action
-            // bar.
-            // We add excess padding to make sure this is always below other
-            // content.
-            int desiredPos = (int) mChipHeight + mActionBarHeight + getExcessTopPadding();
-            if (currentPos > desiredPos) {
-                mScrollView.scrollBy(0, currentPos - desiredPos);
-            }
-        }
-    }
-
-    private int getExcessTopPadding() {
-        if (sExcessTopPadding == -1) {
-            sExcessTopPadding = (int) (mChipHeight + mLineSpacingExtra);
-        }
-        return sExcessTopPadding;
-    }
-
-    public boolean lastCharacterIsCommitCharacter(CharSequence s) {
+   public boolean lastCharacterIsCommitCharacter(CharSequence s) {
         char last;
         int end = getSelectionEnd() == 0 ? 0 : getSelectionEnd() - 1;
         int len = length() - 1;
@@ -2366,6 +2366,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 prevTokenStart = tokenStart;
                 tokenStart = mTokenizer.findTokenStart(text, tokenStart);
                 findChip = findChip(tokenStart);
+                if (tokenStart == originalTokenStart && findChip == null) {
+                    break;
+                }
             }
             if (tokenStart != originalTokenStart) {
                 if (findChip != null) {

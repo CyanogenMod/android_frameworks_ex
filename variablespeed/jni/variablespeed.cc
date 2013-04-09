@@ -582,7 +582,7 @@ static void CreateAndRealizeAudioPlayer(SLuint32 slSampleRate,
   const size_t playerInterfaceCount = 2;
   const SLInterfaceID iids[playerInterfaceCount] = {
       SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_ANDROIDCONFIGURATION };
-  const SLboolean reqs[playerInterfaceCount] = { SL_BOOLEAN_TRUE };
+  const SLboolean reqs[playerInterfaceCount] = { SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE };
   OpenSL(engineInterface, CreateAudioPlayer, &audioPlayer, &playingSrc,
       &audioSnk, playerInterfaceCount, iids, reqs);
   setAudioStreamType(audioPlayer, audioStreamType);
@@ -619,7 +619,7 @@ bool AudioEngine::PlayFromThisSource(const SLDataSource& audioSrc) {
       SL_IID_ANDROIDSIMPLEBUFFERQUEUE, SL_IID_PREFETCHSTATUS, SL_IID_SEEK,
       SL_IID_METADATAEXTRACTION, SL_IID_ANDROIDCONFIGURATION };
   const SLboolean decodePlayerRequired[decoderInterfaceCount] = {
-      SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE };
+      SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE };
   SLDataSource sourceCopy(audioSrc);
   OpenSL(engineInterface, CreateAudioPlayer, &decoder, &sourceCopy, &decDest,
       decoderInterfaceCount, decodePlayerInterfaces, decodePlayerRequired);
