@@ -44,6 +44,7 @@ LOCAL_SHARED_LIBRARIES := \
     libstlport \
     libutils \
     libcutils \
+    liblog \
 
 LOCAL_LDLIBS := \
     -lOpenSLES \
