@@ -25,6 +25,3 @@ LOCAL_SRC_FILES := \
      $(call all-renderscript-files-under, java)
 
 include $(BUILD_STATIC_JAVA_LIBRARY)
-
-# Include this library in the build server's output directory
-$(call dist-for-goals, droidcore, $(LOCAL_BUILT_MODULE):android-common-carousel.jar)
