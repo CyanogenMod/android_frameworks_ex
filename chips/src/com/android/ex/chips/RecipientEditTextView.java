@@ -57,6 +57,7 @@ import android.text.InputType;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
@@ -2545,11 +2546,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 final Runnable runnable = new Runnable() {
                     @Override
                     public void run() {
-                        Editable oldText = getText();
-                        int start, end;
+                        final Editable text = new SpannableStringBuilder(getText());
                         int i = 0;
-                        for (DrawableRecipientChip chip : recipients) {
-                            DrawableRecipientChip replacement = replacements.get(i);
+                        for (final DrawableRecipientChip chip : recipients) {
+                            final DrawableRecipientChip replacement = replacements.get(i);
                             if (replacement != null) {
                                 final RecipientEntry oldEntry = chip.getEntry();
                                 final RecipientEntry newEntry = replacement.getEntry();
@@ -2559,25 +2559,24 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
                                 if (isBetter) {
                                     // Find the location of the chip in the text currently shown.
-                                    start = oldText.getSpanStart(chip);
+                                    final int start = text.getSpanStart(chip);
                                     if (start != -1) {
                                         // Replacing the entirety of what the chip represented,
                                         // including the extra space dividing it from other chips.
-                                        end = oldText.getSpanEnd(chip) + 1;
-                                        oldText.removeSpan(chip);
+                                        final int end = text.getSpanEnd(chip) + 1;
+                                        text.removeSpan(chip);
                                         // Make sure we always have just 1 space at the end to
                                         // separate this chip from the next chip.
-                                        SpannableString displayText =
+                                        final SpannableString displayText =
                                                 new SpannableString(createAddressText(
-                                                        replacement.getEntry()).trim()
-                                                        + " ");
+                                                        replacement.getEntry()).trim() + " ");
                                         displayText.setSpan(replacement, 0,
                                                 displayText.length() - 1,
                                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                                         // Replace the old text we found with with the new display
                                         // text, which now may also contain the display name of the
                                         // recipient.
-                                        oldText.replace(start, end, displayText);
+                                        text.replace(start, end, displayText);
                                         replacement.setOriginalText(displayText.toString());
                                         replacements.set(i, null);
 
@@ -2587,6 +2586,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                             }
                             i++;
                         }
+                        setText(text);
                     }
                 };
 
