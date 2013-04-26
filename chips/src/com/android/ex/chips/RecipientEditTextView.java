@@ -417,6 +417,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return sExcessTopPadding;
     }
 
+    @Override
     public <T extends ListAdapter & Filterable> void setAdapter(T adapter) {
         super.setAdapter(adapter);
         ((BaseRecipientAdapter) adapter)
@@ -1459,6 +1460,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 return createAlternatesAdapter(currentChip);
             }
 
+            @Override
             protected void onPostExecute(final ListAdapter result) {
                 int line = getLayout().getLineForOffset(getChipStart(currentChip));
                 int bottom;
@@ -2490,10 +2492,12 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     addresses.add(createAddressText(chip.getEntry()));
                 }
             }
+            final BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
+            if (adapter == null) {
+                return null;
+            }
             RecipientAlternatesAdapter.getMatchingRecipients(getContext(), addresses,
-                    ((BaseRecipientAdapter) getAdapter()).getAccount(),
-                    new RecipientMatchCallback() {
-
+                    adapter.getAccount(), new RecipientMatchCallback() {
                         @Override
                         public void matchesFound(Map<String, RecipientEntry> entries) {
                             final ArrayList<DrawableRecipientChip> replacements =
