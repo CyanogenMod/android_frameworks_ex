@@ -2566,7 +2566,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                     if (start != -1) {
                                         // Replacing the entirety of what the chip represented,
                                         // including the extra space dividing it from other chips.
-                                        final int end = text.getSpanEnd(chip) + 1;
+                                        final int end =
+                                                Math.min(text.getSpanEnd(chip) + 1, text.length());
                                         text.removeSpan(chip);
                                         // Make sure we always have just 1 space at the end to
                                         // separate this chip from the next chip.
