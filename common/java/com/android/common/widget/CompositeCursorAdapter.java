@@ -309,10 +309,14 @@ public abstract class CompositeCursorAdapter extends BaseAdapter {
             int end = start  + mPartitions[i].count;
             if (position >= start && position < end) {
                 int offset = position - start;
-                if (mPartitions[i].hasHeader && offset == 0) {
-                    return IGNORE_ITEM_VIEW_TYPE;
+                if (mPartitions[i].hasHeader) {
+                    offset--;
                 }
-                return getItemViewType(i, position);
+                if (offset == -1) {
+                    return IGNORE_ITEM_VIEW_TYPE;
+                } else {
+                    return getItemViewType(i, offset);
+                }
             }
             start = end;
         }
