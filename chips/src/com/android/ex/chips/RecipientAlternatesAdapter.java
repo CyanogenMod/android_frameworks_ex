@@ -140,8 +140,12 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             try {
                 directoryCursor = context.getContentResolver().query(DirectoryListQuery.URI,
                         DirectoryListQuery.PROJECTION, null, null, null);
-                paramsList = BaseRecipientAdapter.setupOtherDirectories(context, directoryCursor,
-                        account);
+                if (directoryCursor == null) {
+                    paramsList = null;
+                } else {
+                    paramsList = BaseRecipientAdapter.setupOtherDirectories(context,
+                            directoryCursor, account);
+                }
             } finally {
                 if (directoryCursor != null) {
                     directoryCursor.close();
@@ -157,35 +161,37 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
 
             matchesNotFound.addAll(unresolvedAddresses);
 
-            Cursor directoryContactsCursor = null;
-            for (String unresolvedAddress : unresolvedAddresses) {
-                for (int i = 0; i < paramsList.size(); i++) {
-                    try {
-                        directoryContactsCursor = doQuery(unresolvedAddress, 1,
-                                paramsList.get(i).directoryId, account,
-                                context.getContentResolver(), query);
-                    } finally {
-                        if (directoryContactsCursor != null
-                                && directoryContactsCursor.getCount() == 0) {
-                            directoryContactsCursor.close();
-                            directoryContactsCursor = null;
-                        } else {
-                            break;
+            if (paramsList != null) {
+                Cursor directoryContactsCursor = null;
+                for (String unresolvedAddress : unresolvedAddresses) {
+                    for (int i = 0; i < paramsList.size(); i++) {
+                        try {
+                            directoryContactsCursor = doQuery(unresolvedAddress, 1,
+                                    paramsList.get(i).directoryId, account,
+                                    context.getContentResolver(), query);
+                        } finally {
+                            if (directoryContactsCursor != null
+                                    && directoryContactsCursor.getCount() == 0) {
+                                directoryContactsCursor.close();
+                                directoryContactsCursor = null;
+                            } else {
+                                break;
+                            }
                         }
                     }
-                }
-                if (directoryContactsCursor != null) {
-                    try {
-                        final Map<String, RecipientEntry> entries =
-                                processContactEntries(directoryContactsCursor);
+                    if (directoryContactsCursor != null) {
+                        try {
+                            final Map<String, RecipientEntry> entries =
+                                    processContactEntries(directoryContactsCursor);
 
-                        for (final String address : entries.keySet()) {
-                            matchesNotFound.remove(address);
+                            for (final String address : entries.keySet()) {
+                                matchesNotFound.remove(address);
+                            }
+
+                            callback.matchesFound(entries);
+                        } finally {
+                            directoryContactsCursor.close();
                         }
-
-                        callback.matchesFound(entries);
-                    } finally {
-                        directoryContactsCursor.close();
                     }
                 }
             }
