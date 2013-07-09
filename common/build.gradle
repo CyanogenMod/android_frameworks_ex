@@ -1,6 +1,6 @@
 apply plugin: 'android-library'
 
-buildDir = "$project.rootDir/out/android-$project.name"
+buildDir = "$project.rootBuildDir/android-$project.name"
 
 android {
     compileSdkVersion 17
