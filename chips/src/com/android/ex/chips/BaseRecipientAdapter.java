@@ -140,7 +140,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     }
 
     /** Used to temporarily hold results in Cursor objects. */
-    private static class TemporaryEntry {
+    protected static class TemporaryEntry {
         public final String displayName;
         public final String destination;
         public final int destinationType;
@@ -149,6 +149,25 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public final long dataId;
         public final String thumbnailUriString;
         public final int displayNameSource;
+
+        public TemporaryEntry(
+                String displayName,
+                String destination,
+                int destinationType,
+                String destinationLabel,
+                long contactId,
+                long dataId,
+                String thumbnailUriString,
+                int displayNameSource) {
+            this.displayName = displayName;
+            this.destination = destination;
+            this.destinationType = destinationType;
+            this.destinationLabel = destinationLabel;
+            this.contactId = contactId;
+            this.dataId = dataId;
+            this.thumbnailUriString = thumbnailUriString;
+            this.displayNameSource = displayNameSource;
+        }
 
         public TemporaryEntry(Cursor cursor) {
             this.displayName = cursor.getString(Queries.Query.NAME);
@@ -322,7 +341,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     /**
      * An asynchronous filter that performs search in a particular directory.
      */
-    private final class DirectoryFilter extends Filter {
+    protected class DirectoryFilter extends Filter {
         private final DirectorySearchParams mParams;
         private int mLimit;
 
@@ -536,6 +555,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         }
     }
 
+    public Context getContext() {
+        return mContext;
+    }
+
     public int getQueryType() {
         return mQueryType;
     }
@@ -552,6 +575,16 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     @Override
     public Filter getFilter() {
         return new DefaultFilter();
+    }
+
+    /**
+     * An extesion to {@link RecipientAlternatesAdapter#getMatchingRecipients} that allows
+     * additional sources of contacts to be considered as matching recipients.
+     * @param addresses A set of addresses to be matched
+     * @return A list of matches or null if none found
+     */
+    public Map<String, RecipientEntry> getMatchingRecipients(Set<String> addresses) {
+        return null;
     }
 
     public static List<DirectorySearchParams> setupOtherDirectories(Context context,
@@ -612,7 +645,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * Starts search in other directories using {@link Filter}. Results will be handled in
      * {@link DirectoryFilter}.
      */
-    private void startSearchOtherDirectories(
+    protected void startSearchOtherDirectories(
             CharSequence constraint, List<DirectorySearchParams> paramsList, int limit) {
         final int count = paramsList.size();
         // Note: skipping the default partition (index 0), which has already been loaded
@@ -729,7 +762,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mTempEntries = null;
     }
 
-    private List<RecipientEntry> getEntries() {
+    protected List<RecipientEntry> getEntries() {
         return mTempEntries != null ? mTempEntries : mEntries;
     }
 

@@ -17,18 +17,6 @@
 
 package com.android.ex.chips;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipDescription;
@@ -98,6 +86,18 @@ import com.android.ex.chips.RecipientAlternatesAdapter.RecipientMatchCallback;
 import com.android.ex.chips.recipientchip.DrawableRecipientChip;
 import com.android.ex.chips.recipientchip.InvisibleRecipientChip;
 import com.android.ex.chips.recipientchip.VisibleRecipientChip;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * RecipientEditTextView is an auto complete text view for use with applications
@@ -2497,7 +2497,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 Log.wtf(TAG, "My assumption that this was fixed is wrong.");
                 return null;
             }
-            RecipientAlternatesAdapter.getMatchingRecipients(getContext(), addresses,
+            RecipientAlternatesAdapter.getMatchingRecipients(getContext(), adapter, addresses,
                     adapter.getAccount(), new RecipientMatchCallback() {
                         @Override
                         public void matchesFound(Map<String, RecipientEntry> entries) {
@@ -2624,7 +2624,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     addresses.add(createAddressText(chip.getEntry()));
                 }
             }
-            RecipientAlternatesAdapter.getMatchingRecipients(getContext(), addresses,
+            final BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
+            RecipientAlternatesAdapter.getMatchingRecipients(getContext(), adapter, addresses,
                     ((BaseRecipientAdapter) getAdapter()).getAccount(),
                     new RecipientMatchCallback() {
 
@@ -2635,21 +2636,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                         .getContactId())
                                         && getSpannable().getSpanStart(temp) != -1) {
                                     // Replace this.
-                                    RecipientEntry entry = createValidatedEntry(entries
+                                    final RecipientEntry entry = createValidatedEntry(entries
                                             .get(tokenizeAddress(temp.getEntry().getDestination())
                                                     .toLowerCase()));
-                                    // If we don't have a validated contact
-                                    // match, just use the
-                                    // entry as it existed before.
-                                    if (entry == null && !isPhoneQuery()) {
-                                        entry = temp.getEntry();
-                                    }
-                                    final RecipientEntry tempEntry = entry;
-                                    if (tempEntry != null) {
+                                    if (entry != null) {
                                         mHandler.post(new Runnable() {
                                             @Override
                                             public void run() {
-                                                replaceChip(temp, tempEntry);
+                                                replaceChip(temp, entry);
                                             }
                                         });
                                     }

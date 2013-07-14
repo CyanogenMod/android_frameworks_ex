@@ -73,9 +73,9 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         public void matchesNotFound(Set<String> unfoundAddresses);
     }
 
-    public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
-            Account account, RecipientMatchCallback callback) {
-        getMatchingRecipients(context, inAddresses, QUERY_TYPE_EMAIL, account, callback);
+    public static void getMatchingRecipients(Context context, BaseRecipientAdapter adapter,
+            ArrayList<String> inAddresses, Account account, RecipientMatchCallback callback) {
+        getMatchingRecipients(context, adapter, inAddresses, QUERY_TYPE_EMAIL, account, callback);
     }
 
     /**
@@ -88,8 +88,9 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      * @param callback RecipientMatchCallback called when a match or matches are found.
      * @return HashMap<String,RecipientEntry>
      */
-    public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
-            int addressType, Account account, RecipientMatchCallback callback) {
+    public static void getMatchingRecipients(Context context, BaseRecipientAdapter adapter,
+            ArrayList<String> inAddresses, int addressType, Account account,
+            RecipientMatchCallback callback) {
         Queries.Query query;
         if (addressType == QUERY_TYPE_EMAIL) {
             query = Queries.EMAIL;
@@ -197,6 +198,19 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             }
         }
 
+        // If no matches found in contact provider or the directories, try the extension
+        // matcher.
+        // todo (aalbert): This whole method needs to be in the adapter?
+        if (adapter != null) {
+            final Map<String, RecipientEntry> entries =
+                    adapter.getMatchingRecipients(matchesNotFound);
+            if (entries != null && entries.size() > 0) {
+                callback.matchesFound(entries);
+                for (final String address : entries.keySet()) {
+                    matchesNotFound.remove(address);
+                }
+            }
+        }
         callback.matchesNotFound(matchesNotFound);
     }
 
