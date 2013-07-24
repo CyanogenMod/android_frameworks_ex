@@ -73,12 +73,12 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * The number of extra entries requested to allow for duplicates. Duplicates
      * are removed from the overall result.
      */
-    private static final int ALLOWANCE_FOR_DUPLICATES = 5;
+    static final int ALLOWANCE_FOR_DUPLICATES = 5;
 
     // This is ContactsContract.PRIMARY_ACCOUNT_NAME. Available from ICS as hidden
-    private static final String PRIMARY_ACCOUNT_NAME = "name_for_primary_account";
+    static final String PRIMARY_ACCOUNT_NAME = "name_for_primary_account";
     // This is ContactsContract.PRIMARY_ACCOUNT_TYPE. Available from ICS as hidden
-    private static final String PRIMARY_ACCOUNT_TYPE = "type_for_primary_account";
+    static final String PRIMARY_ACCOUNT_TYPE = "type_for_primary_account";
 
     /** The number of photos cached in this Adapter. */
     private static final int PHOTO_CACHE_SIZE = 20;
@@ -118,7 +118,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public static final int PHOTO = 0;
     }
 
-    private static class DirectoryListQuery {
+    protected static class DirectoryListQuery {
 
         public static final Uri URI =
                 Uri.withAppendedPath(ContactsContract.AUTHORITY_URI, "directories");
@@ -234,8 +234,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     }
 
                     // We'll copy this result to mEntry in publicResults() (run in the UX thread).
-                    final List<RecipientEntry> entries = constructEntryList(false,
-                            entryMap, nonAggregatedEntries, existingDestinations);
+                    final List<RecipientEntry> entries = constructEntryList(
+                            entryMap, nonAggregatedEntries);
 
                     // After having local results, check the size of results. If the results are
                     // not enough, we search remote directories, which will take longer time.
@@ -250,7 +250,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                         directoryCursor = mContentResolver.query(
                                 DirectoryListQuery.URI, DirectoryListQuery.PROJECTION,
                                 null, null, null);
-                        paramsList = setupOtherDirectories(directoryCursor);
+                        paramsList = setupOtherDirectories(mContext, directoryCursor, mAccount);
                     } else {
                         // We don't need to search other directories.
                         paramsList = null;
@@ -424,8 +424,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
 
             // Show the list again without "waiting" message.
-            updateEntries(constructEntryList(false,
-                    mEntryMap, mNonAggregatedEntries, mExistingDestinations));
+            updateEntries(constructEntryList(mEntryMap, mNonAggregatedEntries));
         }
     }
 
@@ -482,8 +481,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         @Override
         public void handleMessage(Message msg) {
             if (mRemainingDirectoryCount > 0) {
-                updateEntries(constructEntryList(true,
-                        mEntryMap, mNonAggregatedEntries, mExistingDestinations));
+                updateEntries(constructEntryList(mEntryMap, mNonAggregatedEntries));
             }
         }
 
@@ -556,8 +554,9 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         return new DefaultFilter();
     }
 
-    private List<DirectorySearchParams> setupOtherDirectories(Cursor directoryCursor) {
-        final PackageManager packageManager = mContext.getPackageManager();
+    public static List<DirectorySearchParams> setupOtherDirectories(Context context,
+            Cursor directoryCursor, Account account) {
+        final PackageManager packageManager = context.getPackageManager();
         final List<DirectorySearchParams> paramsList = new ArrayList<DirectorySearchParams>();
         DirectorySearchParams preferredDirectory = null;
         while (directoryCursor.moveToNext()) {
@@ -594,8 +593,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             // If an account has been provided and we found a directory that
             // corresponds to that account, place that directory second, directly
             // underneath the local contacts.
-            if (mAccount != null && mAccount.name.equals(params.accountName) &&
-                    mAccount.type.equals(params.accountType)) {
+            if (account != null && account.name.equals(params.accountName) &&
+                    account.type.equals(params.accountType)) {
                 preferredDirectory = params;
             } else {
                 paramsList.add(params);
@@ -633,7 +632,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         mDelayedMessageHandler.sendDelayedLoadMessage();
     }
 
-    private void putOneEntry(TemporaryEntry entry, boolean isAggregatedEntry,
+    private static void putOneEntry(TemporaryEntry entry, boolean isAggregatedEntry,
             LinkedHashMap<Long, List<RecipientEntry>> entryMap,
             List<RecipientEntry> nonAggregatedEntries,
             Set<String> existingDestinations) {
@@ -648,7 +647,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
         } else if (entryMap.containsKey(entry.contactId)) {
             // We already have a section for the person.
             final List<RecipientEntry> entryList = entryMap.get(entry.contactId);
@@ -656,14 +655,14 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
         } else {
             final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
             entryList.add(RecipientEntry.constructTopLevelEntry(
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
             entryMap.put(entry.contactId, entryList);
         }
     }
@@ -674,10 +673,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
      * thread to get one from directories.
      */
     private List<RecipientEntry> constructEntryList(
-            boolean showMessageIfDirectoryLoadRemaining,
             LinkedHashMap<Long, List<RecipientEntry>> entryMap,
-            List<RecipientEntry> nonAggregatedEntries,
-            Set<String> existingDestinations) {
+            List<RecipientEntry> nonAggregatedEntries) {
         final List<RecipientEntry> entries = new ArrayList<RecipientEntry>();
         int validEntryCount = 0;
         for (Map.Entry<Long, List<RecipientEntry>> mapEntry : entryMap.entrySet()) {
@@ -706,6 +703,11 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         }
 
         return entries;
+    }
+
+
+    protected interface EntriesUpdatedObserver {
+        public void onChanged(List<RecipientEntry> entries);
     }
 
     public void registerUpdateObserver(EntriesUpdatedObserver observer) {
@@ -906,7 +908,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             if (imageView != null) {
                 imageView.setVisibility(View.VISIBLE);
                 final byte[] photoBytes = entry.getPhotoBytes();
-                if (photoBytes != null && imageView != null) {
+                if (photoBytes != null) {
                     final Bitmap photo = BitmapFactory.decodeByteArray(photoBytes, 0,
                             photoBytes.length);
                     imageView.setImageBitmap(photo);
@@ -975,11 +977,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         return android.R.id.icon;
     }
 
-    /**
-     * Interface called before the BaseRecipientAdapter updates recipient
-     * results in the popup window.
-     */
-    protected interface EntriesUpdatedObserver {
-        public void onChanged(List<RecipientEntry> entries);
+    public Account getAccount() {
+        return mAccount;
     }
 }

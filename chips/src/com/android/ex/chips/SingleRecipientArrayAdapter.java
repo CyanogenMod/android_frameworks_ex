@@ -43,7 +43,7 @@ class SingleRecipientArrayAdapter extends ArrayAdapter<RecipientEntry> {
         if (convertView == null) {
             convertView = newView();
         }
-        bindView(convertView, convertView.getContext(), getItem(position));
+        bindView(convertView, getItem(position));
         return convertView;
     }
 
@@ -51,7 +51,7 @@ class SingleRecipientArrayAdapter extends ArrayAdapter<RecipientEntry> {
         return mLayoutInflater.inflate(mLayoutId, null);
     }
 
-    private void bindView(View view, Context context, RecipientEntry entry) {
+    private static void bindView(View view, RecipientEntry entry) {
         TextView display = (TextView) view.findViewById(android.R.id.title);
         ImageView imageView = (ImageView) view.findViewById(android.R.id.icon);
         display.setText(entry.getDisplayName());

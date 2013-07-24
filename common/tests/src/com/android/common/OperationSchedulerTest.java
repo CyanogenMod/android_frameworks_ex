@@ -119,6 +119,42 @@ public class OperationSchedulerTest extends AndroidTestCase {
         assertEquals(beforeSuccess + 1000000, scheduler.getNextTimeMillis(options));
     }
 
+    @MediumTest
+    public void testExponentialBackoff() throws Exception {
+        TimeTravelScheduler scheduler = new TimeTravelScheduler();
+        OperationScheduler.Options options = new OperationScheduler.Options();
+        options.backoffFixedMillis = 100;
+        options.backoffIncrementalMillis = 1000;
+        options.backoffExponentialMillis = 10000;
+        scheduler.setTriggerTimeMillis(0);
+        scheduler.setEnabledState(true);
+
+        // Backoff interval after an error
+        long beforeError = (scheduler.timeMillis += 10);
+        scheduler.onTransientError();
+        assertEquals(0, scheduler.getLastSuccessTimeMillis());
+        assertEquals(beforeError, scheduler.getLastAttemptTimeMillis());
+        assertEquals(beforeError + 11100, scheduler.getNextTimeMillis(options));
+
+        // Second error
+        beforeError = (scheduler.timeMillis += 10);
+        scheduler.onTransientError();
+        assertEquals(beforeError, scheduler.getLastAttemptTimeMillis());
+        assertEquals(beforeError + 22100, scheduler.getNextTimeMillis(options));
+
+        // Third error
+        beforeError = (scheduler.timeMillis += 10);
+        scheduler.onTransientError();
+        assertEquals(beforeError, scheduler.getLastAttemptTimeMillis());
+        assertEquals(beforeError + 43100, scheduler.getNextTimeMillis(options));
+
+        // Fourth error
+        beforeError = (scheduler.timeMillis += 10);
+        scheduler.onTransientError();
+        assertEquals(beforeError, scheduler.getLastAttemptTimeMillis());
+        assertEquals(beforeError + 84100, scheduler.getNextTimeMillis(options));
+    }
+
     @SmallTest
     public void testParseOptions() throws Exception {
          OperationScheduler.Options options = new OperationScheduler.Options();
@@ -138,6 +174,10 @@ public class OperationSchedulerTest extends AndroidTestCase {
          assertEquals(
                 "OperationScheduler.Options[backoff=10.0+2.5 max=12345.6 min=7.0 period=3800.0]",
                  OperationScheduler.parseOptions("", options).toString());
+
+         assertEquals(
+                 "OperationScheduler.Options[backoff=5.0+2.5+10.0 max=12345.6 min=7.0 period=3600.0]",
+                 OperationScheduler.parseOptions("backoff=5.0++10.0 3600", options).toString());
     }
 
     @SmallTest
