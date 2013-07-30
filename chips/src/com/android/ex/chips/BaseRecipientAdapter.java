@@ -765,8 +765,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                             mHandler.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    mPhotoCacheMap.put(photoThumbnailUri, photoBytes);
-                                    notifyDataSetChanged();
+                                    if (photoBytes != null) {
+                                        mPhotoCacheMap.put(photoThumbnailUri, photoBytes);
+                                        notifyDataSetChanged();
+                                    }
                                 }
                             });
                         }
