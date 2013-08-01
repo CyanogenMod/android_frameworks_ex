@@ -2493,10 +2493,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 }
             }
             final BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
-            if (adapter == null) {
-                Log.wtf(TAG, "My assumption that this was fixed is wrong.");
-                return null;
-            }
             RecipientAlternatesAdapter.getMatchingRecipients(getContext(), adapter, addresses,
                     adapter.getAccount(), new RecipientMatchCallback() {
                         @Override
