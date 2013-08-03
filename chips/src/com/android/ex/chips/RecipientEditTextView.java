@@ -48,6 +48,7 @@ import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -1419,7 +1420,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         if (mCopyAddress == null && action == MotionEvent.ACTION_UP) {
             float x = event.getX();
             float y = event.getY();
-            int offset = putOffsetInRange(getOffsetForPosition(x, y));
+            int offset = putOffsetInRange(x, y);
             DrawableRecipientChip currentChip = findChip(offset);
             if (currentChip != null) {
                 if (action == MotionEvent.ACTION_UP) {
@@ -1511,6 +1512,18 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             listView.setItemChecked(position, true);
         }
         mCheckedItem = position;
+    }
+
+    private int putOffsetInRange(final float x, final float y) {
+        final int offset;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+            offset = getOffsetForPosition(x, y);
+        } else {
+            offset = supportGetOffsetForPosition(x, y);
+        }
+
+        return putOffsetInRange(offset);
     }
 
     // TODO: This algorithm will need a lot of tweaking after more people have used
@@ -2691,7 +2704,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
         float x = event.getX();
         float y = event.getY();
-        int offset = putOffsetInRange(getOffsetForPosition(x, y));
+        final int offset = putOffsetInRange(x, y);
         DrawableRecipientChip currentChip = findChip(offset);
         if (currentChip != null) {
             if (mDragEnabled) {
@@ -2703,6 +2716,40 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             }
         }
     }
+
+    // The following methods are used to provide some functionality on older versions of Android
+    // These methods were copied out of JB MR2's TextView
+    /////////////////////////////////////////////////
+    private int supportGetOffsetForPosition(float x, float y) {
+        if (getLayout() == null) return -1;
+        final int line = supportGetLineAtCoordinate(y);
+        final int offset = supportGetOffsetAtCoordinate(line, x);
+        return offset;
+    }
+
+    private float supportConvertToLocalHorizontalCoordinate(float x) {
+        x -= getTotalPaddingLeft();
+        // Clamp the position to inside of the view.
+        x = Math.max(0.0f, x);
+        x = Math.min(getWidth() - getTotalPaddingRight() - 1, x);
+        x += getScrollX();
+        return x;
+    }
+
+    private int supportGetLineAtCoordinate(float y) {
+        y -= getTotalPaddingLeft();
+        // Clamp the position to inside of the view.
+        y = Math.max(0.0f, y);
+        y = Math.min(getHeight() - getTotalPaddingBottom() - 1, y);
+        y += getScrollY();
+        return getLayout().getLineForVertical((int) y);
+    }
+
+    private int supportGetOffsetAtCoordinate(int line, float x) {
+        x = supportConvertToLocalHorizontalCoordinate(x);
+        return getLayout().getOffsetForHorizontal(line, x);
+    }
+    /////////////////////////////////////////////////
 
     /**
      * Enables drag-and-drop for chips.
