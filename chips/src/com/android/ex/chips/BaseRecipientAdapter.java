@@ -46,7 +46,11 @@ import android.widget.Filterable;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -750,33 +754,61 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         }
     }
 
+    // For reading photos for directory contacts, this is the chunksize for
+    // copying from the inputstream to the output stream.
+    private static final int BUFFER_SIZE = 1024*16;
+
     private void fetchPhotoAsync(final RecipientEntry entry, final Uri photoThumbnailUri) {
-        final AsyncTask<Void, Void, Void> photoLoadTask = new AsyncTask<Void, Void, Void>() {
+        final AsyncTask<Void, Void, byte[]> photoLoadTask = new AsyncTask<Void, Void, byte[]>() {
             @Override
-            protected Void doInBackground(Void... params) {
+            protected byte[] doInBackground(Void... params) {
+                // First try running a query. Images for local contacts are
+                // loaded by sending a query to the ContactsProvider.
                 final Cursor photoCursor = mContentResolver.query(
                         photoThumbnailUri, PhotoQuery.PROJECTION, null, null, null);
                 if (photoCursor != null) {
                     try {
                         if (photoCursor.moveToFirst()) {
-                            final byte[] photoBytes = photoCursor.getBlob(PhotoQuery.PHOTO);
-                            entry.setPhotoBytes(photoBytes);
-
-                            mHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (photoBytes != null) {
-                                        mPhotoCacheMap.put(photoThumbnailUri, photoBytes);
-                                        notifyDataSetChanged();
-                                    }
-                                }
-                            });
+                            return photoCursor.getBlob(PhotoQuery.PHOTO);
                         }
                     } finally {
                         photoCursor.close();
                     }
+                } else {
+                    // If the query fails, try streaming the URI directly.
+                    // For remote directory images, this URI resolves to the
+                    // directory provider and the images are loaded by sending
+                    // an openFile call to the provider.
+                    try {
+                        InputStream is = mContentResolver.openInputStream(
+                                photoThumbnailUri);
+                        if (is != null) {
+                            byte[] buffer = new byte[BUFFER_SIZE];
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            try {
+                                int size;
+                                while ((size = is.read(buffer)) != -1) {
+                                    baos.write(buffer, 0, size);
+                                }
+                            } finally {
+                                is.close();
+                            }
+                            return baos.toByteArray();
+                        }
+                    } catch (IOException ex) {
+                        // ignore
+                    }
                 }
                 return null;
+            }
+
+            @Override
+            protected void onPostExecute(final byte[] photoBytes) {
+                entry.setPhotoBytes(photoBytes);
+                if (photoBytes != null) {
+                    mPhotoCacheMap.put(photoThumbnailUri, photoBytes);
+                    notifyDataSetChanged();
+                }
             }
         };
         photoLoadTask.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
