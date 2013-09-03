@@ -1068,12 +1068,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         return mValidator == null ? true : mValidator.isValid(text);
     }
 
-    private static String tokenizeAddress(String destination) {
-        Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(destination);
-        if (tokens != null && tokens.length > 0) {
-            return tokens[0].getAddress();
-        }
-        return destination;
+    private String normalizeAddress(String destination) {
+        return RecipientAlternatesAdapter.normalizeAddress(getContext(),
+                destination, isPhoneQuery());
     }
 
     @Override
@@ -2497,7 +2494,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 return null;
             }
             RecipientAlternatesAdapter.getMatchingRecipients(getContext(), addresses,
-                    adapter.getAccount(), new RecipientMatchCallback() {
+                    adapter.getQueryType(), adapter.getAccount(), new RecipientMatchCallback() {
                         @Override
                         public void matchesFound(Map<String, RecipientEntry> entries) {
                             final ArrayList<DrawableRecipientChip> replacements =
@@ -2508,9 +2505,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                         temp.getEntry().getContactId())
                                         && getSpannable().getSpanStart(temp) != -1) {
                                     // Replace this.
-                                    entry = createValidatedEntry(
-                                            entries.get(tokenizeAddress(temp.getEntry()
-                                                    .getDestination())));
+                                    String normalized = normalizeAddress(
+                                            temp.getEntry().getDestination());
+                                    entry = createValidatedEntry(entries.get(normalized));
                                 }
                                 if (entry != null) {
                                     replacements.add(createFreeChip(entry));
@@ -2623,8 +2620,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     addresses.add(createAddressText(chip.getEntry()));
                 }
             }
+            final BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
             RecipientAlternatesAdapter.getMatchingRecipients(getContext(), addresses,
-                    ((BaseRecipientAdapter) getAdapter()).getAccount(),
+                    adapter.getQueryType(), adapter.getAccount(),
                     new RecipientMatchCallback() {
 
                         @Override
@@ -2634,9 +2632,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                                         .getContactId())
                                         && getSpannable().getSpanStart(temp) != -1) {
                                     // Replace this.
-                                    RecipientEntry entry = createValidatedEntry(entries
-                                            .get(tokenizeAddress(temp.getEntry().getDestination())
-                                                    .toLowerCase()));
+                                    String normalized = normalizeAddress(
+                                            temp.getEntry().getDestination());
+                                    RecipientEntry entry = createValidatedEntry(
+                                            entries.get(normalized));
                                     // If we don't have a validated contact
                                     // match, just use the
                                     // entry as it existed before.

@@ -21,8 +21,10 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
+import android.location.CountryDetector;
 import android.net.Uri;
 import android.provider.ContactsContract;
+import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
@@ -73,11 +75,6 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         public void matchesNotFound(Set<String> unfoundAddresses);
     }
 
-    public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
-            Account account, RecipientMatchCallback callback) {
-        getMatchingRecipients(context, inAddresses, QUERY_TYPE_EMAIL, account, callback);
-    }
-
     /**
      * Get a HashMap of address to RecipientEntry that contains all contact
      * information for a contact with the provided address, if one exists. This
@@ -90,23 +87,26 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
      */
     public static void getMatchingRecipients(Context context, ArrayList<String> inAddresses,
             int addressType, Account account, RecipientMatchCallback callback) {
-        Queries.Query query;
-        if (addressType == QUERY_TYPE_EMAIL) {
-            query = Queries.EMAIL;
-        } else {
-            query = Queries.PHONE;
-        }
+        boolean isPhoneQuery = addressType == QUERY_TYPE_PHONE;
+        Queries.Query query = isPhoneQuery ? Queries.PHONE : Queries.EMAIL;
+
         int addressesSize = Math.min(MAX_LOOKUPS, inAddresses.size());
         HashSet<String> addresses = new HashSet<String>();
         StringBuilder bindString = new StringBuilder();
+
         // Create the "?" string and set up arguments.
         for (int i = 0; i < addressesSize; i++) {
-            Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(inAddresses.get(i).toLowerCase());
-            addresses.add(tokens.length > 0 ? tokens[0].getAddress() : inAddresses.get(i));
-            bindString.append("?");
-            if (i < addressesSize - 1) {
+            String normalized = normalizeAddress(context, inAddresses.get(i), isPhoneQuery);
+            if (TextUtils.isEmpty(normalized)) {
+                continue;
+            }
+            Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(normalized);
+            String tokenized = tokens.length > 0 ? tokens[0].getAddress() : normalized;
+            addresses.add(tokenized);
+            if (bindString.length() > 0) {
                 bindString.append(",");
             }
+            bindString.append("?");
         }
 
         if (Log.isLoggable(TAG, Log.DEBUG)) {
@@ -122,9 +122,9 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             c = context.getContentResolver().query(
                     query.getContentUri(),
                     query.getProjection(),
-                    query.getProjection()[Queries.Query.DESTINATION] + " IN ("
+                    query.getSelectionColumn() + " IN ("
                             + bindString.toString() + ")", addressArray, null);
-            recipientEntries = processContactEntries(c);
+            recipientEntries = processContactEntries(context, c, isPhoneQuery);
             callback.matchesFound(recipientEntries);
         } finally {
             if (c != null) {
@@ -177,7 +177,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                 if (directoryContactsCursor != null) {
                     try {
                         final Map<String, RecipientEntry> entries =
-                                processContactEntries(directoryContactsCursor);
+                                processContactEntries(context,
+                                        directoryContactsCursor, isPhoneQuery);
 
                         for (final String address : entries.keySet()) {
                             matchesNotFound.remove(address);
@@ -194,11 +195,25 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         callback.matchesNotFound(matchesNotFound);
     }
 
-    private static HashMap<String, RecipientEntry> processContactEntries(Cursor c) {
+    public static String normalizeAddress(Context context, String address, boolean isPhone) {
+        if (!isPhone) {
+            return address.toLowerCase();
+        }
+
+        final CountryDetector detector =
+                (CountryDetector) context.getSystemService(Context.COUNTRY_DETECTOR);
+        final String currentCountryIso = detector.detectCountry().getCountryIso();
+
+        return PhoneNumberUtils.formatNumberToE164(address, currentCountryIso);
+    }
+
+    private static HashMap<String, RecipientEntry> processContactEntries(Context context,
+            Cursor c, boolean isPhoneQuery) {
         HashMap<String, RecipientEntry> recipientEntries = new HashMap<String, RecipientEntry>();
         if (c != null && c.moveToFirst()) {
             do {
-                String address = c.getString(Queries.Query.DESTINATION);
+                String address = normalizeAddress(context,
+                        c.getString(Queries.Query.DESTINATION), isPhoneQuery);
 
                 final RecipientEntry newRecipientEntry = RecipientEntry.constructTopLevelEntry(
                         c.getString(Queries.Query.NAME),
