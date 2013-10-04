@@ -21,8 +21,8 @@
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="music_demo_activity_label" msgid="4382090808250495841">"MusicCarousel"</string>
     <string name="carousel_test_activity_label" msgid="6014624482213318747">"CarouselTest"</string>
-    <string name="carousel_test_activity_description" msgid="1632693812604375483">"En app som viser bruken av Carousel"</string>
+    <string name="carousel_test_activity_description" msgid="1632693812604375483">"展示輪轉使用方法的應用程式"</string>
     <string name="task_switcher_activity_label" msgid="714620143340933546">"TaskSwitcher"</string>
-    <string name="recent_tasks_title" msgid="1030287226205477117">"Nylige apper"</string>
-    <string name="no_recent_tasks" msgid="6884096266670555780">"Ingen nylige oppgaver"</string>
+    <string name="recent_tasks_title" msgid="1030287226205477117">"最近使用的應用程式"</string>
+    <string name="no_recent_tasks" msgid="6884096266670555780">"最近沒有任務"</string>
 </resources>
