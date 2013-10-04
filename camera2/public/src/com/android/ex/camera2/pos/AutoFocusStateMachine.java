@@ -112,11 +112,11 @@ public class AutoFocusStateMachine {
                 mListener.onAutoFocusFail(result, /*locked*/true);
                 break;
             case CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED:
-                mListener.onAutoFocusSuccess(result, /*locked*/true);
+                mListener.onAutoFocusSuccess(result, /*locked*/false);
                 break;
-            //case CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED: // not yet pushed
-            //    mListener.onAutoFocusFail(result, /*locked*/false);
-            //    break;
+            case CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED:
+                mListener.onAutoFocusFail(result, /*locked*/false);
+                break;
             case CaptureResult.CONTROL_AF_STATE_ACTIVE_SCAN:
                 mListener.onAutoFocusScan(result);
                 break;
