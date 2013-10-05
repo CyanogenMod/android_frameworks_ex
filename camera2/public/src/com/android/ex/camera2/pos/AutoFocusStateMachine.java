@@ -91,18 +91,21 @@ public class AutoFocusStateMachine {
     public synchronized void onCaptureCompleted(CaptureResult result) {
 
         int afState = result.get(CaptureResult.CONTROL_AF_STATE);
+        int afMode = result.get(CaptureResult.CONTROL_AF_MODE);
 
-        if (DEBUG_LOGGING) Log.d(TAG, "onCaptureCompleted - new AF state = " + afState);
+        if (DEBUG_LOGGING) Log.d(TAG, "onCaptureCompleted - new AF mode = " + afMode +
+                " new AF state = " + afState);
 
-        if (mLastAfState == afState) {
+        if (mLastAfState == afState && afMode == mLastAfMode) {
             // Same AF state as last time, nothing else needs to be done.
             return;
         }
 
-        if (VERBOSE_LOGGING) Log.v(TAG, "onCaptureCompleted - new AF state = " + afState);
+        if (VERBOSE_LOGGING) Log.v(TAG, "onCaptureCompleted - new AF mode = " + afMode +
+                " new AF state = " + afState);
 
         mLastAfState = afState;
-        mLastAfMode = result.get(CaptureResult.CONTROL_AF_MODE);
+        mLastAfMode = afMode;
 
         switch (afState) {
             case CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED:
