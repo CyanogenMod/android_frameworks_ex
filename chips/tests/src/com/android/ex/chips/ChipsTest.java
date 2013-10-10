@@ -32,7 +32,7 @@ import com.android.ex.chips.BaseRecipientAdapter;
 import com.android.ex.chips.RecipientEditTextView;
 import com.android.ex.chips.RecipientEntry;
 import com.android.ex.chips.recipientchip.DrawableRecipientChip;
-import com.android.ex.chips.recipientchip.VisibleRecipientChip;;
+import com.android.ex.chips.recipientchip.VisibleRecipientChip;
 
 import java.util.regex.Pattern;
 
