@@ -455,7 +455,6 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     private final LayoutInflater mInflater;
     private Account mAccount;
     private final int mPreferredMaxResultCount;
-    private final Handler mHandler = new Handler();
 
     /**
      * {@link #mEntries} is responsible for showing every result for this Adapter. To
@@ -909,7 +908,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     }
 
     @Override
-    public Object getItem(int position) {
+    public RecipientEntry getItem(int position) {
         return getEntries().get(position);
     }
 
