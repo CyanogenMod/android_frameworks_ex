@@ -90,8 +90,20 @@ public class AutoFocusStateMachine {
      */
     public synchronized void onCaptureCompleted(CaptureResult result) {
 
-        int afState = result.get(CaptureResult.CONTROL_AF_STATE);
-        int afMode = result.get(CaptureResult.CONTROL_AF_MODE);
+        Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+        Integer afMode = result.get(CaptureResult.CONTROL_AF_MODE);
+
+        /**
+         * Work-around for b/11238865
+         * This is a HAL bug as these fields should be there always.
+         */
+        if (afState == null) {
+            Log.w(TAG, "onCaptureCompleted - missing android.control.afState !");
+            return;
+        } else if (afMode == null) {
+            Log.w(TAG, "onCaptureCompleted - missing android.control.afMode !");
+            return;
+        }
 
         if (DEBUG_LOGGING) Log.d(TAG, "onCaptureCompleted - new AF mode = " + afMode +
                 " new AF state = " + afState);
