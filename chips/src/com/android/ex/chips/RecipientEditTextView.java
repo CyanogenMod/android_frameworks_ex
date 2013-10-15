@@ -252,6 +252,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private int mActionBarHeight;
 
+    private boolean mAttachedToWindow;
+
     public RecipientEditTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setChipDimensions(context, attrs);
@@ -291,6 +293,16 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         addTextChangedListener(mTextWatcher);
         mGestureDetector = new GestureDetector(context, this);
         setOnEditorActionListener(this);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        mAttachedToWindow = false;
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        mAttachedToWindow = true;
     }
 
     @Override
@@ -1463,6 +1475,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
             @Override
             protected void onPostExecute(final ListAdapter result) {
+                if (!mAttachedToWindow) {
+                    return;
+                }
                 int line = getLayout().getLineForOffset(getChipStart(currentChip));
                 int bottom;
                 if (line == getLineCount() -1) {
@@ -2036,6 +2051,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private void showAddress(final DrawableRecipientChip currentChip, final ListPopupWindow popup,
             int width) {
+        if (!mAttachedToWindow) {
+            return;
+        }
         int line = getLayout().getLineForOffset(getChipStart(currentChip));
         int bottom = calculateOffsetFromBottom(line);
         // Align the alternates popup with the left side of the View,
@@ -2816,6 +2834,9 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private void showCopyDialog(final String address) {
+        if (!mAttachedToWindow) {
+            return;
+        }
         mCopyAddress = address;
         mCopyDialog.setTitle(address);
         mCopyDialog.setContentView(R.layout.copy_chip_dialog_layout);
