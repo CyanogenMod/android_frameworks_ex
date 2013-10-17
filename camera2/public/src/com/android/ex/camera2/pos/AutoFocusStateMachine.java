@@ -16,6 +16,7 @@
 package com.android.ex.camera2.pos;
 
 import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CameraMetadata.Key;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.util.Log;
@@ -89,6 +90,29 @@ public class AutoFocusStateMachine {
      * @param result CaptureResult
      */
     public synchronized void onCaptureCompleted(CaptureResult result) {
+
+        /**
+         * Work-around for b/11269834
+         * Although these should never-ever happen, harden for ship
+         */
+        if (result == null) {
+            Log.w(TAG, "onCaptureCompleted - missing result, skipping AF update");
+            return;
+        }
+
+        Key<Integer> keyAfState = CaptureResult.CONTROL_AF_STATE;
+        if (keyAfState == null) {
+            Log.e(TAG, "onCaptureCompleted - missing android.control.afState key, " +
+                    "skipping AF update");
+            return;
+        }
+
+        Key<Integer> keyAfMode = CaptureResult.CONTROL_AF_MODE;
+        if (keyAfMode == null) {
+            Log.e(TAG, "onCaptureCompleted - missing android.control.afMode key, " +
+                    "skipping AF update");
+            return;
+        }
 
         Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
         Integer afMode = result.get(CaptureResult.CONTROL_AF_MODE);
