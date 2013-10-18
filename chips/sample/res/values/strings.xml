@@ -15,7 +15,7 @@
 -->
 <resources>
 
-    <string name="app_name">Chips Sample</string>
+    <string name="app_name" translatable="false">Chips Sample</string>
     <string name="email_addresses">Email Addresses</string>
     <string name="phone_numbers">Phone Numbers</string>
 
