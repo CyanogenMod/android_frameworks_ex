@@ -21,6 +21,8 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.util.Log;
 
+import com.android.ex.camera2.utils.SysTrace;
+
 /**
  * Manage the auto focus state machine for CameraDevice.
  *
@@ -71,6 +73,10 @@ public class AutoFocusStateMachine {
     private int mLastAfMode = AF_UNINITIALIZED;
     private int mCurrentAfMode = AF_UNINITIALIZED;
     private int mCurrentAfTrigger = AF_UNINITIALIZED;
+
+    private int mCurrentAfCookie = AF_UNINITIALIZED;
+    private String mCurrentAfTrace = "";
+    private int mLastAfCookie = 0;
 
     public AutoFocusStateMachine(AutoFocusStateListener listener) {
         if (listener == null) {
@@ -146,9 +152,11 @@ public class AutoFocusStateMachine {
         switch (afState) {
             case CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED:
                 mListener.onAutoFocusSuccess(result, /*locked*/true);
+                endTraceAsync();
                 break;
             case CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED:
                 mListener.onAutoFocusFail(result, /*locked*/true);
+                endTraceAsync();
                 break;
             case CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED:
                 mListener.onAutoFocusSuccess(result, /*locked*/false);
@@ -194,6 +202,8 @@ public class AutoFocusStateMachine {
         if (mCurrentAfMode == AF_UNINITIALIZED) {
             throw new IllegalStateException("AF mode was not enabled");
         }
+
+        beginTraceAsync("AFSM_lockAutoFocus");
 
         mCurrentAfTrigger = CaptureRequest.CONTROL_AF_TRIGGER_START;
 
@@ -275,6 +285,8 @@ public class AutoFocusStateMachine {
             CaptureRequest.Builder requestBuilder) {
         if (VERBOSE_LOGGING) Log.v(TAG, "setActiveAutoFocus");
 
+        beginTraceAsync("AFSM_setActiveAutoFocus");
+
         mCurrentAfMode = CaptureRequest.CONTROL_AF_MODE_AUTO;
 
         repeatingBuilder.set(CaptureRequest.CONTROL_AF_MODE, mCurrentAfMode);
@@ -310,5 +322,28 @@ public class AutoFocusStateMachine {
         }
 
         repeatingBuilder.set(CaptureRequest.CONTROL_AF_MODE, mCurrentAfMode);
+    }
+
+    private synchronized void beginTraceAsync(String sectionName) {
+        if (mCurrentAfCookie != AF_UNINITIALIZED) {
+            // Terminate any currently active async sections before beginning another section
+            SysTrace.endSectionAsync(mCurrentAfTrace, mCurrentAfCookie);
+        }
+
+        mLastAfCookie++;
+        mCurrentAfCookie = mLastAfCookie;
+        mCurrentAfTrace = sectionName;
+
+        SysTrace.beginSectionAsync(sectionName, mCurrentAfCookie);
+    }
+
+    private synchronized void endTraceAsync() {
+        if (mCurrentAfCookie == AF_UNINITIALIZED) {
+            Log.w(TAG, "endTraceAsync - no current trace active");
+            return;
+        }
+
+        SysTrace.endSectionAsync(mCurrentAfTrace, mCurrentAfCookie);
+        mCurrentAfCookie = AF_UNINITIALIZED;
     }
 }
