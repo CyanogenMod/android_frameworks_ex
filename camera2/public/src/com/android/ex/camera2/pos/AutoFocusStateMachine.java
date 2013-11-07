@@ -31,6 +31,10 @@ import com.android.ex.camera2.utils.SysTrace;
  */
 public class AutoFocusStateMachine {
 
+    /**
+     * Observe state AF state transitions triggered by
+     * {@link AutoFocusStateMachine#onCaptureCompleted onCaptureCompleted}.
+     */
     public interface AutoFocusStateListener {
         /**
          * The camera is currently focused (either active or passive).
@@ -174,6 +178,22 @@ public class AutoFocusStateMachine {
                 mListener.onAutoFocusInactive(result);
                 break;
         }
+    }
+
+    /**
+     * Reset the current AF state.
+     *
+     * <p>
+     * When dropping capture results (by not invoking {@link #onCaptureCompleted} when a new
+     * {@link CaptureResult} is available), call this function to reset the state. Otherwise
+     * the next time a new state is observed this class may incorrectly consider it as the same
+     * state as before, and not issue any callbacks by {@link AutoFocusStateListener}.
+     * </p>
+     */
+    public synchronized void resetState() {
+        if (VERBOSE_LOGGING) Log.v(TAG, "resetState - last state was " + mLastAfState);
+
+        mLastAfState = AF_UNINITIALIZED;
     }
 
     /**
