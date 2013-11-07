@@ -366,4 +366,25 @@ public class AutoFocusStateMachine {
         SysTrace.endSectionAsync(mCurrentAfTrace, mCurrentAfCookie);
         mCurrentAfCookie = AF_UNINITIALIZED;
     }
+
+    /**
+     * Update the repeating request with current focus mode.
+     *
+     * <p>This is typically used when a new repeating request is created to update preview with
+     * new metadata (i.e. crop region). The current auto focus mode needs to be carried over for
+     * correct auto focus behavior.<p>
+     *
+     * @param repeatingBuilder Builder for a repeating request.
+     */
+    public synchronized void updateCaptureRequest(CaptureRequest.Builder repeatingBuilder) {
+        if (repeatingBuilder == null) {
+            throw new IllegalArgumentException("repeatingBuilder shouldn't be null");
+        }
+
+        if (mCurrentAfMode == AF_UNINITIALIZED) {
+            throw new IllegalStateException("AF mode was not enabled");
+        }
+
+        repeatingBuilder.set(CaptureRequest.CONTROL_AF_MODE, mCurrentAfMode);
+    }
 }
