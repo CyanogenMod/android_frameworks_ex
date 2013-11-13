@@ -1987,7 +1987,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return constructChipSpan(
                     RecipientEntry.constructFakeEntry((String) text, isValid(text.toString())),
                     true, false);
-        } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT) {
+        } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT
+                || currentChip.isGalContact()) {
             int start = getChipStart(currentChip);
             int end = getChipEnd(currentChip);
             getSpannable().removeSpan(currentChip);

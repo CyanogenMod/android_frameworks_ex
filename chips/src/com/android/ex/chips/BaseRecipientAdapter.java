@@ -152,6 +152,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public final long dataId;
         public final String thumbnailUriString;
         public final int displayNameSource;
+        public final boolean isGalContact;
 
         public TemporaryEntry(
                 String displayName,
@@ -161,7 +162,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 long contactId,
                 long dataId,
                 String thumbnailUriString,
-                int displayNameSource) {
+                int displayNameSource,
+                boolean isGalContact) {
             this.displayName = displayName;
             this.destination = destination;
             this.destinationType = destinationType;
@@ -170,9 +172,10 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             this.dataId = dataId;
             this.thumbnailUriString = thumbnailUriString;
             this.displayNameSource = displayNameSource;
+            this.isGalContact = isGalContact;
         }
 
-        public TemporaryEntry(Cursor cursor) {
+        public TemporaryEntry(Cursor cursor, boolean isGalContact) {
             this.displayName = cursor.getString(Queries.Query.NAME);
             this.destination = cursor.getString(Queries.Query.DESTINATION);
             this.destinationType = cursor.getInt(Queries.Query.DESTINATION_TYPE);
@@ -181,6 +184,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             this.dataId = cursor.getLong(Queries.Query.DATA_ID);
             this.thumbnailUriString = cursor.getString(Queries.Query.PHOTO_THUMBNAIL_URI);
             this.displayNameSource = cursor.getInt(Queries.Query.DISPLAY_NAME_SOURCE);
+            this.isGalContact = isGalContact;
         }
     }
 
@@ -251,7 +255,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     while (defaultDirectoryCursor.moveToNext()) {
                         // Note: At this point each entry doesn't contain any photo
                         // (thus getPhotoBytes() returns null).
-                        putOneEntry(new TemporaryEntry(defaultDirectoryCursor),
+                        putOneEntry(new TemporaryEntry(defaultDirectoryCursor,
+                                false /* isGalContact */),
                                 true, entryMap, nonAggregatedEntries, existingDestinations);
                     }
 
@@ -382,7 +387,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
                     if (cursor != null) {
                         while (cursor.moveToNext()) {
-                            tempEntries.add(new TemporaryEntry(cursor));
+                            tempEntries.add(new TemporaryEntry(cursor, true /* isGalContact */));
                         }
                     }
                 } finally {
@@ -683,7 +688,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true,
+                    entry.isGalContact));
         } else if (entryMap.containsKey(entry.contactId)) {
             // We already have a section for the person.
             final List<RecipientEntry> entryList = entryMap.get(entry.contactId);
@@ -691,14 +697,16 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true,
+                    entry.isGalContact));
         } else {
             final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
             entryList.add(RecipientEntry.constructTopLevelEntry(
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString, true));
+                    entry.contactId, entry.dataId, entry.thumbnailUriString, true,
+                    entry.isGalContact));
             entryMap.put(entry.contactId, entryList);
         }
     }
