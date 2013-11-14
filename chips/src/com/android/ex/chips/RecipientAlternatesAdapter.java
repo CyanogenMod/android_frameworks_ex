@@ -229,7 +229,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                         c.getLong(Queries.Query.CONTACT_ID),
                         c.getLong(Queries.Query.DATA_ID),
                         c.getString(Queries.Query.PHOTO_THUMBNAIL_URI),
-                        true);
+                        true,
+                        false /* isGalContact TODO(skennedy) We should look these up eventually */);
 
                 /*
                  * In certain situations, we may have two results for one address, where one of the
@@ -429,7 +430,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
                 c.getLong(Queries.Query.CONTACT_ID),
                 c.getLong(Queries.Query.DATA_ID),
                 c.getString(Queries.Query.PHOTO_THUMBNAIL_URI),
-                true);
+                true,
+                false /* isGalContact TODO(skennedy) We should look these up eventually */);
     }
 
     @Override

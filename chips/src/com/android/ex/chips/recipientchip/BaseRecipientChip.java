@@ -70,4 +70,11 @@ interface BaseRecipientChip {
      * before any reverse lookups.
      */
     CharSequence getOriginalText();
+
+    /**
+     * Checks if this contact was retrieved from a GAL lookup.
+     *
+     * @return <code>true</code> if it came from GAL, <code>false</code> otherwise
+     */
+    boolean isGalContact();
 }
