@@ -171,7 +171,7 @@ public class DropdownChipLayouter {
                     if (thumbnailUri != null) {
                         // TODO: see if this needs to be done outside the main thread
                         // as it may be too slow to get immediately.
-                        view.setImageURI(entry.getPhotoThumbnailUri());
+                        view.setImageURI(thumbnailUri);
                     } else {
                         view.setImageResource(getDefaultPhotoResId());
                     }
