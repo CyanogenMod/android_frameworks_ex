@@ -120,7 +120,8 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         {
             final RecipientEntry entry1 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
-                            "1@android.com", 0, null, 0, 0, (Uri) null, true);
+                            "1@android.com", 0, null, 0, 0, (Uri) null, true,
+                            false /* isGalContact */);
             final RecipientEntry entry2 = RecipientEntry.constructFakeEntry("1@android.com", true);
 
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
@@ -132,10 +133,12 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         {
             final RecipientEntry entry1 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
-                            "1@android.com", 0, null, 0, 0, (Uri) null, true);
+                            "1@android.com", 0, null, 0, 0, (Uri) null, true,
+                            false /* isGalContact */);
             final RecipientEntry entry2 =
                     RecipientEntry.constructTopLevelEntry("2@android.com", DisplayNameSources.EMAIL,
-                            "2@android.com", 0, null, 0, 0, (Uri) null, true);
+                            "2@android.com", 0, null, 0, 0, (Uri) null, true,
+                            false /* isGalContact */);
 
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
@@ -146,10 +149,11 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
             final RecipientEntry entry1 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
                             "1@android.com", 0, null, 0, 0, Uri.parse("http://www.android.com"),
-                            true);
+                            true, false /* isGalContact */);
             final RecipientEntry entry2 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.EMAIL,
-                            "2@android.com", 0, null, 0, 0, (Uri) null, true);
+                            "2@android.com", 0, null, 0, 0, (Uri) null, true,
+                            false /* isGalContact */);
 
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
