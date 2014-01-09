@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name" msgid="8712066058075887841">"Amasampuli we-Rastermill"</string>
+    <string name="action_settings" msgid="3832645641044620875">"Izilungiselelo"</string>
+    <string name="start" msgid="8854047233315335166">"qala"</string>
+    <string name="stop" msgid="8921829327081960457">"misa"</string>
+    <string name="vis" msgid="542986102452353596">"i-vis"</string>
+    <string name="invis" msgid="3851529775816720770">"i-invis"</string>
+</resources>
