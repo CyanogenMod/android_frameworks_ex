@@ -1,0 +1,135 @@
+/*
+ * Copyright (C) 2013 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package android.support.rastermill;
+
+import android.graphics.Bitmap;
+
+import java.io.InputStream;
+
+public class FrameSequence {
+    static {
+        System.loadLibrary("framesequence");
+    }
+
+    private final int mNativeFrameSequence;
+    private final int mWidth;
+    private final int mHeight;
+    private final int mFrameCount;
+    private final boolean mOpaque;
+
+    public int getWidth() { return mWidth; }
+    public int getHeight() { return mHeight; }
+    public int getFrameCount() { return mFrameCount; }
+    public boolean isOpaque() { return mOpaque; }
+
+    private static native FrameSequence nativeDecodeByteArray(byte[] data, int offset, int length);
+    private static native FrameSequence nativeDecodeStream(InputStream is, byte[] tempStorage);
+    private static native void nativeDestroyFrameSequence(int nativeFrameSequence);
+    private static native int nativeCreateState(int nativeFrameSequence);
+    private static native void nativeDestroyState(int nativeState);
+    private static native long nativeGetFrame(int nativeState, int frameNr,
+            Bitmap output, int previousFrameNr);
+
+    @SuppressWarnings("unused") // called by native
+    private FrameSequence(int nativeFrameSequence, int width, int height,
+                          int frameCount, boolean opaque) {
+        mNativeFrameSequence = nativeFrameSequence;
+        mWidth = width;
+        mHeight = height;
+        mFrameCount = frameCount;
+        mOpaque = opaque;
+    }
+
+    public static FrameSequence decodeByteArray(byte[] data) {
+        return decodeByteArray(data, 0, data.length);
+    }
+
+    public static FrameSequence decodeByteArray(byte[] data, int offset, int length) {
+        if (data == null) throw new IllegalArgumentException();
+        if (offset < 0 || length < 0 || (offset + length > data.length)) {
+            throw new IllegalArgumentException("invalid offset/length parameters");
+        }
+        return nativeDecodeByteArray(data, offset, length);
+    }
+
+    public static FrameSequence decodeStream(InputStream stream) {
+        if (stream == null) throw new IllegalArgumentException();
+        byte[] tempStorage = new byte[16 * 1024]; // TODO: use buffer pool
+        return nativeDecodeStream(stream, tempStorage);
+    }
+
+    State createState() {
+        if (mNativeFrameSequence == 0) {
+            throw new IllegalStateException("attempted to use incorrectly built FrameSequence");
+        }
+
+        int nativeState = nativeCreateState(mNativeFrameSequence);
+        if (nativeState == 0) {
+            return null;
+        }
+        return new State(nativeState);
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            if (mNativeFrameSequence != 0) nativeDestroyFrameSequence(mNativeFrameSequence);
+        } finally {
+            super.finalize();
+        }
+    }
+
+    /**
+     * Playback state used when moving frames forward in a frame sequence.
+     *
+     * Note that this doesn't require contiguous frames to be rendered, it just stores
+     * information (in the case of gif, a recall buffer) that will be used to construct
+     * frames based upon data recorded before previousFrameNr.
+     *
+     * Note: {@link #recycle()} *must* be called before the object is GC'd to free native resources
+     *
+     * Note: State holds a native ref to its FrameSequence instance, so its FrameSequence should
+     * remain ref'd while it is in use
+     */
+    static class State {
+        private int mNativeState;
+
+        public State(int nativeState) {
+            mNativeState = nativeState;
+        }
+
+        public void recycle() {
+            if (mNativeState != 0) {
+                nativeDestroyState(mNativeState);
+                mNativeState = 0;
+            }
+        }
+
+        // TODO: consider adding alternate API for drawing into a SurfaceTexture
+        public long getFrame(int frameNr, Bitmap output, int previousFrameNr) {
+            if (output == null || output.getConfig() != Bitmap.Config.ARGB_8888) {
+                throw new IllegalArgumentException("Bitmap passed must be non-null and ARGB_8888");
+            }
+            if (mNativeState == 0) {
+                throw new IllegalStateException("attempted to draw recycled FrameSequenceState");
+            }
+            return nativeGetFrame(mNativeState, frameNr, output, previousFrameNr);
+        }
+    }
+
+    // TODO: add recycle() cleanup method
+}
