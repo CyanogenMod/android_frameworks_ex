@@ -19,8 +19,9 @@ include $(CLEAR_VARS)
 
 ## Main library
 
-LOCAL_SHARED_LIBRARIES += liblog libjnigraphics
 LOCAL_STATIC_LIBRARIES += libgif
+
+LOCAL_LDFLAGS := -llog -ljnigraphics
 
 LOCAL_C_INCLUDES := \
 	external/giflib
@@ -37,5 +38,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_CFLAGS += -Wall -Wno-unused-parameter -Wno-unused-variable -Wno-overloaded-virtual
 LOCAL_CFLAGS += -fvisibility=hidden
+
+LOCAL_SDK_VERSION := 8
 
 include $(BUILD_SHARED_LIBRARY)
