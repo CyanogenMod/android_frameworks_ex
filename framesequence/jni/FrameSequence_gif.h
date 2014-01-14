@@ -37,12 +37,16 @@ public:
         return mGif ? mGif->SHeight : 0;
     }
 
+    virtual bool isOpaque() const {
+        return (mBgColor & COLOR_8888_ALPHA_MASK) == COLOR_8888_ALPHA_MASK;
+    }
+
     virtual int getFrameCount() const {
         return mGif ? mGif->ImageCount : 0;
     }
 
-    virtual bool isOpaque() const {
-        return (mBgColor & COLOR_8888_ALPHA_MASK) == COLOR_8888_ALPHA_MASK;
+    virtual int getDefaultLoopCount() const {
+        return mLoopCount;
     }
 
     virtual FrameSequenceState* createState() const;
@@ -54,6 +58,7 @@ public:
 
 private:
     GifFileType* mGif;
+    int mLoopCount;
     Color8888 mBgColor;
 
     // array of bool per frame - if true, frame data is used by a later DISPOSE_PREVIOUS frame
