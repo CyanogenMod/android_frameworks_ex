@@ -46,8 +46,9 @@ public:
     virtual ~FrameSequence() {}
     virtual int getWidth() const = 0;
     virtual int getHeight() const = 0;
-    virtual int getFrameCount() const = 0;
     virtual bool isOpaque() const = 0;
+    virtual int getFrameCount() const = 0;
+    virtual int getDefaultLoopCount() const = 0;
 
     virtual FrameSequenceState* createState() const = 0;
 };

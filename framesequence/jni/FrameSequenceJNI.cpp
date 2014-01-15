@@ -37,11 +37,12 @@ static jobject createJavaFrameSequence(JNIEnv* env, FrameSequence* frameSequence
         return NULL;
     }
     return env->NewObject(gFrameSequenceClassInfo.clazz, gFrameSequenceClassInfo.ctor,
-            reinterpret_cast<jint>(frameSequence),
+            reinterpret_cast<jlong>(frameSequence),
             frameSequence->getWidth(),
             frameSequence->getHeight(),
+            frameSequence->isOpaque(),
             frameSequence->getFrameCount(),
-            frameSequence->isOpaque());
+            frameSequence->getDefaultLoopCount());
 }
 
 static jobject nativeDecodeByteArray(JNIEnv* env, jobject clazz,
@@ -67,15 +68,15 @@ static jobject nativeDecodeStream(JNIEnv* env, jobject clazz,
 }
 
 static void nativeDestroyFrameSequence(JNIEnv* env, jobject clazz,
-        jint frameSequenceInt) {
-    FrameSequence* frameSequence = reinterpret_cast<FrameSequence*>(frameSequenceInt);
+        jlong frameSequenceLong) {
+    FrameSequence* frameSequence = reinterpret_cast<FrameSequence*>(frameSequenceLong);
     delete frameSequence;
 }
 
-static jint nativeCreateState(JNIEnv* env, jobject clazz, jint frameSequenceInt) {
-    FrameSequence* frameSequence = reinterpret_cast<FrameSequence*>(frameSequenceInt);
+static jlong nativeCreateState(JNIEnv* env, jobject clazz, jlong frameSequenceLong) {
+    FrameSequence* frameSequence = reinterpret_cast<FrameSequence*>(frameSequenceLong);
     FrameSequenceState* state = frameSequence->createState();
-    return reinterpret_cast<jint>(state);
+    return reinterpret_cast<jlong>(state);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,17 +84,17 @@ static jint nativeCreateState(JNIEnv* env, jobject clazz, jint frameSequenceInt)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void nativeDestroyState(
-        JNIEnv* env, jobject clazz, jint frameSequenceStateInt) {
+        JNIEnv* env, jobject clazz, jlong frameSequenceStateLong) {
     FrameSequenceState* frameSequenceState =
-            reinterpret_cast<FrameSequenceState*>(frameSequenceStateInt);
+            reinterpret_cast<FrameSequenceState*>(frameSequenceStateLong);
     delete frameSequenceState;
 }
 
 static jlong JNICALL nativeGetFrame(
-        JNIEnv* env, jobject clazz, jint frameSequenceStateInt, jint frameNr,
+        JNIEnv* env, jobject clazz, jlong frameSequenceStateLong, jint frameNr,
         jobject bitmap, jint previousFrameNr) {
     FrameSequenceState* frameSequenceState =
-            reinterpret_cast<FrameSequenceState*>(frameSequenceStateInt);
+            reinterpret_cast<FrameSequenceState*>(frameSequenceStateLong);
     int ret;
     AndroidBitmapInfo info;
     void* pixels;
@@ -128,19 +129,19 @@ static JNINativeMethod gMethods[] = {
         (void*) nativeDecodeStream
     },
     {   "nativeDestroyFrameSequence",
-        "(I)V",
+        "(J)V",
         (void*) nativeDestroyFrameSequence
     },
     {   "nativeCreateState",
-        "(I)I",
+        "(J)J",
         (void*) nativeCreateState
     },
     {   "nativeGetFrame",
-        "(IILandroid/graphics/Bitmap;I)J",
+        "(JILandroid/graphics/Bitmap;I)J",
         (void*) nativeGetFrame
     },
     {   "nativeDestroyFrameSequence",
-        "(I)V",
+        "(J)V",
         (void*) nativeDestroyState
     },
 };
@@ -155,7 +156,7 @@ jint FrameSequence_OnLoad(JNIEnv* env) {
     }
     gFrameSequenceClassInfo.clazz = (jclass)env->NewGlobalRef(gFrameSequenceClassInfo.clazz);
 
-    gFrameSequenceClassInfo.ctor = env->GetMethodID(gFrameSequenceClassInfo.clazz, "<init>", "(IIIIZ)V");
+    gFrameSequenceClassInfo.ctor = env->GetMethodID(gFrameSequenceClassInfo.clazz, "<init>", "(JIIZII)V");
     if (!gFrameSequenceClassInfo.ctor) {
         ALOGW("Failed to find constructor for FrameSequence - was it stripped?");
         return -1;
