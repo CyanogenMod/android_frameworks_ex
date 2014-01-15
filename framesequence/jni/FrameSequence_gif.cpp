@@ -54,7 +54,7 @@ static bool willBeCleared(const GraphicsControlBlock& gcb) {
 ////////////////////////////////////////////////////////////////////////////////
 
 FrameSequence_gif::FrameSequence_gif(Stream* stream) :
-        mBgColor(TRANSPARENT), mPreservedFrames(NULL), mRestoringFrames(NULL) {
+        mLoopCount(1), mBgColor(TRANSPARENT), mPreservedFrames(NULL), mRestoringFrames(NULL) {
     mGif = DGifOpen(stream, streamReader, NULL);
     if (!mGif) {
         ALOGW("Gif load failed");
@@ -76,6 +76,23 @@ FrameSequence_gif::FrameSequence_gif(Stream* stream) :
     GraphicsControlBlock gcb;
     for (int i = 0; i < mGif->ImageCount; i++) {
         const SavedImage& image = mGif->SavedImages[i];
+
+        // find the loop extension pair
+        for (int j = 0; (j + 1) < image.ExtensionBlockCount; j++) {
+            ExtensionBlock* eb1 = image.ExtensionBlocks + j;
+            ExtensionBlock* eb2 = image.ExtensionBlocks + j + 1;
+            if (eb1->Function == APPLICATION_EXT_FUNC_CODE &&
+                    // look for "NETSCAPE2.0" app extension
+                    eb1->ByteCount == 11 &&
+                    !strcmp((const char*)(eb1->Bytes), "NETSCAPE2.0") &&
+                    // verify extension contents and get loop count
+                    eb2->Function == CONTINUE_EXT_FUNC_CODE &&
+                    eb2->ByteCount == 3 &&
+                    eb2->Bytes[0] == 1) {
+                mLoopCount = (int)(eb2->Bytes[2] & 0xff) + (int)(eb2->Bytes[1] & 0xff);
+            }
+        }
+
         DGifSavedExtensionToGCB(mGif, i, &gcb);
 
         // timing
@@ -316,6 +333,10 @@ long FrameSequenceState_gif::drawFrame(int frameNr,
         }
     }
 
+    // return last frame's delay
+    const int maxFrame = gif->ImageCount;
+    const int lastFrame = (frameNr + maxFrame - 1) % maxFrame;
+    DGifSavedExtensionToGCB(gif, lastFrame, &gcb);
     return getDelayMs(gcb);
 }
 
