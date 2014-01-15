@@ -21,6 +21,7 @@ import android.support.rastermill.FrameSequence;
 import android.support.rastermill.FrameSequenceDrawable;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.io.InputStream;
 
@@ -36,6 +37,13 @@ public class AnimatedGifTest extends Activity {
 
         FrameSequence fs = FrameSequence.decodeStream(is);
         final FrameSequenceDrawable drawable = new FrameSequenceDrawable(fs);
+        drawable.setOnFinishedListener(new FrameSequenceDrawable.OnFinishedListener() {
+            @Override
+            public void onFinished(FrameSequenceDrawable drawable) {
+                Toast.makeText(getApplicationContext(),
+                        "THE ANIMATION HAS FINISHED", Toast.LENGTH_SHORT).show();
+            }
+        });
         imageView.setImageDrawable(drawable);
 
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
