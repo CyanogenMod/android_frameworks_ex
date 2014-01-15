@@ -42,6 +42,49 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         }
     }
 
+    public static interface OnFinishedListener {
+        /**
+         * Called when a FrameSequenceDrawable has finished looping.
+         *
+         * Note that this is will not be called if the drawable is explicitly
+         * stopped, or marked invisible.
+         */
+        public abstract void onFinished(FrameSequenceDrawable drawable);
+    }
+
+    /**
+     * Register a callback to be invoked when a FrameSequenceDrawable finishes looping.
+     *
+     * @see setLoopBehavior()
+     */
+    public void setOnFinishedListener(OnFinishedListener onFinishedListener) {
+        mOnFinishedListener = onFinishedListener;
+    }
+
+    /**
+     * Loop only once.
+     */
+    public static final int LOOP_ONCE = 1;
+
+    /**
+     * Loop continuously. The OnFinishedListener will never be called.
+     */
+    public static final int LOOP_INF = 2;
+
+    /**
+     * Use loop count stored in source data, or LOOP_ONCE if not present.
+     */
+    public static final int LOOP_DEFAULT = 3;
+
+    /**
+     * Define looping behavior of frame sequence.
+     *
+     * Must be one of LOOP_ONCE, LOOP_INF, or LOOP_DEFAULT
+     */
+    public void setLoopBehavior(int loopBehavior) {
+        mLoopBehavior = loopBehavior;
+    }
+
     private final FrameSequence mFrameSequence;
     private final FrameSequence.State mFrameSequenceState;
 
@@ -60,9 +103,12 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     private static final int STATE_READY_TO_SWAP = 4;
 
     private int mState;
+    private int mCurrentLoop;
+    private int mLoopBehavior = LOOP_DEFAULT;
 
     private long mLastSwap;
     private int mNextFrameToDecode;
+    private OnFinishedListener mOnFinishedListener;
 
     /**
      * Runs on decoding thread, only modifies mBackBitmap's pixels
@@ -93,6 +139,14 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         }
     };
 
+    private Runnable mCallbackRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mOnFinishedListener != null) {
+                mOnFinishedListener.onFinished(FrameSequenceDrawable.this);
+            }
+        }
+    };
 
     public FrameSequenceDrawable(FrameSequence frameSequence) {
         if (frameSequence == null) throw new IllegalArgumentException();
@@ -138,7 +192,21 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
                 mFrontBitmap = tmp;
 
                 mLastSwap = SystemClock.uptimeMillis();
-                scheduleDecodeLocked();
+
+                boolean continueLooping = true;
+                if (mNextFrameToDecode == mFrameSequence.getFrameCount() - 1) {
+                    mCurrentLoop++;
+                    if ((mLoopBehavior == LOOP_ONCE && mCurrentLoop == 1) ||
+                        (mLoopBehavior == LOOP_DEFAULT && mCurrentLoop == mFrameSequence.getDefaultLoopCount())) {
+                        continueLooping = false;
+                    }
+                }
+
+                if (continueLooping) {
+                    scheduleDecodeLocked();
+                } else {
+                    scheduleSelf(mCallbackRunnable, 0);
+                }
             }
         }
 
@@ -166,6 +234,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         if (!isRunning()) {
             synchronized (mLock) {
                 if (mState == STATE_SCHEDULED) return; // already scheduled
+                mCurrentLoop = 0;
                 scheduleDecodeLocked();
             }
         }
