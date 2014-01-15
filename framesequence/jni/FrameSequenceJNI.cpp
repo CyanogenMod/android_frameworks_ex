@@ -140,7 +140,7 @@ static JNINativeMethod gMethods[] = {
         "(JILandroid/graphics/Bitmap;I)J",
         (void*) nativeGetFrame
     },
-    {   "nativeDestroyFrameSequence",
+    {   "nativeDestroyState",
         "(J)V",
         (void*) nativeDestroyState
     },
