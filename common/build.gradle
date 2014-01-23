@@ -4,7 +4,7 @@ buildDir = "$project.rootBuildDir/android-$project.name"
 
 android {
     compileSdkVersion 17
-    buildToolsVersion = 17
+    buildToolsVersion = '19.0.1'
 
     logtags {
         srcDirs = ['java']
