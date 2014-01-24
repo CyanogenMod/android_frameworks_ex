@@ -15,13 +15,17 @@
 -->
 <resources>
     <declare-styleable name="RecipientEditTextView">
-        <attr name="invalidChipBackground" format="reference" />
+        <attr name="avatarPosition">
+            <enum name="right" value="0" />
+            <enum name="left" value="1" />
+        </attr>
         <attr name="chipBackground" format="reference" />
         <attr name="chipBackgroundPressed" format="reference" />
         <attr name="chipDelete" format="reference" />
-        <attr name="chipAlternatesLayout" format="reference" />
-        <attr name="chipPadding" format="reference" />
-        <attr name="chipHeight" format="reference" />
         <attr name="chipFontSize" format="reference" />
+        <attr name="chipHeight" format="reference" />
+        <attr name="chipPadding" format="reference" />
+        <attr name="disableDelete" format="boolean" />
+        <attr name="invalidChipBackground" format="reference" />
     </declare-styleable>
 </resources>

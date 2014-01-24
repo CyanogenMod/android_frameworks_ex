@@ -27,15 +27,13 @@ import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CursorAdapter;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.android.ex.chips.BaseRecipientAdapter.DirectoryListQuery;
 import com.android.ex.chips.BaseRecipientAdapter.DirectorySearchParams;
+import com.android.ex.chips.DropdownChipLayouter.AdapterType;
 import com.android.ex.chips.Queries.Query;
 
 import java.util.ArrayList;
@@ -51,7 +49,6 @@ import java.util.Set;
  */
 public class RecipientAlternatesAdapter extends CursorAdapter {
     static final int MAX_LOOKUPS = 50;
-    private final LayoutInflater mLayoutInflater;
 
     private final long mCurrentId;
 
@@ -64,6 +61,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     public static final int QUERY_TYPE_EMAIL = 0;
     public static final int QUERY_TYPE_PHONE = 1;
     private Query mQuery;
+    private DropdownChipLayouter mDropdownChipLayouter;
 
     public interface RecipientMatchCallback {
         public void matchesFound(Map<String, RecipientEntry> results);
@@ -328,14 +326,9 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
     }
 
     public RecipientAlternatesAdapter(Context context, long contactId, long currentId,
-            OnCheckedItemChangedListener listener) {
-        this(context, contactId, currentId, QUERY_TYPE_EMAIL, listener);
-    }
-
-    public RecipientAlternatesAdapter(Context context, long contactId, long currentId,
-            int queryMode, OnCheckedItemChangedListener listener) {
+            int queryMode, OnCheckedItemChangedListener listener,
+        DropdownChipLayouter dropdownChipLayouter) {
         super(context, getCursorForConstruction(context, contactId, queryMode), 0);
-        mLayoutInflater = LayoutInflater.from(context);
         mCurrentId = currentId;
         mCheckedItemChangedListener = listener;
 
@@ -347,6 +340,8 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
             mQuery = Queries.EMAIL;
             Log.e(TAG, "Unsupported query type: " + queryMode);
         }
+
+        mDropdownChipLayouter = dropdownChipLayouter;
     }
 
     private static Cursor getCursorForConstruction(Context context, long contactId, int queryType) {
@@ -439,7 +434,7 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         Cursor cursor = getCursor();
         cursor.moveToPosition(position);
         if (convertView == null) {
-            convertView = newView();
+            convertView = mDropdownChipLayouter.newView();
         }
         if (cursor.getLong(Queries.Query.DATA_ID) == mCurrentId) {
             mCheckedItemPosition = position;
@@ -451,44 +446,18 @@ public class RecipientAlternatesAdapter extends CursorAdapter {
         return convertView;
     }
 
-    // TODO: this is VERY similar to the BaseRecipientAdapter. Can we combine
-    // somehow?
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
         int position = cursor.getPosition();
-
-        TextView display = (TextView) view.findViewById(android.R.id.title);
-        ImageView imageView = (ImageView) view.findViewById(android.R.id.icon);
         RecipientEntry entry = getRecipientEntry(position);
-        if (position == 0) {
-            display.setText(cursor.getString(Queries.Query.NAME));
-            display.setVisibility(View.VISIBLE);
-            // TODO: see if this needs to be done outside the main thread
-            // as it may be too slow to get immediately.
-            imageView.setImageURI(entry.getPhotoThumbnailUri());
-            imageView.setVisibility(View.VISIBLE);
-        } else {
-            display.setVisibility(View.GONE);
-            imageView.setVisibility(View.GONE);
-        }
-        TextView destination = (TextView) view.findViewById(android.R.id.text1);
-        destination.setText(cursor.getString(Queries.Query.DESTINATION));
 
-        TextView destinationType = (TextView) view.findViewById(android.R.id.text2);
-        if (destinationType != null) {
-            destinationType.setText(mQuery.getTypeLabel(context.getResources(),
-                    cursor.getInt(Queries.Query.DESTINATION_TYPE),
-                    cursor.getString(Queries.Query.DESTINATION_LABEL)).toString().toUpperCase());
-        }
+        mDropdownChipLayouter.bindView(view, null, entry, position,
+                AdapterType.RECIPIENT_ALTERNATES, null);
     }
 
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
-        return newView();
-    }
-
-    private View newView() {
-        return mLayoutInflater.inflate(R.layout.chips_recipient_dropdown_item, null);
+        return mDropdownChipLayouter.newView();
     }
 
     /*package*/ static interface OnCheckedItemChangedListener {
