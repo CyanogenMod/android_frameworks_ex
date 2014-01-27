@@ -16,8 +16,8 @@
 <resources>
     <declare-styleable name="RecipientEditTextView">
         <attr name="avatarPosition">
-            <enum name="right" value="0" />
-            <enum name="left" value="1" />
+            <enum name="end" value="0" />
+            <enum name="start" value="1" />
         </attr>
         <attr name="chipBackground" format="reference" />
         <attr name="chipBackgroundPressed" format="reference" />

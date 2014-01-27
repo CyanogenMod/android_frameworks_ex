@@ -26,4 +26,16 @@
         <item name="android:minHeight">48dip</item>
         <item name="android:lineSpacingExtra">@dimen/line_spacing_extra</item>
     </style>
+
+    <style name="ChipTitleStyle">
+        <item name="android:paddingLeft">@dimen/chip_title_padding_start</item>
+    </style>
+
+    <style name="ChipSubtitleStyle">
+        <item name="android:paddingLeft">@dimen/chip_subtitle_padding_start</item>
+    </style>
+
+    <style name="ChipIconStyle">
+        <item name="android:layout_marginLeft">@dimen/chip_icon_margin_start</item>
+    </style>
 </resources>

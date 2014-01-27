@@ -152,13 +152,13 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     /**
      * Enumerator for avatar position. See attr.xml for more details.
-     * 0 for right, 1 for left.
+     * 0 for end, 1 for start.
      */
     private int mAvatarPosition;
 
-    private static final int AVATAR_POSITION_RIGHT = 0;
+    private static final int AVATAR_POSITION_END = 0;
 
-    private static final int AVATAR_POSITION_LEFT = 1;
+    private static final int AVATAR_POSITION_START = 1;
 
     private boolean mDisableDelete;
 
@@ -600,7 +600,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         Drawable background) {
         if (background == null) {
             Log.w(TAG, "Unable to draw a background for the chips as it was never set");
-            Bitmap.createBitmap((int) mChipHeight * 2, (int) mChipHeight, Bitmap.Config.ARGB_8888);
+            return Bitmap.createBitmap(
+                    (int) mChipHeight * 2, (int) mChipHeight, Bitmap.Config.ARGB_8888);
         }
 
         Rect backgroundPadding = new Rect();
@@ -632,14 +633,14 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         background.setBounds(0, 0, width, height);
         background.draw(canvas);
         // Draw the text vertically aligned
-        int textX = mAvatarPosition == AVATAR_POSITION_RIGHT ?
+        int textX = shouldPositionAvatarOnRight() ?
                 mChipPadding + backgroundPadding.left :
                 width - backgroundPadding.right - mChipPadding - textWidth;
         canvas.drawText(ellipsizedText, 0, ellipsizedText.length(),
                 textX, getTextYOffset(ellipsizedText.toString(), paint, height), paint);
         if (icon != null) {
             // Draw the icon
-            int iconX = mAvatarPosition == AVATAR_POSITION_RIGHT ?
+            int iconX = shouldPositionAvatarOnRight() ?
                     width - backgroundPadding.right - iconWidth :
                     backgroundPadding.left;
             RectF src = new RectF(0, 0, icon.getWidth(), icon.getHeight());
@@ -650,6 +651,19 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             drawIconOnCanvas(icon, canvas, paint, src, dst);
         }
         return tmpBitmap;
+    }
+
+    /**
+     * Returns true if the avatar should be positioned at the right edge of the chip.
+     * Takes into account both the set avatar position (start or end) as well as whether
+     * the layout direction is LTR or RTL.
+     */
+    private boolean shouldPositionAvatarOnRight() {
+        final boolean isRtl = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 ?
+                getLayoutDirection() == LAYOUT_DIRECTION_RTL : false;
+        final boolean assignedPosition = mAvatarPosition == AVATAR_POSITION_END;
+        // If in Rtl mode, the position should be flipped.
+        return isRtl ? !assignedPosition : assignedPosition;
     }
 
     /**
@@ -2167,8 +2181,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         }
 
         return chip.isSelected() &&
-                ((mAvatarPosition == 0 && offset == getChipEnd(chip)) ||
-                (mAvatarPosition != 0 && offset == getChipStart(chip)));
+                ((mAvatarPosition == AVATAR_POSITION_END && offset == getChipEnd(chip)) ||
+                (mAvatarPosition != AVATAR_POSITION_END && offset == getChipStart(chip)));
     }
 
     /**
