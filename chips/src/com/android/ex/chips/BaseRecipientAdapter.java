@@ -952,8 +952,11 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
     public View getView(int position, View convertView, ViewGroup parent) {
         final RecipientEntry entry = getEntries().get(position);
 
+        final String constraint = mCurrentConstraint == null ? null :
+                mCurrentConstraint.toString();
+
         return mDropdownChipLayouter.bindView(convertView, parent, entry, position,
-                AdapterType.BASE_RECIPIENT, mCurrentConstraint.toString());
+                AdapterType.BASE_RECIPIENT, constraint);
     }
 
     public Account getAccount() {
