@@ -718,7 +718,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     /**
-     * Draws the icon onto the canvas given the source rectangle of the bitmap and the destination 
+     * Draws the icon onto the canvas given the source rectangle of the bitmap and the destination
      * rectangle of the canvas.
      */
     protected void drawIconOnCanvas(Bitmap icon, Canvas canvas, Paint paint, RectF src, RectF dst) {
@@ -820,7 +820,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         }
         mAvatarPosition = a.getInt(R.styleable.RecipientEditTextView_avatarPosition, 0);
-        mDisableDelete = a.getBoolean(R.styleable.RecipientEditTextView_avatarPosition, false);
+        mDisableDelete = a.getBoolean(R.styleable.RecipientEditTextView_disableDelete, false);
 
         mLineSpacingExtra =  r.getDimension(R.dimen.line_spacing_extra);
         mMaxLines = r.getInteger(R.integer.chips_max_lines);
