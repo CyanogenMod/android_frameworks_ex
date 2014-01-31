@@ -103,4 +103,4 @@ option java_package com.android.common
 # Event for Android SNet
 206001 snet (payload|3)
 # TODO(williamluh): Remove this once switch to snet completed.
-206002 exp_det_snet (payload|3)
+206003 exp_det_snet (payload|3)
