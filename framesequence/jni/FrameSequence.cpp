@@ -20,5 +20,16 @@
 
 FrameSequence* FrameSequence::create(Stream* stream) {
     const RegistryEntry* entry = Registry::Find(stream);
-    return entry ? entry->createFrameSequence(stream) : 0;
+
+    if (!entry) return NULL;
+
+    FrameSequence* frameSequence = entry->createFrameSequence(stream);
+    if (!frameSequence->getFrameCount() ||
+            !frameSequence->getWidth() || !frameSequence->getHeight()) {
+        // invalid contents, abort
+        delete frameSequence;
+        return NULL;
+    }
+
+    return frameSequence;
 }
