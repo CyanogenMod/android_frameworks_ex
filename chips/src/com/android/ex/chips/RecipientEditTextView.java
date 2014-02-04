@@ -1431,9 +1431,11 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             Spannable span = getSpannable();
             DrawableRecipientChip[] chips = span.getSpans(start, end, DrawableRecipientChip.class);
             if (chips != null && chips.length > 0) {
+                dismissDropDown();
                 return;
             }
         } else if (isCompletedToken) {
+            dismissDropDown();
             return;
         }
         super.performFiltering(text, keyCode);
@@ -2293,6 +2295,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 if (mMoreChip != null) {
                     spannable.removeSpan(mMoreChip);
                 }
+                clearSelectedChip();
                 return;
             }
             // Get whether there are any recipients pending addition to the
