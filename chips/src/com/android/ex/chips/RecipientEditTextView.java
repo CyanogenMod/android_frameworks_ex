@@ -466,7 +466,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         baseAdapter.setDropdownChipLayouter(mDropdownChipLayouter);
     }
 
-    private void scrollBottomIntoView() {
+    protected void scrollBottomIntoView() {
         if (mScrollView != null && mShouldShrink) {
             int[] location = new int[2];
             getLocationOnScreen(location);
@@ -480,6 +480,10 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                 mScrollView.scrollBy(0, currentPos - desiredPos);
             }
         }
+    }
+
+    protected ScrollView getScrollView() {
+      return mScrollView;
     }
 
     @Override
