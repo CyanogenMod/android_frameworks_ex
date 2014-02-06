@@ -27,25 +27,28 @@ import com.android.ex.chips.RecipientEntry;
 
 public class RecipientAlternatesAdapterTest extends AndroidTestCase {
 
-    public void testRemoveDuplicateDestinations() {
+    public void testRemoveUndesiredDestinations() {
         MatrixCursor c = new MatrixCursor(Queries.EMAIL.getProjection());
         Cursor result;
 
         // Test: Empty input
-        assertEquals(0, RecipientAlternatesAdapter.removeDuplicateDestinations(c).getCount());
+        assertEquals(0, RecipientAlternatesAdapter.removeUndesiredDestinations(c,
+                null /* desiredMimeType */, null /* lookupKey */).getCount());
 
 
         // Test: One row
         addRow(c, "a", "1@android.com", 1, "home", 1000, 2000, "x", 0);
 
-        result = RecipientAlternatesAdapter.removeDuplicateDestinations(c);
+        result = RecipientAlternatesAdapter.removeUndesiredDestinations(c,
+                null /* desiredMimeType */, null /* lookupKey */);
         assertEquals(1, result.getCount());
         assertRow(result, 0, "a", "1@android.com", 1, "home", 1000, 2000, "x", 0);
 
         // Test: two unique rows, different destinations
         addRow(c, "a", "2@android.com", 1, "home", 1000, 2000, "x", 0);
 
-        result = RecipientAlternatesAdapter.removeDuplicateDestinations(c);
+        result = RecipientAlternatesAdapter.removeUndesiredDestinations(c,
+                null /* desiredMimeType */, null /* lookupKey */);
         assertEquals(2, result.getCount());
         assertRow(result, 0, "a", "1@android.com", 1, "home", 1000, 2000, "x", 0);
         assertRow(result, 1, "a", "2@android.com", 1, "home", 1000, 2000, "x", 0);
@@ -54,7 +57,8 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         addRow(c, "ax", "1@android.com", 11, "homex", 10001, 2000, "xx", 1);
 
         // Third row should be removed.
-        result = RecipientAlternatesAdapter.removeDuplicateDestinations(c);
+        result = RecipientAlternatesAdapter.removeUndesiredDestinations(c,
+                null /* desiredMimeType */, null /* lookupKey */);
         assertEquals(2, result.getCount());
         assertRow(result, 0, "a", "1@android.com", 1, "home", 1000, 2000, "x", 0);
         assertRow(result, 1, "a", "2@android.com", 1, "home", 1000, 2000, "x", 0);
@@ -63,7 +67,8 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         addRow(c, "ax", "2@android.com", 11, "homex", 10001, 2000, "xx", 1);
 
         // Forth row should also be removed.
-        result = RecipientAlternatesAdapter.removeDuplicateDestinations(c);
+        result = RecipientAlternatesAdapter.removeUndesiredDestinations(c,
+                null /* desiredMimeType */, null /* lookupKey */);
         assertEquals(2, result.getCount());
         assertRow(result, 0, "a", "1@android.com", 1, "home", 1000, 2000, "x", 0);
         assertRow(result, 1, "a", "2@android.com", 1, "home", 1000, 2000, "x", 0);
@@ -120,8 +125,8 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         {
             final RecipientEntry entry1 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
-                            "1@android.com", 0, null, 0, 0, (Uri) null, true,
-                            false /* isGalContact */);
+                            "1@android.com", 0, null, 0, null /* directoryId */, 0, (Uri) null,
+                            true, null /* lookupKey */);
             final RecipientEntry entry2 = RecipientEntry.constructFakeEntry("1@android.com", true);
 
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
@@ -133,12 +138,12 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         {
             final RecipientEntry entry1 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
-                            "1@android.com", 0, null, 0, 0, (Uri) null, true,
-                            false /* isGalContact */);
+                            "1@android.com", 0, null, 0, null /* directoryId */, 0, (Uri) null,
+                            true, null /* lookupKey */);
             final RecipientEntry entry2 =
                     RecipientEntry.constructTopLevelEntry("2@android.com", DisplayNameSources.EMAIL,
-                            "2@android.com", 0, null, 0, 0, (Uri) null, true,
-                            false /* isGalContact */);
+                            "2@android.com", 0, null, 0, null /* directoryId */, 0, (Uri) null,
+                            true, null /* lookupKey */);
 
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
@@ -148,12 +153,12 @@ public class RecipientAlternatesAdapterTest extends AndroidTestCase {
         {
             final RecipientEntry entry1 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.NICKNAME,
-                            "1@android.com", 0, null, 0, 0, Uri.parse("http://www.android.com"),
-                            true, false /* isGalContact */);
+                            "1@android.com", 0, null, 0, null /* directoryId */, 0,
+                            Uri.parse("http://www.android.com"), true, null /* lookupKey */);
             final RecipientEntry entry2 =
                     RecipientEntry.constructTopLevelEntry("Android", DisplayNameSources.EMAIL,
-                            "2@android.com", 0, null, 0, 0, (Uri) null, true,
-                            false /* isGalContact */);
+                            "2@android.com", 0, null, 0, null /* directoryId */,
+                            0, (Uri) null, true, null /* lookupKey */);
 
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry1, entry2), entry1);
             assertEquals(RecipientAlternatesAdapter.getBetterRecipient(entry2, entry1), entry1);
