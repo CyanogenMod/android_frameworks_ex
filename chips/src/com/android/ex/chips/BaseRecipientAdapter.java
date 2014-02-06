@@ -23,6 +23,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -45,6 +47,7 @@ import android.widget.Filterable;
 import com.android.ex.chips.DropdownChipLayouter.AdapterType;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -147,10 +150,11 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
         public final int destinationType;
         public final String destinationLabel;
         public final long contactId;
+        public final Long directoryId;
         public final long dataId;
         public final String thumbnailUriString;
         public final int displayNameSource;
-        public final boolean isGalContact;
+        public final String lookupKey;
 
         public TemporaryEntry(
                 String displayName,
@@ -158,31 +162,34 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 int destinationType,
                 String destinationLabel,
                 long contactId,
+                Long directoryId,
                 long dataId,
                 String thumbnailUriString,
                 int displayNameSource,
-                boolean isGalContact) {
+                String lookupKey) {
             this.displayName = displayName;
             this.destination = destination;
             this.destinationType = destinationType;
             this.destinationLabel = destinationLabel;
             this.contactId = contactId;
+            this.directoryId = directoryId;
             this.dataId = dataId;
             this.thumbnailUriString = thumbnailUriString;
             this.displayNameSource = displayNameSource;
-            this.isGalContact = isGalContact;
+            this.lookupKey = lookupKey;
         }
 
-        public TemporaryEntry(Cursor cursor, boolean isGalContact) {
+        public TemporaryEntry(Cursor cursor, Long directoryId) {
             this.displayName = cursor.getString(Queries.Query.NAME);
             this.destination = cursor.getString(Queries.Query.DESTINATION);
             this.destinationType = cursor.getInt(Queries.Query.DESTINATION_TYPE);
             this.destinationLabel = cursor.getString(Queries.Query.DESTINATION_LABEL);
             this.contactId = cursor.getLong(Queries.Query.CONTACT_ID);
+            this.directoryId = directoryId;
             this.dataId = cursor.getLong(Queries.Query.DATA_ID);
             this.thumbnailUriString = cursor.getString(Queries.Query.PHOTO_THUMBNAIL_URI);
             this.displayNameSource = cursor.getInt(Queries.Query.DISPLAY_NAME_SOURCE);
-            this.isGalContact = isGalContact;
+            this.lookupKey = cursor.getString(Queries.Query.LOOKUP_KEY);
         }
     }
 
@@ -234,7 +241,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
             }
 
             try {
-                defaultDirectoryCursor = doQuery(constraint, mPreferredMaxResultCount, null);
+                defaultDirectoryCursor = doQuery(constraint, mPreferredMaxResultCount,
+                        null /* directoryId */);
 
                 if (defaultDirectoryCursor == null) {
                     if (DEBUG) {
@@ -254,7 +262,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                         // Note: At this point each entry doesn't contain any photo
                         // (thus getPhotoBytes() returns null).
                         putOneEntry(new TemporaryEntry(defaultDirectoryCursor,
-                                false /* isGalContact */),
+                                null /* directoryId */),
                                 true, entryMap, nonAggregatedEntries, existingDestinations);
                     }
 
@@ -385,7 +393,7 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
 
                     if (cursor != null) {
                         while (cursor.moveToNext()) {
-                            tempEntries.add(new TemporaryEntry(cursor, true /* isGalContact */));
+                            tempEntries.add(new TemporaryEntry(cursor, mParams.directoryId));
                         }
                     }
                 } finally {
@@ -695,8 +703,8 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString, true,
-                    entry.isGalContact));
+                    entry.contactId, entry.directoryId, entry.dataId, entry.thumbnailUriString,
+                    true, entry.lookupKey));
         } else if (entryMap.containsKey(entry.contactId)) {
             // We already have a section for the person.
             final List<RecipientEntry> entryList = entryMap.get(entry.contactId);
@@ -704,16 +712,16 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString, true,
-                    entry.isGalContact));
+                    entry.contactId, entry.directoryId, entry.dataId, entry.thumbnailUriString,
+                    true, entry.lookupKey));
         } else {
             final List<RecipientEntry> entryList = new ArrayList<RecipientEntry>();
             entryList.add(RecipientEntry.constructTopLevelEntry(
                     entry.displayName,
                     entry.displayNameSource,
                     entry.destination, entry.destinationType, entry.destinationLabel,
-                    entry.contactId, entry.dataId, entry.thumbnailUriString, true,
-                    entry.isGalContact));
+                    entry.contactId, entry.directoryId, entry.dataId, entry.thumbnailUriString,
+                    true, entry.lookupKey));
             entryMap.put(entry.contactId, entryList);
         }
     }
@@ -878,6 +886,39 @@ public abstract class BaseRecipientAdapter extends BaseAdapter implements Filter
                 }
             } finally {
                 photoCursor.close();
+            }
+        } else {
+            InputStream inputStream = null;
+            ByteArrayOutputStream outputStream = null;
+            try {
+                inputStream = mContentResolver.openInputStream(photoThumbnailUri);
+                final Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+
+                if (bitmap != null) {
+                    outputStream = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+                    photoBytes = outputStream.toByteArray();
+
+                    entry.setPhotoBytes(photoBytes);
+                    mPhotoCacheMap.put(photoThumbnailUri, photoBytes);
+                }
+            } catch (final FileNotFoundException e) {
+                Log.w(TAG, "Error opening InputStream for photo", e);
+            } finally {
+                try {
+                    if (inputStream != null) {
+                        inputStream.close();
+                    }
+                } catch (IOException e) {
+                    Log.e(TAG, "Error closing photo input stream", e);
+                }
+                try {
+                    if (outputStream != null) {
+                        outputStream.close();
+                    }
+                } catch (IOException e) {
+                    Log.e(TAG, "Error closing photo output stream", e);
+                }
             }
         }
     }

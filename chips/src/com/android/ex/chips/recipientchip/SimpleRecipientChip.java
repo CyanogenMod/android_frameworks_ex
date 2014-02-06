@@ -27,6 +27,10 @@ class SimpleRecipientChip implements BaseRecipientChip {
 
     private final long mContactId;
 
+    private final Long mDirectoryId;
+
+    private final String mLookupKey;
+
     private final long mDataId;
 
     private final RecipientEntry mEntry;
@@ -39,6 +43,8 @@ class SimpleRecipientChip implements BaseRecipientChip {
         mDisplay = entry.getDisplayName();
         mValue = entry.getDestination().trim();
         mContactId = entry.getContactId();
+        mDirectoryId = entry.getDirectoryId();
+        mLookupKey = entry.getLookupKey();
         mDataId = entry.getDataId();
         mEntry = entry;
     }
@@ -69,6 +75,16 @@ class SimpleRecipientChip implements BaseRecipientChip {
     }
 
     @Override
+    public Long getDirectoryId() {
+        return mDirectoryId;
+    }
+
+    @Override
+    public String getLookupKey() {
+        return mLookupKey;
+    }
+
+    @Override
     public long getDataId() {
         return mDataId;
     }
@@ -90,11 +106,6 @@ class SimpleRecipientChip implements BaseRecipientChip {
     @Override
     public CharSequence getOriginalText() {
         return !TextUtils.isEmpty(mOriginalText) ? mOriginalText : mEntry.getDestination();
-    }
-
-    @Override
-    public boolean isGalContact() {
-        return mEntry.isGalContact();
     }
 
     @Override

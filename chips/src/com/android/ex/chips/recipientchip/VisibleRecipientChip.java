@@ -63,6 +63,16 @@ public class VisibleRecipientChip extends ImageSpan implements DrawableRecipient
     }
 
     @Override
+    public Long getDirectoryId() {
+        return mDelegate.getDirectoryId();
+    }
+
+    @Override
+    public String getLookupKey() {
+        return mDelegate.getLookupKey();
+    }
+
+    @Override
     public long getDataId() {
         return mDelegate.getDataId();
     }
@@ -80,11 +90,6 @@ public class VisibleRecipientChip extends ImageSpan implements DrawableRecipient
     @Override
     public CharSequence getOriginalText() {
         return mDelegate.getOriginalText();
-    }
-
-    @Override
-    public boolean isGalContact() {
-        return mDelegate.isGalContact();
     }
 
     @Override
