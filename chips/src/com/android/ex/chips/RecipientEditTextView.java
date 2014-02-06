@@ -483,7 +483,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     protected ScrollView getScrollView() {
-      return mScrollView;
+        return mScrollView;
     }
 
     @Override
@@ -1571,7 +1571,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
     }
 
     private ListAdapter createAlternatesAdapter(DrawableRecipientChip chip) {
-        return new RecipientAlternatesAdapter(getContext(), chip.getContactId(), chip.getDataId(),
+        return new RecipientAlternatesAdapter(getContext(), chip.getContactId(),
+                chip.getDirectoryId(), chip.getLookupKey(), chip.getDataId(),
                 getAdapter().getQueryType(), this, mDropdownChipLayouter);
     }
 
@@ -2046,8 +2047,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             return constructChipSpan(
                     RecipientEntry.constructFakeEntry((String) text, isValid(text.toString())),
                     true, false);
-        } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT
-                || currentChip.isGalContact()) {
+        } else if (currentChip.getContactId() == RecipientEntry.GENERATED_CONTACT) {
             int start = getChipStart(currentChip);
             int end = getChipEnd(currentChip);
             getSpannable().removeSpan(currentChip);
@@ -2590,7 +2590,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     addresses.add(createAddressText(chip.getEntry()));
                 }
             }
-            final BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
+            final BaseRecipientAdapter adapter = getAdapter();
             RecipientAlternatesAdapter.getMatchingRecipients(getContext(), adapter, addresses,
                     adapter.getAccount(), new RecipientMatchCallback() {
                         @Override
@@ -2718,7 +2718,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
                     addresses.add(createAddressText(chip.getEntry()));
                 }
             }
-            final BaseRecipientAdapter adapter = (BaseRecipientAdapter) getAdapter();
+            final BaseRecipientAdapter adapter = getAdapter();
             RecipientAlternatesAdapter.getMatchingRecipients(getContext(), adapter, addresses,
                     adapter.getAccount(),
                     new RecipientMatchCallback() {

@@ -50,6 +50,16 @@ interface BaseRecipientChip {
     long getContactId();
 
     /**
+     * Get the directory id of the contact associated with this chip.
+     */
+    Long getDirectoryId();
+
+    /**
+     * Get the directory lookup key associated with this chip, or <code>null</code>.
+     */
+    String getLookupKey();
+
+    /**
      * Get the id of the data associated with this chip.
      */
     long getDataId();
@@ -70,11 +80,4 @@ interface BaseRecipientChip {
      * before any reverse lookups.
      */
     CharSequence getOriginalText();
-
-    /**
-     * Checks if this contact was retrieved from a GAL lookup.
-     *
-     * @return <code>true</code> if it came from GAL, <code>false</code> otherwise
-     */
-    boolean isGalContact();
 }

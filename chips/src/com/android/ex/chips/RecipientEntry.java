@@ -61,6 +61,8 @@ public class RecipientEntry {
     private final String mDestinationLabel;
     /** ID for the person */
     private final long mContactId;
+    /** ID for the directory this contact came from, or <code>null</code> */
+    private final Long mDirectoryId;
     /** ID for the destination */
     private final long mDataId;
     private final boolean mIsDivider;
@@ -74,11 +76,13 @@ public class RecipientEntry {
      */
     private byte[] mPhotoBytes;
 
-    private final boolean mIsGalContact;
+    /** See {@link ContactsContract.Contacts#LOOKUP_KEY} */
+    private final String mLookupKey;
 
     private RecipientEntry(int entryType, String displayName, String destination,
-            int destinationType, String destinationLabel, long contactId, long dataId,
-            Uri photoThumbnailUri, boolean isFirstLevel, boolean isValid, boolean isGalContact) {
+            int destinationType, String destinationLabel, long contactId, Long directoryId,
+            long dataId, Uri photoThumbnailUri, boolean isFirstLevel, boolean isValid,
+            String lookupKey) {
         mEntryType = entryType;
         mIsFirstLevel = isFirstLevel;
         mDisplayName = displayName;
@@ -86,12 +90,13 @@ public class RecipientEntry {
         mDestinationType = destinationType;
         mDestinationLabel = destinationLabel;
         mContactId = contactId;
+        mDirectoryId = directoryId;
         mDataId = dataId;
         mPhotoThumbnailUri = photoThumbnailUri;
         mPhotoBytes = null;
         mIsDivider = false;
         mIsValid = isValid;
-        mIsGalContact = isGalContact;
+        mLookupKey = lookupKey;
     }
 
     public boolean isValid() {
@@ -116,8 +121,8 @@ public class RecipientEntry {
         final String tokenizedAddress = tokens.length > 0 ? tokens[0].getAddress() : address;
 
         return new RecipientEntry(ENTRY_TYPE_PERSON, tokenizedAddress, tokenizedAddress,
-                INVALID_DESTINATION_TYPE, null,
-                INVALID_CONTACT, INVALID_CONTACT, null, true, isValid, false /* isGalContact */);
+                INVALID_DESTINATION_TYPE, null, INVALID_CONTACT, null /* directoryId */,
+                INVALID_CONTACT, null, true, isValid, null /* lookupKey */);
     }
 
     /**
@@ -126,8 +131,8 @@ public class RecipientEntry {
     public static RecipientEntry constructFakePhoneEntry(final String phoneNumber,
             final boolean isValid) {
         return new RecipientEntry(ENTRY_TYPE_PERSON, phoneNumber, phoneNumber,
-                INVALID_DESTINATION_TYPE, null,
-                INVALID_CONTACT, INVALID_CONTACT, null, true, isValid, false /* isGalContact */);
+                INVALID_DESTINATION_TYPE, null, INVALID_CONTACT, null /* directoryId */,
+                INVALID_CONTACT, null, true, isValid, null /* lookupKey */);
     }
 
     /**
@@ -149,35 +154,37 @@ public class RecipientEntry {
     public static RecipientEntry constructGeneratedEntry(String display, String address,
             boolean isValid) {
         return new RecipientEntry(ENTRY_TYPE_PERSON, display, address, INVALID_DESTINATION_TYPE,
-                null, GENERATED_CONTACT, GENERATED_CONTACT, null, true, isValid,
-                false /* isGalContact */);
+                null, GENERATED_CONTACT, null /* directoryId */, GENERATED_CONTACT, null, true,
+                isValid, null /* lookupKey */);
     }
 
     public static RecipientEntry constructTopLevelEntry(String displayName, int displayNameSource,
             String destination, int destinationType, String destinationLabel, long contactId,
-            long dataId, Uri photoThumbnailUri, boolean isValid, boolean isGalContact) {
+            Long directoryId, long dataId, Uri photoThumbnailUri, boolean isValid,
+            String lookupKey) {
         return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource,
                 displayName, destination), destination, destinationType, destinationLabel,
-                contactId, dataId, photoThumbnailUri, true, isValid, isGalContact);
+                contactId, directoryId, dataId, photoThumbnailUri, true, isValid, lookupKey);
     }
 
     public static RecipientEntry constructTopLevelEntry(String displayName, int displayNameSource,
             String destination, int destinationType, String destinationLabel, long contactId,
-            long dataId, String thumbnailUriAsString, boolean isValid, boolean isGalContact) {
+            Long directoryId, long dataId, String thumbnailUriAsString, boolean isValid,
+            String lookupKey) {
         return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource,
                 displayName, destination), destination, destinationType, destinationLabel,
-                contactId, dataId, (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString)
-                        : null), true, isValid, isGalContact);
+                contactId, directoryId, dataId, (thumbnailUriAsString != null
+                        ? Uri.parse(thumbnailUriAsString) : null), true, isValid, lookupKey);
     }
 
     public static RecipientEntry constructSecondLevelEntry(String displayName,
             int displayNameSource, String destination, int destinationType,
-            String destinationLabel, long contactId, long dataId, String thumbnailUriAsString,
-            boolean isValid, boolean isGalContact) {
+            String destinationLabel, long contactId, Long directoryId, long dataId,
+            String thumbnailUriAsString, boolean isValid, String lookupKey) {
         return new RecipientEntry(ENTRY_TYPE_PERSON, pickDisplayName(displayNameSource,
                 displayName, destination), destination, destinationType, destinationLabel,
-                contactId, dataId, (thumbnailUriAsString != null ? Uri.parse(thumbnailUriAsString)
-                        : null), false, isValid, isGalContact);
+                contactId, directoryId, dataId, (thumbnailUriAsString != null
+                        ? Uri.parse(thumbnailUriAsString) : null), false, isValid, lookupKey);
     }
 
     public int getEntryType() {
@@ -202,6 +209,10 @@ public class RecipientEntry {
 
     public long getContactId() {
         return mContactId;
+    }
+
+    public Long getDirectoryId() {
+        return mDirectoryId;
     }
 
     public long getDataId() {
@@ -234,8 +245,8 @@ public class RecipientEntry {
         return mEntryType == ENTRY_TYPE_PERSON;
     }
 
-    public boolean isGalContact() {
-        return mIsGalContact;
+    public String getLookupKey() {
+        return mLookupKey;
     }
 
     @Override
