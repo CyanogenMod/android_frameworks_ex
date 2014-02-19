@@ -60,8 +60,7 @@ import java.util.Set;
 /**
  * Adapter for showing a recipient list.
  */
-public abstract class BaseRecipientAdapter extends BaseAdapter implements Filterable,
-        AccountSpecifier {
+public class BaseRecipientAdapter extends BaseAdapter implements Filterable, AccountSpecifier {
     private static final String TAG = "BaseRecipientAdapter";
 
     private static final boolean DEBUG = false;
