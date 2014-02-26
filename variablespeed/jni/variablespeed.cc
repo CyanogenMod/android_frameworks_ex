@@ -129,14 +129,21 @@ void AudioEngine::SetEngine(AudioEngine* engine) {
   audioEngine_ = engine;
 }
 
-void AudioEngine::DeleteEngine() {
-  if (audioEngine_ == NULL) {
-    LOGE("you haven't initialized the audio engine");
-    CHECK(false);
-    return;
+bool AudioEngine::CompareAndSetEngine(AudioEngine* expect, AudioEngine* update) {
+  android::Mutex::Autolock autoLock(publishEngineLock_);
+  if (audioEngine_ == expect) {
+    DeleteEngine();
+    audioEngine_ = update;
+    return true;
   }
-  delete audioEngine_;
-  audioEngine_ = NULL;
+  return false;
+}
+
+void AudioEngine::DeleteEngine() {
+  if (audioEngine_ != NULL) {
+    delete audioEngine_;
+    audioEngine_ = NULL;
+  }
 }
 
 // ****************************************************************************

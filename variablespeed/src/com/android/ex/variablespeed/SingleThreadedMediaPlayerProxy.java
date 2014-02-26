@@ -85,6 +85,11 @@ public class SingleThreadedMediaPlayerProxy implements MediaPlayerProxy {
     }
 
     @Override
+    public synchronized boolean isReadyToPlay() {
+        return mDelegate.isReadyToPlay();
+    }
+
+    @Override
     public synchronized boolean isPlaying() {
         return mDelegate.isPlaying();
     }
