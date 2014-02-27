@@ -19,7 +19,6 @@ package com.android.ex.chips.recipientchip;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.text.style.DynamicDrawableSpan;
 import android.text.style.ImageSpan;
 
 import com.android.ex.chips.RecipientEntry;
@@ -31,8 +30,9 @@ import com.android.ex.chips.RecipientEntry;
 public class VisibleRecipientChip extends ImageSpan implements DrawableRecipientChip {
     private final SimpleRecipientChip mDelegate;
 
-    public VisibleRecipientChip(final Drawable drawable, final RecipientEntry entry) {
-        super(drawable, DynamicDrawableSpan.ALIGN_BOTTOM);
+    public VisibleRecipientChip(final Drawable drawable, final RecipientEntry entry,
+            final int verticalAlignment) {
+        super(drawable, verticalAlignment);
 
         mDelegate = new SimpleRecipientChip(entry);
     }

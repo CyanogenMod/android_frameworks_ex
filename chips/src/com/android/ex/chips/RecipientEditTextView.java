@@ -160,6 +160,17 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
 
     private static final int AVATAR_POSITION_START = 1;
 
+    /**
+     * Enumerator for image span alignment. See attr.xml for more details.
+     * 0 for bottom, 1 for baseline.
+     */
+    private int mImageSpanAlignment;
+
+    private static final int IMAGE_SPAN_ALIGNMENT_BOTTOM = 0;
+
+    private static final int IMAGE_SPAN_ALIGNMENT_BASELINE = 1;
+
+
     private boolean mDisableDelete;
 
     private Tokenizer mTokenizer;
@@ -621,7 +632,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         float[] widths = new float[1];
         paint.getTextWidths(" ", widths);
         CharSequence ellipsizedText = ellipsizeText(createChipDisplayText(contact), paint,
-                calculateAvailableWidth() - iconWidth - widths[0]);
+                calculateAvailableWidth() - iconWidth - widths[0] - backgroundPadding.left
+                    - backgroundPadding.right);;
         int textWidth = (int) paint.measureText(ellipsizedText, 0, ellipsizedText.length());
 
         // Make sure there is a minimum chip width so the user can ALWAYS
@@ -753,11 +765,23 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         // Pass the full text, un-ellipsized, to the chip.
         Drawable result = new BitmapDrawable(getResources(), tmpBitmap);
         result.setBounds(0, 0, tmpBitmap.getWidth(), tmpBitmap.getHeight());
-        DrawableRecipientChip recipientChip = new VisibleRecipientChip(result, contact);
+        DrawableRecipientChip recipientChip =
+                new VisibleRecipientChip(result, contact, getImageSpanAlignment());
         // Return text to the original size.
         paint.setTextSize(defaultSize);
         paint.setColor(defaultColor);
         return recipientChip;
+    }
+
+    private int getImageSpanAlignment() {
+        switch (mImageSpanAlignment) {
+            case IMAGE_SPAN_ALIGNMENT_BASELINE:
+                return ImageSpan.ALIGN_BASELINE;
+            case IMAGE_SPAN_ALIGNMENT_BOTTOM:
+                return ImageSpan.ALIGN_BOTTOM;
+            default:
+                return ImageSpan.ALIGN_BOTTOM;
+        }
     }
 
     /**
@@ -824,6 +848,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             mInvalidChipBackground = r.getDrawable(R.drawable.chip_background_invalid);
         }
         mAvatarPosition = a.getInt(R.styleable.RecipientEditTextView_avatarPosition, 0);
+        mImageSpanAlignment = a.getInt(R.styleable.RecipientEditTextView_imageSpanAlignment, 0);
         mDisableDelete = a.getBoolean(R.styleable.RecipientEditTextView_disableDelete, false);
 
         mLineSpacingExtra =  r.getDimension(R.dimen.line_spacing_extra);
