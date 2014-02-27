@@ -27,5 +27,9 @@
         <attr name="chipPadding" format="reference" />
         <attr name="disableDelete" format="boolean" />
         <attr name="invalidChipBackground" format="reference" />
+        <attr name="imageSpanAlignment">
+            <enum name="bottom" value = "0"/>
+            <enum name="baseline" value = "1"/>
+        </attr>
     </declare-styleable>
 </resources>
