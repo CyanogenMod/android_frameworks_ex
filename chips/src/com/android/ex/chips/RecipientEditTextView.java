@@ -928,7 +928,8 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             Rect bounds;
             for (DrawableRecipientChip chip : chips) {
                 bounds = chip.getBounds();
-                if (getWidth() > 0 && bounds.right - bounds.left > getWidth()) {
+                if (getWidth() > 0 && bounds.right - bounds.left >
+                        getWidth() - getPaddingLeft() - getPaddingRight()) {
                     // Need to redraw that chip.
                     replaceChip(chip, chip.getEntry());
                 }
