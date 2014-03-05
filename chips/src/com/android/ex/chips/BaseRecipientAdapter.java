@@ -764,7 +764,7 @@ public class BaseRecipientAdapter extends BaseAdapter implements Filterable, Acc
     }
 
 
-    protected interface EntriesUpdatedObserver {
+    public interface EntriesUpdatedObserver {
         public void onChanged(List<RecipientEntry> entries);
     }
 
