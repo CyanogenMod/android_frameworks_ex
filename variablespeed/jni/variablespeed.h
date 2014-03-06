@@ -64,6 +64,7 @@ class AudioEngine {
 
   static AudioEngine* GetEngine();
   static void SetEngine(AudioEngine* engine);
+  static bool CompareAndSetEngine(AudioEngine* expect, AudioEngine* update);
   static void DeleteEngine();
 
  private:
