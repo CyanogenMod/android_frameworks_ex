@@ -337,9 +337,16 @@ public class VariableSpeed implements MediaPlayerProxy {
     }
 
     @Override
+    public boolean isReadyToPlay() {
+        synchronized (lock) {
+            return !mHasBeenReleased && mHasDuration;
+        }
+    }
+
+    @Override
     public boolean isPlaying() {
         synchronized (lock) {
-            return mHasStartedPlayback && !hasPlaybackFinished();
+            return isReadyToPlay() && mHasStartedPlayback && !hasPlaybackFinished();
         }
     }
 
