@@ -571,7 +571,7 @@ SLuint32 AudioEngine::GetChannelCount() {
 }
 
 static void CreateAndRealizeAudioPlayer(SLuint32 slSampleRate,
-    size_t channelCount, SLuint32 slChannels, SLint32 audioStreamType, SLObjectItf &outputMix,
+    SLuint32 channelCount, SLuint32 slChannels, SLint32 audioStreamType, SLObjectItf &outputMix,
     SLObjectItf &audioPlayer, SLEngineItf &engineInterface) {
   // Define the source and sink for the audio player: comes from a buffer queue
   // and goes to the output mix.
