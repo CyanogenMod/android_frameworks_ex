@@ -39,7 +39,7 @@ class MethodLog {
 };
 
 extern "C" {
-JNI_METHOD(playFileDescriptor, void) (JNIEnv*, jclass, int fd, jlong offset,
+JNI_METHOD(playFileDescriptor, void) (JNIEnv*, jclass, jint fd, jlong offset,
     jlong length) {
   MethodLog _("playFileDescriptor");
   AudioEngine::GetEngine()->PlayFileDescriptor(fd, offset, length);
@@ -52,7 +52,7 @@ JNI_METHOD(playUri, void) (JNIEnv* env, jclass, jstring uri) {
   AudioEngine::GetEngine()->PlayUri(utf8);
 }
 
-JNI_METHOD(setVariableSpeed, void) (JNIEnv*, jclass, float speed) {
+JNI_METHOD(setVariableSpeed, void) (JNIEnv*, jclass, jfloat speed) {
   MethodLog _("setVariableSpeed");
   AudioEngine::GetEngine()->SetVariableSpeed(speed);
 }
@@ -67,19 +67,19 @@ JNI_METHOD(stopPlayback, void) (JNIEnv*, jclass) {
   AudioEngine::GetEngine()->RequestStop();
 }
 
-JNI_METHOD(getCurrentPosition, int) (JNIEnv*, jclass) {
+JNI_METHOD(getCurrentPosition, jint) (JNIEnv*, jclass) {
   return AudioEngine::GetEngine()->GetCurrentPosition();
 }
 
-JNI_METHOD(getTotalDuration, int) (JNIEnv*, jclass) {
+JNI_METHOD(getTotalDuration, jint) (JNIEnv*, jclass) {
   return AudioEngine::GetEngine()->GetTotalDuration();
 }
 
 JNI_METHOD(initializeEngine, void) (JNIEnv*, jclass,
-    int targetFrames, float windowDuration,
-    float windowOverlapDuration, size_t maxPlayBufferCount,
-    float initialRate, size_t decodeInitialSize, size_t decodeMaxSize,
-    size_t startPositionMillis, int audioStreamType) {
+    jint targetFrames, jfloat windowDuration,
+    jfloat windowOverlapDuration, jint maxPlayBufferCount,
+    jfloat initialRate, jint decodeInitialSize, jint decodeMaxSize,
+    jint startPositionMillis, jint audioStreamType) {
   MethodLog _("initializeEngine");
   AudioEngine *engine = new AudioEngine(targetFrames,
       windowDuration, windowOverlapDuration, maxPlayBufferCount, initialRate,
