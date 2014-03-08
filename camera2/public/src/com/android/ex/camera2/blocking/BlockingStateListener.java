@@ -133,50 +133,50 @@ public class BlockingStateListener extends CameraDevice.StateListener {
 
     @Override
     public void onOpened(CameraDevice camera) {
-        setCurrentState(STATE_OPENED);
         if (mProxy != null) mProxy.onOpened(camera);
+        setCurrentState(STATE_OPENED);
     }
 
     @Override
     public void onDisconnected(CameraDevice camera) {
-        setCurrentState(STATE_DISCONNECTED);
         if (mProxy != null) mProxy.onDisconnected(camera);
+        setCurrentState(STATE_DISCONNECTED);
     }
 
     @Override
     public void onError(CameraDevice camera, int error) {
-        setCurrentState(STATE_ERROR);
         if (mProxy != null) mProxy.onError(camera, error);
+        setCurrentState(STATE_ERROR);
     }
 
     @Override
     public void onUnconfigured(CameraDevice camera) {
-        setCurrentState(STATE_UNCONFIGURED);
         if (mProxy != null) mProxy.onUnconfigured(camera);
+        setCurrentState(STATE_UNCONFIGURED);
     }
 
     @Override
     public void onIdle(CameraDevice camera) {
-        setCurrentState(STATE_IDLE);
         if (mProxy != null) mProxy.onIdle(camera);
+        setCurrentState(STATE_IDLE);
     }
 
     @Override
     public void onActive(CameraDevice camera) {
-        setCurrentState(STATE_ACTIVE);
         if (mProxy != null) mProxy.onActive(camera);
+        setCurrentState(STATE_ACTIVE);
     }
 
     @Override
     public void onBusy(CameraDevice camera) {
-        setCurrentState(STATE_BUSY);
         if (mProxy != null) mProxy.onBusy(camera);
+        setCurrentState(STATE_BUSY);
     }
 
     @Override
     public void onClosed(CameraDevice camera) {
-        setCurrentState(STATE_CLOSED);
         if (mProxy != null) mProxy.onClosed(camera);
+        setCurrentState(STATE_CLOSED);
     }
 
     /**
