@@ -267,6 +267,20 @@ extern "C" {
     if (__android_log_assert(ANDROID_##priority, tag))
 #endif
 
+/* Returns 2nd arg.  Used to substitute default value if caller's vararg list
+ * is empty.
+ */
+#define __android_second(dummy, second, ...)     second
+
+/* If passed multiple args, returns ',' followed by all but 1st arg, otherwise
+ * returns nothing.
+ */
+#define __android_rest(first, ...)               , ## __VA_ARGS__
+
+#define android_printAssert(cond, tag, fmt...) \
+    __android_log_assert(cond, tag, \
+        __android_second(0, ## fmt, NULL) __android_rest(fmt))
+
 #ifdef __cplusplus
 }
 #endif
