@@ -36,6 +36,7 @@ import java.util.Iterator;
  * (or poll ConnectivityManager) directly.
  * {@hide}
  */
+@Deprecated
 public class NetworkConnectivityListener {
     private static final String TAG = "NetworkConnectivityListener";
     private static final boolean DBG = false;
@@ -102,7 +103,7 @@ public class NetworkConnectivityListener {
                 target.sendMessage(message);
             }
         }
-    };
+    }
 
     public enum State {
         UNKNOWN,
