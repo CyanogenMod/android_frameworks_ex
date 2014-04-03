@@ -37,6 +37,15 @@ static bool isFullFrame(const WebPIterator& frame, int canvasWidth, int canvasHe
     return (frame.width == canvasWidth && frame.height == canvasHeight);
 }
 
+// Returns true if the rectangle defined by 'frame' contains pixel (x, y).
+static bool FrameContainsPixel(const WebPIterator& frame, int x, int y) {
+    const int left = frame.x_offset;
+    const int right = left + frame.width;
+    const int top = frame.y_offset;
+    const int bottom = top + frame.height;
+    return x >= left && x < right && y >= top && y < bottom;
+}
+
 // Construct mIsKeyFrame array.
 void FrameSequence_webp::constructDependencyChain() {
     const size_t frameCount = getFrameCount();
@@ -247,8 +256,8 @@ bool FrameSequenceState_webp::decodeFrame(const WebPIterator& currIter, Color888
                     const int canvasX = currIter.x_offset + x;
                     Color8888& currPixel = currBuffer[canvasY * currStride + canvasX];
                     // FIXME: Use alpha-blending when alpha is between 0 and 255.
-                    if (!(currPixel & COLOR_8888_ALPHA_MASK) &&
-                            isFullFrame(prevIter, canvasWidth, canvasHeight)) {
+                    if (!(currPixel & COLOR_8888_ALPHA_MASK)
+                            && !FrameContainsPixel(prevIter, canvasX, canvasY)) {
                         const Color8888 prevPixel = prevBuffer[canvasY * prevStride + canvasX];
                         currPixel = prevPixel;
                     }
