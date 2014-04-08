@@ -55,7 +55,7 @@ public:
 
     WebPDemuxer* getDemuxer() const { return mDemux; }
 
-    bool isKeyFrame(size_t frameNr) const { return mIsKeyFrame[frameNr]; /* TODO: CHECK BOUNDS*/ }
+    bool isKeyFrame(size_t frameNr) const { return mIsKeyFrame[frameNr]; }
 
 private:
     void constructDependencyChain();
