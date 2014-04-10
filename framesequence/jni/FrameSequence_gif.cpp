@@ -81,14 +81,14 @@ FrameSequence_gif::FrameSequence_gif(Stream* stream) :
         for (int j = 0; (j + 1) < image.ExtensionBlockCount; j++) {
             ExtensionBlock* eb1 = image.ExtensionBlocks + j;
             ExtensionBlock* eb2 = image.ExtensionBlocks + j + 1;
-            if (eb1->Function == APPLICATION_EXT_FUNC_CODE &&
+            if (eb1->Function == APPLICATION_EXT_FUNC_CODE
                     // look for "NETSCAPE2.0" app extension
-                    eb1->ByteCount == 11 &&
-                    !strcmp((const char*)(eb1->Bytes), "NETSCAPE2.0") &&
+                    && eb1->ByteCount == 11
+                    && !memcmp((const char*)(eb1->Bytes), "NETSCAPE2.0", 11)
                     // verify extension contents and get loop count
-                    eb2->Function == CONTINUE_EXT_FUNC_CODE &&
-                    eb2->ByteCount == 3 &&
-                    eb2->Bytes[0] == 1) {
+                    && eb2->Function == CONTINUE_EXT_FUNC_CODE
+                    && eb2->ByteCount == 3
+                    && eb2->Bytes[0] == 1) {
                 mLoopCount = (int)(eb2->Bytes[2] & 0xff) + (int)(eb2->Bytes[1] & 0xff);
             }
         }
