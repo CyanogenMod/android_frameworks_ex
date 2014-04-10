@@ -53,8 +53,7 @@ static jobject nativeDecodeByteArray(JNIEnv* env, jobject clazz,
                 "couldn't read array bytes");
         return NULL;
     }
-    bytes += offset;
-    MemoryStream stream(bytes, length);
+    MemoryStream stream(bytes + offset, length);
     FrameSequence* frameSequence = FrameSequence::create(&stream);
     env->ReleasePrimitiveArrayCritical(byteArray, bytes, 0);
     return createJavaFrameSequence(env, frameSequence);
