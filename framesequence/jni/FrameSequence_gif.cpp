@@ -89,7 +89,7 @@ FrameSequence_gif::FrameSequence_gif(Stream* stream) :
                     && eb2->Function == CONTINUE_EXT_FUNC_CODE
                     && eb2->ByteCount == 3
                     && eb2->Bytes[0] == 1) {
-                mLoopCount = (int)(eb2->Bytes[2] & 0xff) + (int)(eb2->Bytes[1] & 0xff);
+                mLoopCount = (int)(eb2->Bytes[2] << 8) + (int)(eb2->Bytes[1]);
             }
         }
 
