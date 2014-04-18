@@ -26,6 +26,7 @@ import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Process;
 import android.os.SystemClock;
 
 public class FrameSequenceDrawable extends Drawable implements Animatable, Runnable {
@@ -36,7 +37,8 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         synchronized (sLock) {
             if (sDecodingThread != null) return;
 
-            sDecodingThread = new HandlerThread("FrameSequence decoding thread");
+            sDecodingThread = new HandlerThread("FrameSequence decoding thread",
+                    Process.THREAD_PRIORITY_BACKGROUND);
             sDecodingThread.start();
             sDecodingThreadHandler = new Handler(sDecodingThread.getLooper());
         }
@@ -52,10 +54,35 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         public abstract void onFinished(FrameSequenceDrawable drawable);
     }
 
+    public static interface BitmapProvider {
+        /**
+         * Called by FrameSequenceDrawable to aquire an 8888 Bitmap with minimum dimensions.
+         */
+        public abstract Bitmap acquireBitmap(int minWidth, int minHeight);
+
+        /**
+         * Called by FrameSequenceDrawable to release a Bitmap it no longer needs. The Bitmap
+         * will no longer be used at all by the drawable, so it is safe to reuse elsewhere.
+         */
+        public abstract void releaseBitmap(Bitmap bitmap);
+    }
+
+    private static BitmapProvider sAllocatingBitmapProvider = new BitmapProvider() {
+        @Override
+        public Bitmap acquireBitmap(int minWidth, int minHeight) {
+            return Bitmap.createBitmap(minWidth, minHeight, Bitmap.Config.ARGB_8888);
+        }
+
+        @Override
+        public void releaseBitmap(Bitmap bitmap) {
+            bitmap.recycle();
+        }
+    };
+
     /**
      * Register a callback to be invoked when a FrameSequenceDrawable finishes looping.
      *
-     * @see setLoopBehavior()
+     * @see #setLoopBehavior(int)
      */
     public void setOnFinishedListener(OnFinishedListener onFinishedListener) {
         mOnFinishedListener = onFinishedListener;
@@ -94,6 +121,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     //Protects the fields below
     private final Object mLock = new Object();
 
+    private boolean mRecycled = false;
     private Bitmap mFrontBitmap;
     private Bitmap mBackBitmap;
 
@@ -107,6 +135,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     private int mLoopBehavior = LOOP_DEFAULT;
 
     private long mLastSwap;
+    private long mNextSwap;
     private int mNextFrameToDecode;
     private OnFinishedListener mOnFinishedListener;
 
@@ -119,6 +148,8 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
             int nextFrame;
             Bitmap bitmap;
             synchronized (mLock) {
+                if (mRecycled) return;
+
                 nextFrame = mNextFrameToDecode;
                 if (nextFrame < 0) {
                     return;
@@ -131,11 +162,11 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
 
             synchronized (mLock) {
                 if (mNextFrameToDecode < 0 || mState != STATE_DECODING) return;
-                invalidateTimeMs += mLastSwap;
+                mNextSwap = invalidateTimeMs + mLastSwap;
 
                 mState = STATE_WAITING_TO_SWAP;
             }
-            scheduleSelf(FrameSequenceDrawable.this, invalidateTimeMs);
+            scheduleSelf(FrameSequenceDrawable.this, mNextSwap);
         }
     };
 
@@ -148,17 +179,33 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         }
     };
 
+    private static Bitmap acquireAndValidateBitmap(BitmapProvider bitmapProvider,
+            int minWidth, int minHeight) {
+        Bitmap bitmap = bitmapProvider.acquireBitmap(minWidth, minHeight);
+
+        if (bitmap.getWidth() < minWidth
+                || bitmap.getHeight() < minHeight
+                || bitmap.getConfig() != Bitmap.Config.ARGB_8888) {
+            throw new IllegalArgumentException("Invalid bitmap provided");
+        }
+
+        return bitmap;
+    }
+
     public FrameSequenceDrawable(FrameSequence frameSequence) {
+        this(frameSequence, sAllocatingBitmapProvider);
+    }
+
+    public FrameSequenceDrawable(FrameSequence frameSequence, BitmapProvider bitmapProvider) {
         if (frameSequence == null) throw new IllegalArgumentException();
 
         mFrameSequence = frameSequence;
         mFrameSequenceState = frameSequence.createState();
-        // TODO: add callback for requesting bitmaps, to allow for reuse
         final int width = frameSequence.getWidth();
         final int height = frameSequence.getHeight();
 
-        mFrontBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        mBackBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        mFrontBitmap = acquireAndValidateBitmap(bitmapProvider, width, height);
+        mBackBitmap = acquireAndValidateBitmap(bitmapProvider, width, height);
         mSrcRect = new Rect(0, 0, width, height);
         mPaint = new Paint();
         mPaint.setFilterBitmap(true);
@@ -170,12 +217,55 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         initializeDecodingThread();
     }
 
+    private void checkRecycledLocked() {
+        if (mRecycled) {
+            throw new IllegalStateException("Cannot perform operation on recycled drawable");
+        }
+    }
+
+    public boolean isRecycled() {
+        synchronized (mLock) {
+            return mRecycled;
+        }
+    }
+
+    /**
+     * Marks the drawable as permanently recycled (and thus unusable), and releases any owned
+     * Bitmaps drawable to the BitmapProvider.
+     *
+     * @param bitmapProvider Provider to recieve recycled bitmaps. Must be non-null.
+     */
+    public void recycle(BitmapProvider bitmapProvider) {
+        if (bitmapProvider == null) {
+            throw new IllegalStateException("BitmapProvider must be non-null");
+        }
+
+        Bitmap bitmapToReleaseA;
+        Bitmap bitmapToReleaseB;
+        synchronized (mLock) {
+            checkRecycledLocked();
+
+            bitmapToReleaseA = mFrontBitmap;
+            bitmapToReleaseB = mBackBitmap;
+
+            mFrontBitmap = null;
+            mBackBitmap = null;
+            mRecycled = true;
+        }
+
+        // For simplicity and safety, we don't recycle the state object here
+
+        bitmapProvider.releaseBitmap(bitmapToReleaseA);
+        bitmapProvider.releaseBitmap(bitmapToReleaseB);
+    }
+
     @Override
     protected void finalize() throws Throwable {
         try {
-            mFrontBitmap.recycle();
-            mBackBitmap.recycle();
             mFrameSequenceState.recycle();
+            if (!mRecycled) {
+                recycle(sAllocatingBitmapProvider);
+            }
         } finally {
             super.finalize();
         }
@@ -184,6 +274,15 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     @Override
     public void draw(Canvas canvas) {
         synchronized (mLock) {
+            checkRecycledLocked();
+            if (mState == STATE_WAITING_TO_SWAP) {
+                // may have failed to schedule mark ready runnable,
+                // so go ahead and swap if swapping is due
+                if (mNextSwap - SystemClock.uptimeMillis() <= 0) {
+                    mState = STATE_READY_TO_SWAP;
+                }
+            }
+
             if (isRunning() && mState == STATE_READY_TO_SWAP) {
                 // Because draw has occurred, the view system is guaranteed to no longer hold a
                 // reference to the old mFrontBitmap, so we now use it to produce the next frame
@@ -197,7 +296,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
                 if (mNextFrameToDecode == mFrameSequence.getFrameCount() - 1) {
                     mCurrentLoop++;
                     if ((mLoopBehavior == LOOP_ONCE && mCurrentLoop == 1) ||
-                        (mLoopBehavior == LOOP_DEFAULT && mCurrentLoop == mFrameSequence.getDefaultLoopCount())) {
+                            (mLoopBehavior == LOOP_DEFAULT && mCurrentLoop == mFrameSequence.getDefaultLoopCount())) {
                         continueLooping = false;
                     }
                 }
@@ -233,6 +332,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     public void start() {
         if (!isRunning()) {
             synchronized (mLock) {
+                checkRecycledLocked();
                 if (mState == STATE_SCHEDULED) return; // already scheduled
                 mCurrentLoop = 0;
                 scheduleDecodeLocked();
@@ -250,13 +350,8 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     @Override
     public boolean isRunning() {
         synchronized (mLock) {
-            return mNextFrameToDecode > -1;
+            return mNextFrameToDecode > -1 && !mRecycled;
         }
-    }
-
-    @Override
-    public void scheduleSelf(Runnable what, long when) {
-        super.scheduleSelf(what, when);
     }
 
     @Override
