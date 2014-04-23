@@ -103,7 +103,7 @@ public class FrameSequence {
      * information (in the case of gif, a recall buffer) that will be used to construct
      * frames based upon data recorded before previousFrameNr.
      *
-     * Note: {@link #recycle()} *must* be called before the object is GC'd to free native resources
+     * Note: {@link #destroy()} *must* be called before the object is GC'd to free native resources
      *
      * Note: State holds a native ref to its FrameSequence instance, so its FrameSequence should
      * remain ref'd while it is in use
@@ -115,7 +115,7 @@ public class FrameSequence {
             mNativeState = nativeState;
         }
 
-        public void recycle() {
+        public void destroy() {
             if (mNativeState != 0) {
                 nativeDestroyState(mNativeState);
                 mNativeState = 0;
@@ -128,11 +128,9 @@ public class FrameSequence {
                 throw new IllegalArgumentException("Bitmap passed must be non-null and ARGB_8888");
             }
             if (mNativeState == 0) {
-                throw new IllegalStateException("attempted to draw recycled FrameSequenceState");
+                throw new IllegalStateException("attempted to draw destroyed FrameSequenceState");
             }
             return nativeGetFrame(mNativeState, frameNr, output, previousFrameNr);
         }
     }
-
-    // TODO: add recycle() cleanup method
 }
