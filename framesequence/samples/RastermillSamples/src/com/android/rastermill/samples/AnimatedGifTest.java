@@ -110,7 +110,7 @@ public class AnimatedGifTest extends Activity {
         super.onPause();
         ImageView imageView = (ImageView) findViewById(R.id.imageview);
 
-        mDrawable.recycle(mProvider);
+        mDrawable.recycle();
         if (!mProvider.isEmpty()) throw new IllegalStateException("All bitmaps not recycled");
 
         mDrawable = null;
