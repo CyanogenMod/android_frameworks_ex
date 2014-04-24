@@ -63,6 +63,8 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         /**
          * Called by FrameSequenceDrawable to release a Bitmap it no longer needs. The Bitmap
          * will no longer be used at all by the drawable, so it is safe to reuse elsewhere.
+         *
+         * This method may be called by FrameSequenceDrawable on any thread.
          */
         public abstract void releaseBitmap(Bitmap bitmap);
     }
@@ -121,7 +123,8 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     //Protects the fields below
     private final Object mLock = new Object();
 
-    private boolean mRecycled = false;
+    private final BitmapProvider mBitmapProvider;
+    private boolean mDestroyed = false;
     private Bitmap mFrontBitmap;
     private Bitmap mBackBitmap;
 
@@ -148,7 +151,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
             int nextFrame;
             Bitmap bitmap;
             synchronized (mLock) {
-                if (mRecycled) return;
+                if (mDestroyed) return;
 
                 nextFrame = mNextFrameToDecode;
                 if (nextFrame < 0) {
@@ -197,13 +200,14 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     }
 
     public FrameSequenceDrawable(FrameSequence frameSequence, BitmapProvider bitmapProvider) {
-        if (frameSequence == null) throw new IllegalArgumentException();
+        if (frameSequence == null || bitmapProvider == null) throw new IllegalArgumentException();
 
         mFrameSequence = frameSequence;
         mFrameSequenceState = frameSequence.createState();
         final int width = frameSequence.getWidth();
         final int height = frameSequence.getHeight();
 
+        mBitmapProvider = bitmapProvider;
         mFrontBitmap = acquireAndValidateBitmap(bitmapProvider, width, height);
         mBackBitmap = acquireAndValidateBitmap(bitmapProvider, width, height);
         mSrcRect = new Rect(0, 0, width, height);
@@ -217,25 +221,29 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         initializeDecodingThread();
     }
 
-    private void checkRecycledLocked() {
-        if (mRecycled) {
+    private void checkDestroyedLocked() {
+        if (mDestroyed) {
             throw new IllegalStateException("Cannot perform operation on recycled drawable");
         }
     }
 
-    public boolean isRecycled() {
+    public boolean isDestroyed() {
         synchronized (mLock) {
-            return mRecycled;
+            return mDestroyed;
         }
     }
 
     /**
      * Marks the drawable as permanently recycled (and thus unusable), and releases any owned
-     * Bitmaps drawable to the BitmapProvider.
+     * Bitmaps drawable to its BitmapProvider, if attached.
      *
-     * @param bitmapProvider Provider to recieve recycled bitmaps. Must be non-null.
+     * If no BitmapProvider is attached to the drawable, recycle() is called on the Bitmaps.
      */
-    public void recycle(BitmapProvider bitmapProvider) {
+    public void destroy() {
+        destroy(mBitmapProvider);
+    }
+
+    private void destroy(BitmapProvider bitmapProvider) {
         if (bitmapProvider == null) {
             throw new IllegalStateException("BitmapProvider must be non-null");
         }
@@ -243,18 +251,17 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         Bitmap bitmapToReleaseA;
         Bitmap bitmapToReleaseB;
         synchronized (mLock) {
-            checkRecycledLocked();
+            checkDestroyedLocked();
 
             bitmapToReleaseA = mFrontBitmap;
             bitmapToReleaseB = mBackBitmap;
 
             mFrontBitmap = null;
             mBackBitmap = null;
-            mRecycled = true;
+            mDestroyed = true;
         }
 
-        // For simplicity and safety, we don't recycle the state object here
-
+        // For simplicity and safety, we don't destroy the state object here
         bitmapProvider.releaseBitmap(bitmapToReleaseA);
         bitmapProvider.releaseBitmap(bitmapToReleaseB);
     }
@@ -262,9 +269,9 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     @Override
     protected void finalize() throws Throwable {
         try {
-            mFrameSequenceState.recycle();
-            if (!mRecycled) {
-                recycle(sAllocatingBitmapProvider);
+            mFrameSequenceState.destroy();
+            if (!mDestroyed) {
+                destroy();
             }
         } finally {
             super.finalize();
@@ -274,7 +281,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     @Override
     public void draw(Canvas canvas) {
         synchronized (mLock) {
-            checkRecycledLocked();
+            checkDestroyedLocked();
             if (mState == STATE_WAITING_TO_SWAP) {
                 // may have failed to schedule mark ready runnable,
                 // so go ahead and swap if swapping is due
@@ -332,7 +339,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     public void start() {
         if (!isRunning()) {
             synchronized (mLock) {
-                checkRecycledLocked();
+                checkDestroyedLocked();
                 if (mState == STATE_SCHEDULED) return; // already scheduled
                 mCurrentLoop = 0;
                 scheduleDecodeLocked();
@@ -350,7 +357,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     @Override
     public boolean isRunning() {
         synchronized (mLock) {
-            return mNextFrameToDecode > -1 && !mRecycled;
+            return mNextFrameToDecode > -1 && !mDestroyed;
         }
     }
 
