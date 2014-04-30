@@ -164,37 +164,6 @@ public class TaskSwitcherActivity extends Activity {
         }
     };
 
-    private final IThumbnailReceiver mThumbnailReceiver = new IThumbnailReceiver.Stub() {
-
-        public void finished() throws RemoteException {
-
-        }
-
-        public void newThumbnail(final int id, final Bitmap bitmap, CharSequence description)
-                throws RemoteException {
-            int w = bitmap.getWidth();
-            int h = bitmap.getHeight();
-            Log.v(TAG, "New thumbnail for id=" + id + ", dimensions=" + w + "x" + h
-                    + " description '" + description + "'");
-            ActivityDescription info = findActivityDescription(id);
-            if (info != null) {
-                info.thumbnail = bitmap;
-                final int thumbWidth = bitmap.getWidth();
-                final int thumbHeight = bitmap.getHeight();
-                if ((mPortraitMode && thumbWidth > thumbHeight)
-                        || (!mPortraitMode && thumbWidth < thumbHeight)) {
-                    Matrix matrix = new Matrix();
-                    matrix.setRotate(90.0f, (float) thumbWidth / 2, (float) thumbHeight / 2);
-                    info.matrix = matrix;
-                } else {
-                    info.matrix = null;
-                }
-            } else {
-                Log.v(TAG, "Can't find view for id " + id);
-            }
-        }
-    };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -243,7 +212,7 @@ public class TaskSwitcherActivity extends Activity {
     }
 
     void updateRunningTasks() {
-        mRunningTaskList = mActivityManager.getRunningTasks(MAX_TASKS + 2, 0, mThumbnailReceiver);
+        mRunningTaskList = mActivityManager.getRunningTasks(MAX_TASKS + 2);
         Log.v(TAG, "Portrait: " + mPortraitMode);
         for (RunningTaskInfo r : mRunningTaskList) {
             if (r.thumbnail != null) {
