@@ -46,9 +46,4 @@ LOCAL_SHARED_LIBRARIES := \
     libcutils \
     liblog \
 
-LOCAL_LDLIBS := \
-    -lOpenSLES \
-    -llog \
-    -landroid \
-
 include $(BUILD_SHARED_LIBRARY)
