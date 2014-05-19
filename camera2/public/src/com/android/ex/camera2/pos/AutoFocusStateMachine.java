@@ -16,7 +16,7 @@
 package com.android.ex.camera2.pos;
 
 import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraMetadata.Key;
+import android.hardware.camera2.CaptureResult.Key;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.util.Log;
