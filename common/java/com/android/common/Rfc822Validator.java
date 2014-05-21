@@ -19,6 +19,7 @@ package com.android.common;
 import android.text.TextUtils;
 import android.text.util.Rfc822Token;
 import android.text.util.Rfc822Tokenizer;
+import android.util.Patterns;
 import android.widget.AutoCompleteTextView;
 
 import java.util.regex.Pattern;
@@ -38,15 +39,45 @@ import java.util.regex.Pattern;
  */
 @Deprecated
 public class Rfc822Validator implements AutoCompleteTextView.Validator {
-    /*
-     * Regex.EMAIL_ADDRESS_PATTERN hardcodes the TLD that we accept, but we
-     * want to make sure we will keep accepting email addresses with TLD's
-     * that don't exist at the time of this writing, so this regexp relaxes
-     * that constraint by accepting any kind of top level domain, not just
-     * ".com", ".fr", etc...
+    /**
+     * Expression that matches the local part of an email address.
+     * This expression does not follow the constraints of the RFC towards the dots, because the
+     * de facto standard is to allow them anywhere.
+     *
+     * It is however a simplification and it will not validate the double-quote syntax.
+     */
+    private static final String EMAIL_ADDRESS_LOCALPART_REGEXP =
+        "((?!\\s)[\\.\\w!#$%&'*+\\-/=?^`{|}~\u0080-\uFFFE])+";
+
+    /**
+     * Alias of characters that can be used in IRI, as per RFC 3987.
+     */
+    private static final String GOOD_IRI_CHAR = Patterns.GOOD_IRI_CHAR;
+
+    /**
+     * Regular expression for a domain label, as per RFC 3490.
+     * Its total length must not exceed 63 octets, according to RFC 5890.
+     */
+    private static final String LABEL_REGEXP =
+        "([" + GOOD_IRI_CHAR + "][" + GOOD_IRI_CHAR + "\\-]{0,61})?[" + GOOD_IRI_CHAR + "]";
+
+    /**
+     * Expression that matches a domain name, including international domain names in Punycode or
+     * Unicode.
+     */
+    private static final String DOMAIN_REGEXP =
+        "("+ LABEL_REGEXP + "\\.)+"                 // Subdomains and domain
+        // Top-level domain must be at least 2 chars
+        + "[" + GOOD_IRI_CHAR + "][" + GOOD_IRI_CHAR + "\\-]{0,61}[" + GOOD_IRI_CHAR + "]";
+
+    /**
+     * Pattern for an email address.
+     *
+     * It is similar to {@link android.util.Patterns#EMAIL_ADDRESS}, but also accepts Unicode
+     * characters.
      */
     private static final Pattern EMAIL_ADDRESS_PATTERN =
-            Pattern.compile("[^\\s@]+@([^\\s@\\.]+\\.)+[a-zA-z][a-zA-Z][a-zA-Z]*");
+            Pattern.compile(EMAIL_ADDRESS_LOCALPART_REGEXP + "@" + DOMAIN_REGEXP);
 
     private String mDomain;
     private boolean mRemoveInvalid = false;
@@ -64,7 +95,6 @@ public class Rfc822Validator implements AutoCompleteTextView.Validator {
      */
     public boolean isValid(CharSequence text) {
         Rfc822Token[] tokens = Rfc822Tokenizer.tokenize(text);
-
         return tokens.length == 1 &&
                EMAIL_ADDRESS_PATTERN.
                    matcher(tokens[0].getAddress()).matches();
