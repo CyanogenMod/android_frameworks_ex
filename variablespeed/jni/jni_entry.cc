@@ -81,9 +81,12 @@ JNI_METHOD(initializeEngine, void) (JNIEnv*, jclass,
     float initialRate, size_t decodeInitialSize, size_t decodeMaxSize,
     size_t startPositionMillis, int audioStreamType) {
   MethodLog _("initializeEngine");
-  AudioEngine::SetEngine(new AudioEngine(targetFrames,
+  AudioEngine *engine = new AudioEngine(targetFrames,
       windowDuration, windowOverlapDuration, maxPlayBufferCount, initialRate,
-      decodeInitialSize, decodeMaxSize, startPositionMillis, audioStreamType));
+      decodeInitialSize, decodeMaxSize, startPositionMillis, audioStreamType);
+  if (!AudioEngine::CompareAndSetEngine(NULL, engine)) {
+    delete engine;
+  }
 }
 
 JNI_METHOD(shutdownEngine, void) (JNIEnv*, jclass) {

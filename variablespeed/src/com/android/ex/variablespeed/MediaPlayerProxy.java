@@ -42,6 +42,7 @@ public interface MediaPlayerProxy {
     int getDuration();
     void seekTo(int startPosition);
     void start();
+    boolean isReadyToPlay();
     boolean isPlaying();
     int getCurrentPosition();
     void pause();
