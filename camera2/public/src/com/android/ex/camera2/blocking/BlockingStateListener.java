@@ -86,21 +86,25 @@ public class BlockingStateListener extends CameraDevice.StateListener {
     /**
      * Device is unconfigured
      */
+    @Deprecated
     public static final int STATE_UNCONFIGURED = 1;
 
     /**
      * Device is idle
      */
+    @Deprecated
     public static final int STATE_IDLE = 2;
 
     /**
      * Device is active (transitory)
      */
+    @Deprecated
     public static final int STATE_ACTIVE = 3;
 
     /**
      * Device is busy (transitory)
      */
+    @Deprecated
     public static final int STATE_BUSY = 4;
 
     /**
@@ -150,24 +154,28 @@ public class BlockingStateListener extends CameraDevice.StateListener {
     }
 
     @Override
+    @Deprecated
     public void onUnconfigured(CameraDevice camera) {
         if (mProxy != null) mProxy.onUnconfigured(camera);
         setCurrentState(STATE_UNCONFIGURED);
     }
 
     @Override
+    @Deprecated
     public void onIdle(CameraDevice camera) {
         if (mProxy != null) mProxy.onIdle(camera);
         setCurrentState(STATE_IDLE);
     }
 
     @Override
+    @Deprecated
     public void onActive(CameraDevice camera) {
         if (mProxy != null) mProxy.onActive(camera);
         setCurrentState(STATE_ACTIVE);
     }
 
     @Override
+    @Deprecated
     public void onBusy(CameraDevice camera) {
         if (mProxy != null) mProxy.onBusy(camera);
         setCurrentState(STATE_BUSY);
