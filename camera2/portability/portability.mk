@@ -13,5 +13,11 @@
 # limitations under the License.
 
 LOCAL_PATH := $(call my-dir)
-include $(LOCAL_PATH)/portability.mk \
-        $(call all-subdir-makefiles)
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := android-ex-camera2-portability
+LOCAL_MODULE_TAGS := optional
+LOCAL_SDK_VERSION := current
+LOCAL_SRC_FILES := $(call all-java-files-under, src)
+
+include $(BUILD_STATIC_JAVA_LIBRARY)

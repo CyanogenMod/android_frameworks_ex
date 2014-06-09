@@ -20,8 +20,8 @@ import android.os.SystemClock;
 
 import com.android.ex.camera2.portability.debug.Log;
 
-class CameraStateHolder {
-    private static final Log.Tag TAG = new Log.Tag("CameraStateHolder");
+public abstract class CameraStateHolder {
+    private static final Log.Tag TAG = new Log.Tag("CamStateHolder");
 
     /** Camera states **/
     // These states are defined bitwise so we can easily to specify a set of
@@ -51,7 +51,7 @@ class CameraStateHolder {
         return mState;
     }
 
-    private interface ConditionChecker {
+    private static interface ConditionChecker {
         /**
          * @return Whether the condition holds.
          */
@@ -99,7 +99,7 @@ class CameraStateHolder {
         return waitForCondition(new ConditionChecker() {
             @Override
             public boolean success() {
-                return (states | mState) == states;
+                return (states | getState()) == states;
             }
         }, CameraAgent.CAMERA_OPERATION_TIMEOUT_MS);
     }
@@ -116,7 +116,7 @@ class CameraStateHolder {
         return waitForCondition(new ConditionChecker() {
             @Override
             public boolean success() {
-                return (states & mState) == 0;
+                return (states & getState()) == 0;
             }
         }, CameraAgent.CAMERA_OPERATION_TIMEOUT_MS);
     }

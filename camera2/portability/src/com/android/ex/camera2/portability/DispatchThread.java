@@ -25,7 +25,7 @@ import com.android.ex.camera2.portability.debug.Log;
 import java.util.LinkedList;
 import java.util.Queue;
 
-class DispatchThread extends Thread {
+public class DispatchThread extends Thread {
     private static final Log.Tag TAG = new Log.Tag("DispatchThread");
     private static final long MAX_MESSAGE_QUEUE_LENGTH = 256;
 

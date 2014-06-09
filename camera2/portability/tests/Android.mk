@@ -1,4 +1,4 @@
-# Copyright 2014 The Android Open Source Project
+# Copyright (C) 2014 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,5 +13,12 @@
 # limitations under the License.
 
 LOCAL_PATH := $(call my-dir)
-include $(LOCAL_PATH)/portability.mk \
-        $(call all-subdir-makefiles)
+include $(CLEAR_VARS)
+
+LOCAL_PACKAGE_NAME := android-ex-camera2-portability-tests
+LOCAL_MODULE_TAGS := tests
+LOCAL_SDK_VERSION := current
+LOCAL_SRC_FILES := $(call all-java-files-under,src)
+LOCAL_STATIC_JAVA_LIBRARIES := android-ex-camera2-portability android-support-test
+
+include $(BUILD_PACKAGE)

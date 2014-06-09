@@ -34,7 +34,7 @@ import java.util.TreeSet;
  */
 public class CameraCapabilities {
 
-    private static Log.Tag TAG = new Log.Tag("CamCapabilities");
+    private static Log.Tag TAG = new Log.Tag("CamCapabs");
 
     /* All internal states are declared final and should be thread-safe. */
 
@@ -311,61 +311,116 @@ public class CameraCapabilities {
      * A interface stringifier to convert abstract representations to API
      * related string representation.
      */
-    public interface Stringifier {
+    public static class Stringifier {
+        /**
+         * Converts the string to hyphen-delimited lowercase for compatibility with multiple APIs.
+         *
+         * @param enumCase The name of an enum constant.
+         * @return The converted string.
+         */
+        private static String toApiCase(String enumCase) {
+            return enumCase.toLowerCase().replaceAll("_", "-");
+        }
+
+        /**
+         * Conerts the string to underscore-delimited uppercase to match the enum constant names.
+         *
+         * @param apiCase An API-related string representation.
+         * @return The converted string.
+         */
+        private static String toEnumCase(String apiCase) {
+            return apiCase.toUpperCase().replaceAll("-", "_");
+        }
+
         /**
          * Converts the focus mode to API-related string representation.
          *
          * @param focus The focus mode to convert.
          * @return The string used by the camera framework API to represent the
-         * focus mode.
+         *         focus mode.
          */
-        String stringify(FocusMode focus);
+        public String stringify(FocusMode focus) {
+            return toApiCase(focus.name());
+        }
 
         /**
          * Converts the API-related string representation of the focus mode to the
          * abstract representation.
          *
          * @param val The string representation.
-         * @return The focus mode represented by the input string.
+         * @return The focus mode represented by the input string, or the focus
+         *         mode with the lowest ordinal if it cannot be converted.
          */
-        FocusMode focusModeFromString(String val);
+        public FocusMode focusModeFromString(String val) {
+            if (val == null) {
+                return FocusMode.values()[0];
+            }
+            try {
+                return FocusMode.valueOf(toEnumCase(val));
+            } catch (IllegalArgumentException ex) {
+                return FocusMode.values()[0];
+            }
+        }
 
         /**
          * Converts the flash mode to API-related string representation.
          *
          * @param flash The focus mode to convert.
          * @return The string used by the camera framework API to represent the
-         * flash mode.
+         *         flash mode.
          */
-        String stringify(FlashMode flash);
+        public String stringify(FlashMode flash) {
+            return toApiCase(flash.name());
+        }
 
         /**
          * Converts the API-related string representation of the flash mode to the
          * abstract representation.
          *
          * @param val The string representation.
-         * @return The flash mode represented by the input string. Can be
-         *         {@code null}.
+         * @return The flash mode represented by the input string, or the flash
+         *         mode with the lowest ordinal if it cannot be converted.
          */
-        FlashMode flashModeFromString(String val);
+        public FlashMode flashModeFromString(String val) {
+            if (val == null) {
+                return FlashMode.values()[0];
+            }
+            try {
+                return FlashMode.valueOf(toEnumCase(val));
+            } catch (IllegalArgumentException ex) {
+                return FlashMode.values()[0];
+            }
+        }
 
         /**
          * Converts the scene mode to API-related string representation.
          *
          * @param scene The focus mode to convert.
          * @return The string used by the camera framework API to represent the
-         * scene mode.
+         *         scene mode.
          */
-        String stringify(SceneMode scene);
+        public String stringify(SceneMode scene) {
+            return toApiCase(scene.name());
+        }
 
         /**
          * Converts the API-related string representation of the scene mode to the
          * abstract representation.
          *
          * @param val The string representation.
-         * @return The scene mode represented by the input string.
+         * @return The scene mode represented by the input string, or the scene
+         *         mode with the lowest ordinal if it cannot be converted.
          */
-        SceneMode sceneModeFromString(String val);
+        public SceneMode sceneModeFromString(String val) {
+            if (val == null) {
+                return SceneMode.values()[0];
+            }
+            try {
+                return SceneMode.valueOf(toEnumCase(val));
+            } catch (IllegalArgumentException ex) {
+                return SceneMode.values()[0];
+            }
+        }
 
         /**
          * Converts the white balance to API-related string representation.
@@ -374,16 +429,29 @@ public class CameraCapabilities {
          * @return The string used by the camera framework API to represent the
          * white balance.
          */
-        String stringify(WhiteBalance wb);
+        public String stringify(WhiteBalance wb) {
+            return toApiCase(wb.name());
+        }
 
         /**
          * Converts the API-related string representation of the white balance to
          * the abstract representation.
          *
          * @param val The string representation.
-         * @return The white balance represented by the input string.
+         * @return The white balance represented by the input string, or the
+         *         white balance with the lowest ordinal if it cannot be
+         *         converted.
          */
-        WhiteBalance whiteBalanceFromString(String val);
+        public WhiteBalance whiteBalanceFromString(String val) {
+            if (val == null) {
+                return WhiteBalance.values()[0];
+            }
+            try {
+                return WhiteBalance.valueOf(toEnumCase(val));
+            } catch (IllegalArgumentException ex) {
+                return WhiteBalance.values()[0];
+            }
+        }
     }
 
     /**

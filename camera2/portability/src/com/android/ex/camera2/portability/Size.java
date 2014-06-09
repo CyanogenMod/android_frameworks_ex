@@ -45,6 +45,20 @@ public class Size {
     }
 
     /**
+     * A helper method to build a list of this class from a list of {@link android.util.Size}.
+     *
+     * @param cameraSizes Source.
+     * @return The built list.
+     */
+    public static List<Size> buildListFromAndroidSizes(List<android.util.Size> androidSizes) {
+        ArrayList<Size> list = new ArrayList<Size>(androidSizes.size());
+        for (android.util.Size androidSize : androidSizes) {
+            list.add(new Size(androidSize));
+        }
+        return list;
+    }
+
+    /**
      * Encode List of this class as comma-separated list of integers.
      *
      * @param sizes List of this class to encode.
@@ -106,6 +120,19 @@ public class Size {
             val = new Point(0, 0);
         } else {
             val = new Point(other.width, other.height);
+        }
+    }
+
+    /**
+     * Constructor from a source {@link android.util.Size}.
+     *
+     * @param other The source size.
+     */
+    public Size(android.util.Size other) {
+        if (other == null) {
+            val = new Point(0, 0);
+        } else {
+            val = new Point(other.getWidth(), other.getHeight());
         }
     }
 

@@ -16,12 +16,14 @@
 
 package com.android.ex.camera2.portability;
 
+import android.content.Context;
+
 /**
  * A factory class for {@link CameraAgent}.
  */
 public class CameraAgentFactory {
 
-    private static AndroidCameraAgentImpl sAndroidCameraAgent;
+    private static CameraAgent sAndroidCameraAgent;
     private static int sAndroidCameraAgentClientCount;
 
     /**
@@ -29,9 +31,13 @@ public class CameraAgentFactory {
      *
      * @return The {@link CameraAgent} to control the camera device.
      */
-    public static synchronized CameraAgent getAndroidCameraAgent() {
+    public static synchronized CameraAgent getAndroidCameraAgent(Context context) {
         if (sAndroidCameraAgent == null) {
-            sAndroidCameraAgent = new AndroidCameraAgentImpl();
+            if (false) {
+                sAndroidCameraAgent = new AndroidCamera2AgentImpl(context);
+            } else {
+                sAndroidCameraAgent = new AndroidCameraAgentImpl();
+            }
             sAndroidCameraAgentClientCount = 1;
         } else {
             ++sAndroidCameraAgentClientCount;
