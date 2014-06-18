@@ -101,7 +101,7 @@ class CameraStateHolder {
             public boolean success() {
                 return (states | mState) == states;
             }
-        }, CameraManager.CAMERA_OPERATION_TIMEOUT_MS);
+        }, CameraAgent.CAMERA_OPERATION_TIMEOUT_MS);
     }
 
     /**
@@ -118,6 +118,6 @@ class CameraStateHolder {
             public boolean success() {
                 return (states & mState) == 0;
             }
-        }, CameraManager.CAMERA_OPERATION_TIMEOUT_MS);
+        }, CameraAgent.CAMERA_OPERATION_TIMEOUT_MS);
     }
 }

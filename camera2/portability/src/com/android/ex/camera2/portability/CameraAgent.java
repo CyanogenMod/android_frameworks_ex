@@ -28,8 +28,8 @@ import android.view.SurfaceHolder;
 /**
  * An interface which provides possible camera device operations.
  *
- * The client should call {@code CameraManager.openCamera} to get an instance
- * of {@link CameraManager.CameraProxy} to control the camera. Classes
+ * The client should call {@code CameraAgent.openCamera} to get an instance
+ * of {@link CameraAgent.CameraProxy} to control the camera. Classes
  * implementing this interface should have its own one unique {@code Thread}
  * other than the main thread for camera operations. Camera device callbacks
  * are wrapped since the client should not deal with
@@ -39,7 +39,7 @@ import android.view.SurfaceHolder;
  * {@code android.hardware.Camera.ErrorCallback},
  * {@code android.hardware.Camera.OnZoomChangeListener}, and
  */
-public interface CameraManager {
+public interface CameraAgent {
     public static final long CAMERA_OPERATION_TIMEOUT_MS = 2500;
 
     public static class CameraStartPreviewCallbackForward
@@ -145,7 +145,7 @@ public interface CameraManager {
         }
 
         @Override
-        public void onReconnectionFailure(final CameraManager mgr, final String info) {
+        public void onReconnectionFailure(final CameraAgent mgr, final String info) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -275,17 +275,17 @@ public interface CameraManager {
          * Callback when {@link java.io.IOException} is caught during
          * {@link android.hardware.Camera#reconnect()}.
          *
-         * @param mgr The {@link CameraManager}
+         * @param mgr The {@link CameraAgent}
          *            with the reconnect failure.
          */
-        public void onReconnectionFailure(CameraManager mgr, String info);
+        public void onReconnectionFailure(CameraAgent mgr, String info);
     }
 
     /**
      * Opens the camera of the specified ID asynchronously. The camera device
      * will be opened in the camera handler thread and will be returned through
-     * the {@link CameraManager.CameraOpenCallback#
-     * onCameraOpened(com.android.camera.cameradevice.CameraManager.CameraProxy)}.
+     * the {@link CameraAgent.CameraOpenCallback#
+     * onCameraOpened(com.android.camera.cameradevice.CameraAgent.CameraProxy)}.
      *
      * @param handler The {@link android.os.Handler} in which the callback
      *                was handled.
@@ -310,7 +310,7 @@ public interface CameraManager {
             Handler handler);
 
     /**
-     * Recycles the resources used by this instance. CameraManager will be in
+     * Recycles the resources used by this instance. CameraAgent will be in
      * an unusable state after calling this.
      */
     public void recycle();
@@ -338,7 +338,7 @@ public interface CameraManager {
 
         /**
          * @return The camera ID associated to by this
-         * {@link CameraManager.CameraProxy}.
+         * {@link CameraAgent.CameraProxy}.
          */
         public int getCameraId();
 
@@ -349,8 +349,8 @@ public interface CameraManager {
 
         /**
          * Reconnects to the camera device. On success, the camera device will
-         * be returned through {@link CameraManager
-         * .CameraOpenCallback#onCameraOpened(com.android.camera.cameradevice.CameraManager
+         * be returned through {@link CameraAgent
+         * .CameraOpenCallback#onCameraOpened(com.android.camera.cameradevice.CameraAgent
          * .CameraProxy)}.
          * @see android.hardware.Camera#reconnect()
          *

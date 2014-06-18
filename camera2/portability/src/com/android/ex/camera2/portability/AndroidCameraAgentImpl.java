@@ -40,9 +40,9 @@ import com.android.ex.camera2.portability.debug.Log;
 import java.io.IOException;
 
 /**
- * A class to implement {@link CameraManager} of the Android camera framework.
+ * A class to implement {@link CameraAgent} of the Android camera framework.
  */
-class AndroidCameraManagerImpl implements CameraManager {
+class AndroidCameraAgentImpl implements CameraAgent {
     private static final Log.Tag TAG = new Log.Tag("AndroidCamMgrImpl");
 
     private Parameters mParameters;
@@ -63,7 +63,7 @@ class AndroidCameraManagerImpl implements CameraManager {
             }
         };
 
-    AndroidCameraManagerImpl() {
+    AndroidCameraAgentImpl() {
         mCameraHandlerThread = new HandlerThread("Camera Handler Thread");
         mCameraHandlerThread.start();
         mCameraHandler = new CameraHandler(mCameraHandlerThread.getLooper());
@@ -301,7 +301,7 @@ class AndroidCameraManagerImpl implements CameraManager {
                             mCamera.reconnect();
                         } catch (IOException ex) {
                             if (cbForward != null) {
-                                cbForward.onReconnectionFailure(AndroidCameraManagerImpl.this,
+                                cbForward.onReconnectionFailure(AndroidCameraAgentImpl.this,
                                         generateHistoryString(mCameraId));
                             }
                             break;
@@ -601,10 +601,10 @@ class AndroidCameraManagerImpl implements CameraManager {
     }
 
     /**
-     * A class which implements {@link CameraManager.CameraProxy} and
+     * A class which implements {@link CameraAgent.CameraProxy} and
      * camera handler thread.
      */
-    private class AndroidCameraProxyImpl implements CameraManager.CameraProxy {
+    private class AndroidCameraProxyImpl implements CameraAgent.CameraProxy {
         private final int mCameraId;
         /* TODO: remove this Camera instance. */
         private final Camera mCamera;

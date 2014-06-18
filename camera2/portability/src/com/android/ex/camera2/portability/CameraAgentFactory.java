@@ -17,26 +17,26 @@
 package com.android.ex.camera2.portability;
 
 /**
- * A factory class for {@link CameraManager}.
+ * A factory class for {@link CameraAgent}.
  */
-public class CameraManagerFactory {
+public class CameraAgentFactory {
 
-    private static AndroidCameraManagerImpl sAndroidCameraManager;
-    private static int sAndoridCameraManagerClientCount;
+    private static AndroidCameraAgentImpl sAndroidCameraAgent;
+    private static int sAndroidCameraAgentClientCount;
 
     /**
-     * Returns the android camera implementation of {@link com.android.camera.cameradevice.CameraManager}.
+     * Returns the android camera implementation of {@link com.android.camera.cameradevice.CameraAgent}.
      *
-     * @return The {@link CameraManager} to control the camera device.
+     * @return The {@link CameraAgent} to control the camera device.
      */
-    public static synchronized CameraManager getAndroidCameraManager() {
-        if (sAndroidCameraManager == null) {
-            sAndroidCameraManager = new AndroidCameraManagerImpl();
-            sAndoridCameraManagerClientCount = 1;
+    public static synchronized CameraAgent getAndroidCameraAgent() {
+        if (sAndroidCameraAgent == null) {
+            sAndroidCameraAgent = new AndroidCameraAgentImpl();
+            sAndoridCameraAgentClientCount = 1;
         } else {
-            ++sAndoridCameraManagerClientCount;
+            ++sAndoridCameraAgentClientCount;
         }
-        return sAndroidCameraManager;
+        return sAndroidCameraAgent;
     }
 
     /**
@@ -44,9 +44,9 @@ public class CameraManagerFactory {
      * stopped.
      */
     public static synchronized void recycle() {
-        if (--sAndoridCameraManagerClientCount == 0 && sAndroidCameraManager != null) {
-            sAndroidCameraManager.recycle();
-            sAndroidCameraManager = null;
+        if (--sAndoridCameraAgentClientCount == 0 && sAndroidCameraAgent != null) {
+            sAndroidCameraAgent.recycle();
+            sAndroidCameraAgent = null;
         }
     }
 }
