@@ -577,5 +577,15 @@ public interface CameraAgent {
          *                 {@code false} to disable it.
          */
         public void enableShutterSound(boolean enable);
+
+        /**
+         * Dumps the current settings of the camera device.
+         *
+         * <p>The content varies based on the underlying camera API settings
+         * implementation.</p>
+         *
+         * @return The content of the device settings represented by a string.
+         */
+        public String dumpDeviceSettings();
     }
 }

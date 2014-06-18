@@ -47,6 +47,8 @@ class AndroidCameraCapabilities extends CameraCapabilities {
         mMaxZoomIndex = p.getMaxZoom();
         mZoomRatioList.addAll(p.getZoomRatios());
         mMaxZoomRatio = mZoomRatioList.get(mMaxZoomIndex);
+        mHorizontalViewAngle = p.getHorizontalViewAngle();
+        mVerticalViewAngle = p.getVerticalViewAngle();
         buildPreviewFpsRange(p);
         buildPreviewSizes(p);
         buildVideoSizes(p);

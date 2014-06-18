@@ -19,8 +19,10 @@ public class CameraSettings {
     protected int mPreviewFpsRangeMax;
     protected int mPreviewFrameRate;
     protected Size mCurrentPreviewSize;
+    private int mCurrentPreviewFormat;
     protected Size mCurrentPhotoSize;
     protected int mJpegCompressQuality;
+    protected int mCurrentPhotoFormat;
     protected float mCurrentZoomRatio;
     protected int mCurrentZoomIndex;
     protected float mPhotoRotationDegrees;
@@ -32,7 +34,9 @@ public class CameraSettings {
     protected boolean mVideoStabilizationEnabled;
     protected boolean mAutoExposureLocked;
     protected boolean mAutoWhiteBalanceLocked;
+    protected boolean mRecordingHintEnabled;
     protected GpsData mGpsData;
+    protected Size mExifThumbnailSize = new Size(0,0);
 
     /**
      * An immutable class storing GPS related information.
@@ -85,9 +89,11 @@ public class CameraSettings {
         mPreviewFrameRate = src.mPreviewFrameRate;
         mCurrentPreviewSize =
                 (src.mCurrentPreviewSize == null ? null : new Size(src.mCurrentPreviewSize));
+        mCurrentPreviewFormat = src.mCurrentPreviewFormat;
         mCurrentPhotoSize =
                 (src.mCurrentPhotoSize == null ? null : new Size(src.mCurrentPhotoSize));
         mJpegCompressQuality = src.mJpegCompressQuality;
+        mCurrentPhotoFormat = src.mCurrentPhotoFormat;
         mCurrentZoomRatio = src.mCurrentZoomRatio;
         mCurrentZoomIndex = src.mCurrentZoomIndex;
         mPhotoRotationDegrees = src.mPhotoRotationDegrees;
@@ -99,7 +105,9 @@ public class CameraSettings {
         mVideoStabilizationEnabled = src.mVideoStabilizationEnabled;
         mAutoExposureLocked = src.mAutoExposureLocked;
         mAutoWhiteBalanceLocked = src.mAutoWhiteBalanceLocked;
+        mRecordingHintEnabled = src.mRecordingHintEnabled;
         mGpsData = src.mGpsData;
+        mExifThumbnailSize = src.mExifThumbnailSize;
     }
 
     /** General setting **/
@@ -174,6 +182,24 @@ public class CameraSettings {
         mCurrentPreviewSize = new Size(previewSize);
     }
 
+    /**
+     * Sets the preview format.
+     *
+     * @param format
+     * @see {@link android.graphics.ImageFormat}.
+     */
+    public void setPreviewFormat(int format) {
+        mCurrentPreviewFormat = format;
+    }
+
+    /**
+     * @return The preview format.
+     * @see {@link android.graphics.ImageFormat}.
+     */
+    public int getCurrentPreviewFormat() {
+        return mCurrentPreviewFormat;
+    }
+
     /** Picture **/
 
     /**
@@ -190,6 +216,24 @@ public class CameraSettings {
      */
     public void setPhotoSize(Size photoSize) {
         mCurrentPhotoSize = new Size(photoSize);
+    }
+
+    /**
+     * Sets the format for the photo.
+     *
+     * @param format The format for the photos taken.
+     * @see {@link android.graphics.ImageFormat}.
+     */
+    public void setPhotoFormat(int format) {
+        mCurrentPhotoFormat = format;
+    }
+
+    /**
+     * @return The format for the photos taken.
+     * @see {@link android.graphics.ImageFormat}.
+     */
+    public int getCurrentPhotoFormat() {
+        return mCurrentPhotoFormat;
     }
 
     /**
@@ -363,6 +407,14 @@ public class CameraSettings {
         return mVideoStabilizationEnabled;
     }
 
+    public void setRecordingHintEnabled(boolean hintEnabled) {
+        mRecordingHintEnabled = hintEnabled;
+    }
+
+    public boolean isRecordingHintEnabled() {
+        return mRecordingHintEnabled;
+    }
+
     public void setGpsData(GpsData data) {
         mGpsData = new GpsData(data);
     }
@@ -373,5 +425,23 @@ public class CameraSettings {
 
     public void clearGpsData() {
         mGpsData = null;
+    }
+
+    /**
+     * Sets the size of the thumbnail in EXIF header.
+     *
+     * @param s The size for the thumbnail. {@code null} will clear the size to
+     *          (0,0).
+     */
+    public void setExifThumbnailSize(Size s) {
+        if (s != null) {
+            mExifThumbnailSize = s;
+        } else {
+            mExifThumbnailSize = new Size(0,0);
+        }
+    }
+
+    public Size getExifThumbnailSize() {
+        return new Size(mExifThumbnailSize);
     }
 }

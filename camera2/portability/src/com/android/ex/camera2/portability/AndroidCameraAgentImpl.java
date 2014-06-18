@@ -38,6 +38,7 @@ import android.view.SurfaceHolder;
 import com.android.ex.camera2.portability.debug.Log;
 
 import java.io.IOException;
+import java.util.StringTokenizer;
 
 /**
  * A class to implement {@link CameraAgent} of the Android camera framework.
@@ -512,6 +513,7 @@ class AndroidCameraAgentImpl implements CameraAgent {
             } else {
                 mParamsToSet.setPreviewFrameRate(settings.getPreviewFrameRate());
             }
+            mParamsToSet.setPreviewFormat(settings.getCurrentPreviewFormat());
             mParamsToSet.setJpegQuality(settings.getPhotoJpegCompressionQuality());
             if (mCapabilities.supports(CameraCapabilities.Feature.ZOOM)) {
                 // Should use settings.getCurrentZoomRatio() instead here.
@@ -545,6 +547,10 @@ class AndroidCameraAgentImpl implements CameraAgent {
                             .setSceneMode(stringifier.stringify(settings.getCurrentSceneMode()));
                 }
             }
+            mParamsToSet.setRecordingHint(settings.isRecordingHintEnabled());
+            Size jpegThumbSize = settings.getExifThumbnailSize();
+            mParamsToSet.setJpegThumbnailSize(jpegThumbSize.width(), jpegThumbSize.height());
+            mParamsToSet.setPictureFormat(settings.getCurrentPhotoFormat());
 
             CameraSettings.GpsData gpsData = settings.getGpsData();
             if (gpsData == null) {
@@ -1031,6 +1037,18 @@ class AndroidCameraAgentImpl implements CameraAgent {
                             .sendToTarget();
                 }
             });
+        }
+
+        @Override
+        public String dumpDeviceSettings() {
+            String flattened = mParameters.flatten();
+            StringTokenizer tokenizer = new StringTokenizer(flattened, ";");
+            String dumpedSettings = new String();
+            while (tokenizer.hasMoreElements()) {
+                dumpedSettings += tokenizer.nextToken() + '\n';
+            }
+
+            return dumpedSettings;
         }
     }
 

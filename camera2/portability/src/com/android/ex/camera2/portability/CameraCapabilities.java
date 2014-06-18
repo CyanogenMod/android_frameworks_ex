@@ -58,6 +58,8 @@ public class CameraCapabilities {
     protected int mMaxNumOfFocusAreas;
     protected int mMaxNumOfMeteringArea;
     protected int mMaxZoomRatio;
+    protected float mHorizontalViewAngle;
+    protected float mVerticalViewAngle;
     private final Stringifier mStringifier;
     protected final ArrayList<Integer> mZoomRatioList = new ArrayList<Integer>();
     protected int mMaxZoomIndex;
@@ -416,7 +418,17 @@ public class CameraCapabilities {
         mMaxNumOfFocusAreas = src.mMaxNumOfFocusAreas;
         mMaxNumOfMeteringArea = src.mMaxNumOfMeteringArea;
         mMaxZoomRatio = src.mMaxZoomRatio;
+        mHorizontalViewAngle = src.mHorizontalViewAngle;
+        mVerticalViewAngle = src.mVerticalViewAngle;
         mStringifier = src.mStringifier;
+    }
+
+    public float getHorizontalViewAngle() {
+        return mHorizontalViewAngle;
+    }
+
+    public float getVerticalViewAngle() {
+        return mVerticalViewAngle;
     }
 
     /**
@@ -440,7 +452,6 @@ public class CameraCapabilities {
     public List<Size> getSupportedPhotoSizes() {
         return new ArrayList<Size>(mSupportedPhotoSizes);
     }
-
 
     /**
      * @return The supported preview fps (frame-per-second) ranges. The returned

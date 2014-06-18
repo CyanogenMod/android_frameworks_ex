@@ -1,11 +1,29 @@
+/*
+ * Copyright (C) 2014 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.ex.camera2.portability;
 
 import android.hardware.Camera;
 
 /**
- * Created by shkong on 6/2/14.
+ * The subclass of {@link CameraSettings} for Android Camera 1 API.
  */
 public class AndroidCameraSettings extends CameraSettings {
+    private static final String TRUE = "true";
+    private static final String RECORDING_HINT = "recording-hint";
 
     public AndroidCameraSettings(CameraCapabilities capabilities, Camera.Parameters params) {
         CameraCapabilities.Stringifier stringifier = capabilities.getStringifier();
@@ -18,7 +36,7 @@ public class AndroidCameraSettings extends CameraSettings {
         params.getPreviewFpsRange(previewFpsRange);
         setPreviewFpsRange(previewFpsRange[Camera.Parameters.PREVIEW_FPS_MIN_INDEX],
                 previewFpsRange[Camera.Parameters.PREVIEW_FPS_MAX_INDEX]);
-
+        setPreviewFormat(params.getPreviewFormat());
 
         // Capture: Focus, flash, zoom, exposure, scene mode.
         if (capabilities.supports(CameraCapabilities.Feature.ZOOM)) {
@@ -37,11 +55,13 @@ public class AndroidCameraSettings extends CameraSettings {
         if (capabilities.supports(CameraCapabilities.Feature.VIDEO_STABILIZATION)) {
             setVideoStabilization(isVideoStabilizationEnabled());
         }
+        setRecordingHintEnabled(TRUE.equals(params.get(RECORDING_HINT)));
 
         // Output: Photo size, compression quality, rotation.
         setPhotoRotationDegrees(0f);
         setPhotoJpegCompressionQuality(params.getJpegQuality());
         Camera.Size paramPictureSize = params.getPictureSize();
         setPhotoSize(new Size(paramPictureSize.width, paramPictureSize.height));
+        setPhotoFormat(params.getPictureFormat());
     }
 }
