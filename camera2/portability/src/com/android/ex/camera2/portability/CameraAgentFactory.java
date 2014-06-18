@@ -32,9 +32,9 @@ public class CameraAgentFactory {
     public static synchronized CameraAgent getAndroidCameraAgent() {
         if (sAndroidCameraAgent == null) {
             sAndroidCameraAgent = new AndroidCameraAgentImpl();
-            sAndoridCameraAgentClientCount = 1;
+            sAndroidCameraAgentClientCount = 1;
         } else {
-            ++sAndoridCameraAgentClientCount;
+            ++sAndroidCameraAgentClientCount;
         }
         return sAndroidCameraAgent;
     }
@@ -44,7 +44,7 @@ public class CameraAgentFactory {
      * stopped.
      */
     public static synchronized void recycle() {
-        if (--sAndoridCameraAgentClientCount == 0 && sAndroidCameraAgent != null) {
+        if (--sAndroidCameraAgentClientCount == 0 && sAndroidCameraAgent != null) {
             sAndroidCameraAgent.recycle();
             sAndroidCameraAgent = null;
         }
