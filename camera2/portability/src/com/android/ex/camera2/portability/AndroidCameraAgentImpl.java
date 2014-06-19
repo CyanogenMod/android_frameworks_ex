@@ -48,6 +48,7 @@ class AndroidCameraAgentImpl implements CameraAgent {
 
     private Parameters mParameters;
     private boolean mParametersIsDirty;
+    private CameraDeviceInfo.Characteristics mCharacteristics;
     private AndroidCameraCapabilities mCapabilities;
 
     private final CameraHandler mCameraHandler;
@@ -140,8 +141,13 @@ class AndroidCameraAgentImpl implements CameraAgent {
         }
 
         @Override
-        public Camera.CameraInfo[] getCameraInfos() {
-            return mCameraInfos;
+        public Characteristics getCharacteristics(int cameraId) {
+            Camera.CameraInfo info = mCameraInfos[cameraId];
+            if (info != null) {
+                return new AndroidCharacteristics(info);
+            } else {
+                return null;
+            }
         }
 
         @Override
@@ -157,6 +163,34 @@ class AndroidCameraAgentImpl implements CameraAgent {
         @Override
         public int getFirstFrontCameraId() {
             return mFirstFrontCameraId;
+        }
+
+        private static class AndroidCharacteristics implements Characteristics {
+            private Camera.CameraInfo mCameraInfo;
+
+            AndroidCharacteristics(Camera.CameraInfo cameraInfo) {
+                mCameraInfo = cameraInfo;
+            }
+
+            @Override
+            public boolean isFacingBack() {
+                return mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK;
+            }
+
+            @Override
+            public boolean isFacingFront() {
+                return mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
+            }
+
+            @Override
+            public int getSensorOrientation() {
+                return mCameraInfo.orientation;
+            }
+
+            @Override
+            public boolean canDisableShutterSound() {
+                return mCameraInfo.canDisableShutterSound;
+            }
         }
     }
 
@@ -265,15 +299,17 @@ class AndroidCameraAgentImpl implements CameraAgent {
                             mCameraId = cameraId;
                             mParametersIsDirty = true;
 
-                            // Get a instance of Camera.Parameters for later use.
+                            // Get an instance of Camera.Parameters for later use.
                             mParamsToSet = mCamera.getParameters();
+                            mCharacteristics =
+                                    AndroidCameraDeviceInfo.create().getCharacteristics(cameraId);
                             mCapabilities = new AndroidCameraCapabilities(mParamsToSet);
 
                             mCameraState.setState(CameraStateHolder.CAMERA_IDLE);
                             if (openCallback != null) {
                                 openCallback.onCameraOpened(
                                         new AndroidCameraProxyImpl(cameraId, mCamera,
-                                                mCapabilities));
+                                                mCharacteristics, mCapabilities));
                             }
                         } else {
                             if (openCallback != null) {
@@ -311,7 +347,8 @@ class AndroidCameraAgentImpl implements CameraAgent {
                         mCameraState.setState(CameraStateHolder.CAMERA_IDLE);
                         if (cbForward != null) {
                             cbForward.onCameraOpened(
-                                    new AndroidCameraProxyImpl(cameraId, mCamera, mCapabilities));
+                                    new AndroidCameraProxyImpl(cameraId, mCamera, mCharacteristics,
+                                            mCapabilities));
                         }
                         break;
                     }
@@ -614,12 +651,15 @@ class AndroidCameraAgentImpl implements CameraAgent {
         private final int mCameraId;
         /* TODO: remove this Camera instance. */
         private final Camera mCamera;
+        private final CameraDeviceInfo.Characteristics mCharacteristics;
         private final AndroidCameraCapabilities mCapabilities;
 
         private AndroidCameraProxyImpl(int cameraId, Camera camera,
+                CameraDeviceInfo.Characteristics characteristics,
                 AndroidCameraCapabilities capabilities) {
             mCamera = camera;
             mCameraId = cameraId;
+            mCharacteristics = characteristics;
             mCapabilities = capabilities;
         }
 
@@ -631,6 +671,11 @@ class AndroidCameraAgentImpl implements CameraAgent {
         @Override
         public int getCameraId() {
             return mCameraId;
+        }
+
+        @Override
+        public CameraDeviceInfo.Characteristics getCharacteristics() {
+            return mCharacteristics;
         }
 
         @Override
