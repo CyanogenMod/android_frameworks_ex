@@ -1,7 +1,5 @@
 apply plugin: 'android-library'
 
-buildDir = "$rootProject.buildDir/android-$project.name"
-
 android {
     compileSdkVersion 17
     buildToolsVersion = '19.0.1'
