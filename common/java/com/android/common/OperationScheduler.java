@@ -20,7 +20,8 @@ import android.content.SharedPreferences;
 import android.net.http.AndroidHttpClient;
 import android.text.format.Time;
 
-import java.util.TreeSet;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Tracks the success/failure history of a particular network operation in
@@ -355,16 +356,23 @@ public class OperationScheduler {
      */
     public String toString() {
         StringBuilder out = new StringBuilder("[OperationScheduler:");
-        for (String key : new TreeSet<String>(mStorage.getAll().keySet())) {  // Sort keys
+        TreeMap<String, Object> copy = new TreeMap<String, Object>(mStorage.getAll());  // Sort keys
+        for (Map.Entry<String, Object> e : copy.entrySet()) {
+            String key = e.getKey();
             if (key.startsWith(PREFIX)) {
                 if (key.endsWith("TimeMillis")) {
                     Time time = new Time();
-                    time.set(mStorage.getLong(key, 0));
+                    time.set((Long) e.getValue());
                     out.append(" ").append(key.substring(PREFIX.length(), key.length() - 10));
                     out.append("=").append(time.format("%Y-%m-%d/%H:%M:%S"));
                 } else {
                     out.append(" ").append(key.substring(PREFIX.length()));
-                    out.append("=").append(mStorage.getAll().get(key).toString());
+                    Object v = e.getValue();
+                    if (v == null) {
+                        out.append("=(null)");
+                    } else {
+                        out.append("=").append(v.toString());
+                    }
                 }
             }
         }
