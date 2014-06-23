@@ -99,3 +99,6 @@ option java_package com.android.common
 205009 gls_account_saved (status|1)
 205010 gls_authenticate (status|1),(service|3)
 205011 google_mail_switch (direction|1)
+
+# Event for Android SNet
+206001 exp_det_snet (payload|3)
