@@ -19,12 +19,13 @@ include $(CLEAR_VARS)
 
 ## Main library
 
-LOCAL_STATIC_LIBRARIES += libgif
+LOCAL_STATIC_LIBRARIES += libgif libwebp-decode
 
 LOCAL_LDFLAGS := -llog -ljnigraphics
 
 LOCAL_C_INCLUDES := \
-	external/giflib
+	external/giflib \
+	external/webp/include
 
 LOCAL_MODULE    := libframesequence
 LOCAL_SRC_FILES := \
@@ -32,6 +33,7 @@ LOCAL_SRC_FILES := \
 	FrameSequence.cpp \
 	FrameSequenceJNI.cpp \
 	FrameSequence_gif.cpp \
+	FrameSequence_webp.cpp \
 	JNIHelpers.cpp \
 	Registry.cpp \
 	Stream.cpp
