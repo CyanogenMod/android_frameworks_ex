@@ -343,6 +343,11 @@ public interface CameraAgent {
         public int getCameraId();
 
         /**
+         * @return The camera characteristics.
+         */
+        public CameraDeviceInfo.Characteristics getCharacteristics();
+
+        /**
          * @return The camera capabilities.
          */
         public CameraCapabilities getCapabilities();
