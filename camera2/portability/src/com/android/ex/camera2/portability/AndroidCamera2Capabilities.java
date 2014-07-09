@@ -82,7 +82,6 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
         mExposureCompensationStep = (float) ecStep.getNumerator() / ecStep.getDenominator();
 
         mMaxNumOfFacesSupported = p.get(STATISTICS_INFO_MAX_FACE_COUNT);
-        mMaxNumOfFocusAreas = p.get(CONTROL_MAX_REGIONS_AF);
         mMaxNumOfMeteringArea = p.get(CONTROL_MAX_REGIONS_AE);
 
         // TODO: Populate mMaxZoomRatio
@@ -90,6 +89,16 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
         // TODO: Populate mVerticalViewAngle
         // TODO: Populate mZoomRatioList
         // TODO: Populate mMaxZoomIndex
+
+        if (supports(FocusMode.AUTO)) {
+            mMaxNumOfFocusAreas = p.get(CONTROL_MAX_REGIONS_AF);
+            if (mMaxNumOfFocusAreas > 0) {
+                mSupportedFeatures.add(Feature.FOCUS_AREA);
+            }
+        }
+        if (mMaxNumOfMeteringArea > 0) {
+            mSupportedFeatures.add(Feature.METERING_AREA);
+        }
     }
 
     public IntegralStringifier getIntegralStringifier() {
