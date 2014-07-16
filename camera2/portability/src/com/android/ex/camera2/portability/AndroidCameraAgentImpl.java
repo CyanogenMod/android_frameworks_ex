@@ -768,7 +768,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
             mDispatchThread.runJob(new Runnable() {
                 @Override
                 public void run() {
-                    mCameraState.waitForStates(CameraStateHolder.CAMERA_IDLE |
+                    mCameraState.waitForStates(AndroidCameraStateHolder.CAMERA_IDLE |
                             AndroidCameraStateHolder.CAMERA_UNLOCKED);
                     mCameraHandler.requestTakePicture(ShutterCallbackForward
                                     .getNewInstance(handler, AndroidCameraProxyImpl.this, shutter),
@@ -900,25 +900,12 @@ class AndroidCameraAgentImpl extends CameraAgent {
         public static final int CAMERA_CAPTURING = 1 << 3;
         public static final int CAMERA_FOCUSING = 1 << 4;
 
-        private int mState;
-
         public AndroidCameraStateHolder() {
             this(CAMERA_UNOPENED);
         }
 
         public AndroidCameraStateHolder(int state) {
-            setState(state);
-        }
-
-        @Override
-        public synchronized void setState(int state) {
-            mState = state;
-            this.notifyAll();
-        }
-
-        @Override
-        public synchronized int getState() {
-            return mState;
+            super(state);
         }
     }
 
