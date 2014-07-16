@@ -658,25 +658,12 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         /** A preview is currently being streamed. */
         public static final int CAMERA_PREVIEW_ACTIVE = 5;
 
-        private int mState;
-
         public AndroidCamera2StateHolder() {
             this(CAMERA_UNOPENED);
         }
 
         public AndroidCamera2StateHolder(int state) {
-            setState(state);
-        }
-
-        @Override
-        public synchronized void setState(int state) {
-            mState = state;
-            this.notifyAll();
-        }
-
-        @Override
-        public synchronized int getState() {
-            return mState;
+            super(state);
         }
     }
 

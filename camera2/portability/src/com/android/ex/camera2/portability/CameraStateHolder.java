@@ -23,20 +23,7 @@ import com.android.ex.camera2.portability.debug.Log;
 public abstract class CameraStateHolder {
     private static final Log.Tag TAG = new Log.Tag("CamStateHolder");
 
-    /** Camera states **/
-    // These states are defined bitwise so we can easily to specify a set of
-    // states together.
-    public static final int CAMERA_UNOPENED = 1;
-    public static final int CAMERA_IDLE = 1 << 1;
-    public static final int CAMERA_UNLOCKED = 1 << 2;
-    public static final int CAMERA_CAPTURING = 1 << 3;
-    public static final int CAMERA_FOCUSING = 1 << 4;
-
     private int mState;
-
-    public CameraStateHolder() {
-        setState(CAMERA_UNOPENED);
-    }
 
     public CameraStateHolder(int state) {
         setState(state);
