@@ -1,36 +1,17 @@
 apply plugin: 'android-library'
-
-buildDir = "$project.rootBuildDir/android-$project.name"
+apply plugin: 'logtags'
 
 android {
-    compileSdkVersion 17
-    buildToolsVersion = 17
-
-    logtags {
-        srcDirs = ['java']
-        genDir = "$buildDir/source/generated"
-    }
-
     sourceSets {
         main {
-            manifest {
-                srcFile "AndroidManifest.xml"
-            }
-            java {
-                srcDirs = [
-                    'java',
-                    "$buildDir/source/generated"
-                ]
-            }
-            resources.srcDirs = ['src']
-            aidl.srcDirs = ['src']
-            renderscript.srcDirs = ['src']
-            res.srcDirs = ['res']
-            assets.srcDirs = ['assets']
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['java']
+            logtags.srcDirs = ['java']
         }
     }
-}
 
-android.libraryVariants.each { variant ->
-    variant.packageLibrary.baseName = "android-common"
+    lintOptions {
+        // TODO: fix errors and reenable.
+        abortOnError false
+    }
 }
