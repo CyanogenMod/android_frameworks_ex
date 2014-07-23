@@ -57,11 +57,19 @@ public class AndroidCameraSettings extends CameraSettings {
         }
         setRecordingHintEnabled(TRUE.equals(params.get(RECORDING_HINT)));
 
-        // Output: Photo size, compression quality, rotation.
-        setPhotoRotationDegrees(0f);
+        // Output: Photo size, compression quality
         setPhotoJpegCompressionQuality(params.getJpegQuality());
         Camera.Size paramPictureSize = params.getPictureSize();
         setPhotoSize(new Size(paramPictureSize.width, paramPictureSize.height));
         setPhotoFormat(params.getPictureFormat());
+    }
+
+    public AndroidCameraSettings(AndroidCameraSettings other) {
+        super(other);
+    }
+
+    @Override
+    public CameraSettings copy() {
+        return new AndroidCameraSettings(this);
     }
 }

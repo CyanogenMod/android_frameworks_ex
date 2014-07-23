@@ -97,6 +97,7 @@ public class CameraCapabilities {
          * Focus is set at infinity.
          * @see {@link android.hardware.Camera.Parameters#FOCUS_MODE_INFINITY}.
          */
+        // TODO: Unsupported on API 2
         INFINITY,
         /**
          * Macro (close-up) focus mode.
@@ -182,6 +183,7 @@ public class CameraCapabilities {
          * Capture a scene using high dynamic range imaging techniques.
          * @see {@link android.hardware.Camera.Parameters#SCENE_MODE_HDR}.
          */
+        // TODO: Unsupported on API 2
         HDR,
         /**
          * Take pictures on distant objects.
@@ -197,6 +199,7 @@ public class CameraCapabilities {
          * Take people pictures at night.
          * @see {@link android.hardware.Camera.Parameters#SCENE_MODE_NIGHT_PORTRAIT}.
          */
+        // TODO: Unsupported on API 2
         NIGHT_PORTRAIT,
         /**
          * Take indoor low-light shot.
