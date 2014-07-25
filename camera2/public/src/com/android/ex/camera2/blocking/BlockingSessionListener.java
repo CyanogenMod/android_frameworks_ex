@@ -77,10 +77,10 @@ public class BlockingSessionListener extends CameraCaptureSession.StateListener 
     private final CameraCaptureSession.StateListener mProxy;
     private final SessionFuture mSessionFuture = new SessionFuture();
 
-    private final StateWaiter mStateWaiter = new StateWaiter(mStateNames);
+    private final StateWaiter mStateWaiter = new StateWaiter(sStateNames);
     private final StateChangeListener mStateChangeListener = mStateWaiter.getListener();
 
-    private static final String[] mStateNames = {
+    private static final String[] sStateNames = {
         "SESSION_CONFIGURED",
         "SESSION_CONFIGURE_FAILED",
         "SESSION_READY",
