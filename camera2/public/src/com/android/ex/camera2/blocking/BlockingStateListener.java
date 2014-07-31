@@ -64,10 +64,6 @@ public class BlockingStateListener extends CameraDevice.StateListener {
     private static final String[] mStateNames = {
         "STATE_UNINITIALIZED",
         "STATE_OPENED",
-        "STATE_UNCONFIGURED",
-        "STATE_IDLE",
-        "STATE_ACTIVE",
-        "STATE_BUSY",
         "STATE_CLOSED",
         "STATE_DISCONNECTED",
         "STATE_ERROR"
@@ -84,48 +80,24 @@ public class BlockingStateListener extends CameraDevice.StateListener {
     public static final int STATE_OPENED = 0;
 
     /**
-     * Device is unconfigured
-     */
-    @Deprecated
-    public static final int STATE_UNCONFIGURED = 1;
-
-    /**
-     * Device is idle
-     */
-    @Deprecated
-    public static final int STATE_IDLE = 2;
-
-    /**
-     * Device is active (transitory)
-     */
-    @Deprecated
-    public static final int STATE_ACTIVE = 3;
-
-    /**
-     * Device is busy (transitory)
-     */
-    @Deprecated
-    public static final int STATE_BUSY = 4;
-
-    /**
      * Device is closed
      */
-    public static final int STATE_CLOSED = 5;
+    public static final int STATE_CLOSED = 1;
 
     /**
      * Device is disconnected
      */
-    public static final int STATE_DISCONNECTED = 6;
+    public static final int STATE_DISCONNECTED = 2;
 
     /**
      * Device has encountered a fatal error
      */
-    public static final int STATE_ERROR = 7;
+    public static final int STATE_ERROR = 3;
 
     /**
      * Total number of reachable states
      */
-    private static int NUM_STATES = 8;
+    private static int NUM_STATES = 4;
 
     public BlockingStateListener() {
         mProxy = null;
@@ -151,34 +123,6 @@ public class BlockingStateListener extends CameraDevice.StateListener {
     public void onError(CameraDevice camera, int error) {
         if (mProxy != null) mProxy.onError(camera, error);
         setCurrentState(STATE_ERROR);
-    }
-
-    @Override
-    @Deprecated
-    public void onUnconfigured(CameraDevice camera) {
-        if (mProxy != null) mProxy.onUnconfigured(camera);
-        setCurrentState(STATE_UNCONFIGURED);
-    }
-
-    @Override
-    @Deprecated
-    public void onIdle(CameraDevice camera) {
-        if (mProxy != null) mProxy.onIdle(camera);
-        setCurrentState(STATE_IDLE);
-    }
-
-    @Override
-    @Deprecated
-    public void onActive(CameraDevice camera) {
-        if (mProxy != null) mProxy.onActive(camera);
-        setCurrentState(STATE_ACTIVE);
-    }
-
-    @Override
-    @Deprecated
-    public void onBusy(CameraDevice camera) {
-        if (mProxy != null) mProxy.onBusy(camera);
-        setCurrentState(STATE_BUSY);
     }
 
     @Override
