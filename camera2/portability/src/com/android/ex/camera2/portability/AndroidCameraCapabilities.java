@@ -182,6 +182,8 @@ class AndroidCameraCapabilities extends CameraCapabilities {
                     mSupportedFlashModes.add(FlashMode.ON);
                 } else if (Camera.Parameters.FLASH_MODE_RED_EYE.equals(flash)) {
                     mSupportedFlashModes.add(FlashMode.RED_EYE);
+                } else if (Camera.Parameters.FLASH_MODE_TORCH.equals(flash)) {
+                    mSupportedFlashModes.add(FlashMode.TORCH);
                 }
             }
         }
