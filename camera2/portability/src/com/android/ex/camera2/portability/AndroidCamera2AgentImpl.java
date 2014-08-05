@@ -201,6 +201,8 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                         mOpenCallback = openCallback;
                         mCameraIndex = cameraIndex;
                         mCameraId = mCameraDevices.get(mCameraIndex);
+                        Log.i(TAG, String.format("Opening camera index %d (id %s) with camera2 API",
+                                cameraIndex, mCameraId));
 
                         if (mCameraId == null) {
                             mOpenCallback.onCameraDisabled(msg.arg1);
@@ -782,6 +784,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         @Override
         public void setPreviewDataCallbackWithBuffer(Handler handler, CameraPreviewDataCallback cb)
                 {}
+
+        // TODO: Implement
+        public void addCallbackBuffer(final byte[] callbackBuffer) {}
 
         @Override
         public void autoFocus(final Handler handler, final CameraAFCallback cb) {
