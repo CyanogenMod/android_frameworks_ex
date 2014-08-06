@@ -275,26 +275,6 @@ public class BlockingCameraManager {
         }
 
         @Override
-        public void onUnconfigured(CameraDevice camera) {
-            if (mProxy != null) mProxy.onUnconfigured(camera);
-        }
-
-        @Override
-        public void onIdle(CameraDevice camera) {
-            if (mProxy != null) mProxy.onIdle(camera);
-        }
-
-        @Override
-        public void onActive(CameraDevice camera) {
-            if (mProxy != null) mProxy.onActive(camera);
-        }
-
-        @Override
-        public void onBusy(CameraDevice camera) {
-            if (mProxy != null) mProxy.onBusy(camera);
-        }
-
-        @Override
         public void onClosed(CameraDevice camera) {
             if (mProxy != null) mProxy.onClosed(camera);
         }
