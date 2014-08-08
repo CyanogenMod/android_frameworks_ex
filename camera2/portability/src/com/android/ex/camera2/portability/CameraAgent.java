@@ -618,16 +618,32 @@ public abstract class CameraAgent {
                 CameraPictureCallback jpeg);
 
         /**
-         * Sets the display orientation for camera to adjust the preview orientation.
+         * Sets the display orientation for camera to adjust the preview and JPEG orientation.
          *
-         * @param degrees The rotation in degrees. Should be 0, 90, 180 or 270.
+         * @param degrees The counterclockwise rotation in degrees, relative to the device's natural
+         *                orientation. Should be 0, 90, 180 or 270.
          */
         public void setDisplayOrientation(final int degrees) {
+            setDisplayOrientation(degrees, true);
+        }
+
+        /**
+         * Sets the display orientation for camera to adjust the preview&mdash;and, optionally,
+         * JPEG&mdash;orientations.
+         * <p>If capture rotation is not requested, future captures will be returned in the sensor's
+         * physical rotation, which does not necessarily match the device's natural orientation.</p>
+         *
+         * @param degrees The counterclockwise rotation in degrees, relative to the device's natural
+         *                orientation. Should be 0, 90, 180 or 270.
+         * @param capture Whether to adjust the JPEG capture orientation as well as the preview one.
+         */
+        public void setDisplayOrientation(final int degrees, final boolean capture) {
             getDispatchThread().runJob(new Runnable() {
                 @Override
                 public void run() {
                     getCameraHandler()
-                            .obtainMessage(CameraActions.SET_DISPLAY_ORIENTATION, degrees, 0)
+                            .obtainMessage(CameraActions.SET_DISPLAY_ORIENTATION, degrees,
+                                    capture ? 1 : 0)
                             .sendToTarget();
                 }});
         }
@@ -713,7 +729,7 @@ public abstract class CameraAgent {
          * @param statesToAwait Bitwise OR of the required camera states.
          * @return Whether the settings can be applied.
          */
-        protected boolean applySettingsHelper(final CameraSettings settings,
+        protected boolean applySettingsHelper(CameraSettings settings,
                                               final int statesToAwait) {
             if (settings == null) {
                 Log.v(TAG, "null parameters in applySettings()");
@@ -723,15 +739,14 @@ public abstract class CameraAgent {
                 return false;
             }
 
-            final CameraSettings copyOfSettings = new CameraSettings(settings);
+            final CameraSettings copyOfSettings = settings.copy();
             getDispatchThread().runJob(new Runnable() {
                 @Override
                 public void run() {
                     getCameraState().waitForStates(statesToAwait);
                     getCameraHandler().obtainMessage(CameraActions.APPLY_SETTINGS, copyOfSettings)
                             .sendToTarget();
-                }
-            });
+                }});
             return true;
         }
 

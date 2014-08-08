@@ -175,7 +175,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
             return mFirstFrontCameraId;
         }
 
-        private static class AndroidCharacteristics implements Characteristics {
+        private static class AndroidCharacteristics extends Characteristics {
             private Camera.CameraInfo mCameraInfo;
 
             AndroidCharacteristics(Camera.CameraInfo cameraInfo) {
@@ -437,7 +437,14 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     }
 
                     case CameraActions.SET_DISPLAY_ORIENTATION: {
-                        mCamera.setDisplayOrientation(msg.arg1);
+                        // Update preview orientation
+                        mCamera.setDisplayOrientation(
+                                mCharacteristics.getPreviewOrientation(msg.arg1));
+                        // Only set the JPEG capture orientation if requested to do so; otherwise,
+                        // capture in the sensor's physical orientation
+                        mParamsToSet.setRotation(
+                                msg.arg2 > 0 ? mCharacteristics.getJpegOrientation(msg.arg1) : 0);
+                        mCamera.setParameters(mParamsToSet);
                         break;
                     }
 
@@ -566,7 +573,6 @@ class AndroidCameraAgentImpl extends CameraAgent {
                 // Should use settings.getCurrentZoomRatio() instead here.
                 mParamsToSet.setZoom(settings.getCurrentZoomIndex());
             }
-            mParamsToSet.setRotation((int) settings.getCurrentPhotoRotationDegrees());
             mParamsToSet.setExposureCompensation(settings.getExposureCompensationIndex());
             if (mCapabilities.supports(CameraCapabilities.Feature.AUTO_EXPOSURE_LOCK)) {
                 mParamsToSet.setAutoExposureLock(settings.isAutoExposureLocked());

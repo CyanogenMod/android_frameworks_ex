@@ -16,45 +16,49 @@
 
 package com.android.ex.camera2.portability;
 
-import static android.hardware.camera2.CameraCharacteristics.*;
+import static android.hardware.camera2.CaptureRequest.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import com.android.ex.camera2.portability.AndroidCamera2Capabilities.IntegralStringifier;
+import android.content.Context;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CaptureRequest;
+import android.support.test.InjectContext;
+
 import com.android.ex.camera2.portability.CameraCapabilities.FlashMode;
 import com.android.ex.camera2.portability.CameraCapabilities.FocusMode;
 import com.android.ex.camera2.portability.CameraCapabilities.SceneMode;
 import com.android.ex.camera2.portability.CameraCapabilities.Stringifier;
 import com.android.ex.camera2.portability.CameraCapabilities.WhiteBalance;
+import com.android.ex.camera2.utils.Camera2DeviceTester;
 import org.junit.Test;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 
-public class Camera2PortabilityTest {
-    private <E> void cameraCapabilitiesStringifierEach(Class<E> classy,
-                                                       Stringifier strfy,
-                                                       String call) throws Exception {
-        for(E val : (E[]) classy.getMethod("values").invoke(null)) {
-            String valString =
-                    (String) Stringifier.class.getMethod("stringify", classy).invoke(strfy, val);
-            assertEquals(val,
-                    Stringifier.class.getMethod(call, String.class).invoke(strfy, valString));
+public class Camera2PortabilityTest extends Camera2DeviceTester {
+    @Test
+    public void cameraCapabilitiesStringifier() {
+        Stringifier strfy = new Stringifier();
+        for(FocusMode val : FocusMode.values()) {
+            assertEquals(val, strfy.focusModeFromString(strfy.stringify(val)));
+        }
+        for(FlashMode val : FlashMode.values()) {
+            assertEquals(val, strfy.flashModeFromString(strfy.stringify(val)));
+        }
+        for(SceneMode val : SceneMode.values()) {
+            assertEquals(val, strfy.sceneModeFromString(strfy.stringify(val)));
+        }
+        for(WhiteBalance val : WhiteBalance.values()) {
+            assertEquals(val, strfy.whiteBalanceFromString(strfy.stringify(val)));
         }
     }
 
     @Test
-    public void cameraCapabilitiesStringifier() throws Exception {
-        Stringifier strfy = new Stringifier();
-        cameraCapabilitiesStringifierEach(FocusMode.class, strfy, "focusModeFromString");
-        cameraCapabilitiesStringifierEach(FlashMode.class, strfy, "flashModeFromString");
-        cameraCapabilitiesStringifierEach(SceneMode.class, strfy, "sceneModeFromString");
-        cameraCapabilitiesStringifierEach(WhiteBalance.class, strfy, "whiteBalanceFromString");
-    }
-
-    @Test
-    public void cameraCapabilitiesStringifierNull() throws Exception {
+    public void cameraCapabilitiesStringifierNull() {
         Stringifier strfy = new Stringifier();
         assertEquals(strfy.focusModeFromString(null), FocusMode.AUTO);
         assertEquals(strfy.flashModeFromString(null), FlashMode.NO_FLASH);
@@ -63,7 +67,7 @@ public class Camera2PortabilityTest {
     }
 
     @Test
-    public void cameraCapabilitiesStringifierInvalid() throws Exception {
+    public void cameraCapabilitiesStringifierInvalid() {
         Stringifier strfy = new Stringifier();
         assertEquals(strfy.focusModeFromString("crap"), FocusMode.AUTO);
         assertEquals(strfy.flashModeFromString("crap"), FlashMode.NO_FLASH);
@@ -71,72 +75,93 @@ public class Camera2PortabilityTest {
         assertEquals(strfy.whiteBalanceFromString("crap"), WhiteBalance.AUTO);
     }
 
-    private void cameraCapabilitiesIntifierEach(int apiVal,
-                                                IntegralStringifier intfy,
-                                                String call) throws Exception {
-        Method toCall = IntegralStringifier.class.getMethod(call, int.class);
-        Class<?> returnType = toCall.getReturnType();
-        Object returnVal = toCall.invoke(intfy, apiVal);
-        assertEquals(apiVal,
-                IntegralStringifier.class.getMethod("intify", returnType).invoke(intfy, returnVal));
+    private CameraCharacteristics buildFrameworkCharacteristics() throws CameraAccessException {
+        CameraManager manager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
+        String id = manager.getCameraIdList()[0];
+        return manager.getCameraCharacteristics(id);
+    }
+
+    private void camera2SettingsCheckSingleOption(AndroidCamera2Settings setts,
+                                                      Key<?> apiKey, int apiVal) {
+        assertEquals(apiVal, setts.getRequestSettings().get(apiKey));
     }
 
     @Test
-    public void cameraCapabilitiesIntifier() throws Exception {
-        IntegralStringifier intstr = new IntegralStringifier();
+    public void camera2SettingsSetOptionsAndGetRequestSettings() throws CameraAccessException {
+        AndroidCamera2Settings set = new AndroidCamera2Settings(
+                mCamera, CameraDevice.TEMPLATE_PREVIEW, null, null, null);
 
         // Focus modes
-        cameraCapabilitiesIntifierEach(CONTROL_AF_MODE_AUTO, intstr, "focusModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AF_MODE_CONTINUOUS_PICTURE, intstr,
-                "focusModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AF_MODE_CONTINUOUS_VIDEO, intstr,
-                "focusModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AF_MODE_EDOF, intstr, "focusModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AF_MODE_OFF, intstr, "focusModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AF_MODE_MACRO, intstr, "focusModeFromInt");
-
-        // Flash modes
-        cameraCapabilitiesIntifierEach(FLASH_MODE_OFF, intstr, "flashModeFromInt");
-        cameraCapabilitiesIntifierEach(FLASH_MODE_SINGLE, intstr, "flashModeFromInt");
-        cameraCapabilitiesIntifierEach(FLASH_MODE_TORCH, intstr, "flashModeFromInt");
+        set.setFocusMode(FocusMode.AUTO);
+        camera2SettingsCheckSingleOption(set, CONTROL_AF_MODE, CONTROL_AF_MODE_AUTO);
+        set.setFocusMode(FocusMode.CONTINUOUS_PICTURE);
+        camera2SettingsCheckSingleOption(set, CONTROL_AF_MODE, CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+        set.setFocusMode(FocusMode.CONTINUOUS_VIDEO);
+        camera2SettingsCheckSingleOption(set, CONTROL_AF_MODE, CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+        set.setFocusMode(FocusMode.EXTENDED_DOF);
+        camera2SettingsCheckSingleOption(set, CONTROL_AF_MODE, CONTROL_AF_MODE_EDOF);
+        set.setFocusMode(FocusMode.FIXED);
+        camera2SettingsCheckSingleOption(set, CONTROL_AF_MODE, CONTROL_AF_MODE_OFF);
+        set.setFocusMode(FocusMode.MACRO);
+        camera2SettingsCheckSingleOption(set, CONTROL_AF_MODE, CONTROL_AF_MODE_MACRO);
 
         // Scene modes
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_DISABLED, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_ACTION, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_BARCODE, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_BEACH, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_CANDLELIGHT, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_FIREWORKS, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_LANDSCAPE, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_NIGHT, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_PARTY, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_PORTRAIT, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_SNOW, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_SPORTS, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_STEADYPHOTO, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_SUNSET, intstr, "sceneModeFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_SCENE_MODE_THEATRE, intstr, "sceneModeFromInt");
+        set.setSceneMode(SceneMode.AUTO);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_DISABLED);
+        set.setSceneMode(SceneMode.ACTION);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_ACTION);
+        set.setSceneMode(SceneMode.BARCODE);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_BARCODE);
+        set.setSceneMode(SceneMode.BEACH);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_BEACH);
+        set.setSceneMode(SceneMode.CANDLELIGHT);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_CANDLELIGHT);
+        set.setSceneMode(SceneMode.FIREWORKS);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_FIREWORKS);
+        set.setSceneMode(SceneMode.LANDSCAPE);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_LANDSCAPE);
+        set.setSceneMode(SceneMode.NIGHT);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_NIGHT);
+        set.setSceneMode(SceneMode.PARTY);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_PARTY);
+        set.setSceneMode(SceneMode.PORTRAIT);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_PORTRAIT);
+        set.setSceneMode(SceneMode.SNOW);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_SNOW);
+        set.setSceneMode(SceneMode.SPORTS);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_SPORTS);
+        set.setSceneMode(SceneMode.STEADYPHOTO);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_STEADYPHOTO);
+        set.setSceneMode(SceneMode.SUNSET);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_SUNSET);
+        set.setSceneMode(SceneMode.THEATRE);
+        camera2SettingsCheckSingleOption(set, CONTROL_SCENE_MODE, CONTROL_SCENE_MODE_THEATRE);
 
         // White balances
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_AUTO, intstr, "whiteBalanceFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_CLOUDY_DAYLIGHT, intstr,
-                "whiteBalanceFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_DAYLIGHT, intstr, "whiteBalanceFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_FLUORESCENT, intstr,
-                "whiteBalanceFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_INCANDESCENT, intstr,
-                "whiteBalanceFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_SHADE, intstr, "whiteBalanceFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_TWILIGHT, intstr, "whiteBalanceFromInt");
-        cameraCapabilitiesIntifierEach(CONTROL_AWB_MODE_WARM_FLUORESCENT, intstr,
-                "whiteBalanceFromInt");
+        set.setWhiteBalance(WhiteBalance.AUTO);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_AUTO);
+        set.setWhiteBalance(WhiteBalance.CLOUDY_DAYLIGHT);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_CLOUDY_DAYLIGHT);
+        set.setWhiteBalance(WhiteBalance.DAYLIGHT);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_DAYLIGHT);
+        set.setWhiteBalance(WhiteBalance.FLUORESCENT);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_FLUORESCENT);
+        set.setWhiteBalance(WhiteBalance.INCANDESCENT);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_INCANDESCENT);
+        set.setWhiteBalance(WhiteBalance.SHADE);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_SHADE);
+        set.setWhiteBalance(WhiteBalance.TWILIGHT);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_TWILIGHT);
+        set.setWhiteBalance(WhiteBalance.WARM_FLUORESCENT);
+        camera2SettingsCheckSingleOption(set, CONTROL_AWB_MODE, CONTROL_AWB_MODE_WARM_FLUORESCENT);
     }
 
-    // TODO: Add a test checking whether stringification matches API representation
+    // TODO: Add a test checking whether stringification matches API 1 representation
 
     @Test
-    public void cameraCapabilitiesIntsMatchApi2Representations() throws Exception {
-        IntegralStringifier intstr = new IntegralStringifier();
+    public void camera2CapabilitiesFocusModeFromInt() throws CameraAccessException {
+        CameraCharacteristics chars = buildFrameworkCharacteristics();
+        AndroidCamera2Capabilities intstr = new AndroidCamera2Capabilities(chars);
 
         // Focus modes
         assertEquals(intstr.focusModeFromInt(CONTROL_AF_MODE_AUTO), FocusMode.AUTO);
@@ -148,18 +173,12 @@ public class Camera2PortabilityTest {
         assertEquals(intstr.focusModeFromInt(CONTROL_AF_MODE_OFF), FocusMode.FIXED);
         assertEquals(intstr.focusModeFromInt(CONTROL_AF_MODE_MACRO), FocusMode.MACRO);
 
-        // Flash modes
-        assertEquals(intstr.flashModeFromInt(FLASH_MODE_OFF), FlashMode.OFF);
-        assertEquals(intstr.flashModeFromInt(FLASH_MODE_SINGLE), FlashMode.ON);
-        assertEquals(intstr.flashModeFromInt(FLASH_MODE_TORCH), FlashMode.TORCH);
-
         // Scene modes
         assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_DISABLED), SceneMode.AUTO);
         assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_ACTION), SceneMode.ACTION);
         assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_BARCODE), SceneMode.BARCODE);
         assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_BEACH), SceneMode.BEACH);
-        assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_CANDLELIGHT),
-                SceneMode.CANDLELIGHT);
+        assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_CANDLELIGHT), SceneMode.CANDLELIGHT);
         assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_FIREWORKS), SceneMode.FIREWORKS);
         assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_LANDSCAPE), SceneMode.LANDSCAPE);
         assertEquals(intstr.sceneModeFromInt(CONTROL_SCENE_MODE_NIGHT), SceneMode.NIGHT);
