@@ -18,6 +18,8 @@ package com.android.ex.camera2.portability;
 
 import android.hardware.Camera;
 
+import com.android.ex.camera2.portability.debug.Log;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +28,12 @@ import java.util.TreeMap;
 /**
  * A class which stores the camera settings.
  */
-public class CameraSettings {
+public abstract class CameraSettings {
+    private static final Log.Tag TAG = new Log.Tag("CamSet");
+
+    // Attempts to provide a value outside this range will be ignored.
+    private static final int MIN_JPEG_COMPRESSION_QUALITY = 1;
+    private static final int MAX_JPEG_COMPRESSION_QUALITY = 100;
 
     protected final Map<String, String> mGeneralSetting = new TreeMap<>();
     protected final List<Camera.Area> mMeteringAreas = new ArrayList<>();
@@ -37,11 +44,10 @@ public class CameraSettings {
     protected Size mCurrentPreviewSize;
     private int mCurrentPreviewFormat;
     protected Size mCurrentPhotoSize;
-    protected int mJpegCompressQuality;
+    protected byte mJpegCompressQuality;
     protected int mCurrentPhotoFormat;
     protected float mCurrentZoomRatio;
     protected int mCurrentZoomIndex;
-    protected float mPhotoRotationDegrees;
     protected int mExposureCompensationIndex;
     protected CameraCapabilities.FlashMode mCurrentFlashMode;
     protected CameraCapabilities.FocusMode mCurrentFocusMode;
@@ -96,7 +102,7 @@ public class CameraSettings {
      * @param src The source settings.
      * @return The copy of the source.
      */
-    public CameraSettings(CameraSettings src) {
+    protected CameraSettings(CameraSettings src) {
         mGeneralSetting.putAll(src.mGeneralSetting);
         mMeteringAreas.addAll(src.mMeteringAreas);
         mFocusAreas.addAll(src.mFocusAreas);
@@ -112,7 +118,6 @@ public class CameraSettings {
         mCurrentPhotoFormat = src.mCurrentPhotoFormat;
         mCurrentZoomRatio = src.mCurrentZoomRatio;
         mCurrentZoomIndex = src.mCurrentZoomIndex;
-        mPhotoRotationDegrees = src.mPhotoRotationDegrees;
         mExposureCompensationIndex = src.mExposureCompensationIndex;
         mCurrentFlashMode = src.mCurrentFlashMode;
         mCurrentFocusMode = src.mCurrentFocusMode;
@@ -125,6 +130,11 @@ public class CameraSettings {
         mGpsData = src.mGpsData;
         mExifThumbnailSize = src.mExifThumbnailSize;
     }
+
+    /**
+     * @return A copy of this object, as an instance of the implementing class.
+     */
+    public abstract CameraSettings copy();
 
     /** General setting **/
     @Deprecated
@@ -258,7 +268,12 @@ public class CameraSettings {
      * @param quality The quality for JPEG.
      */
     public void setPhotoJpegCompressionQuality(int quality) {
-        mJpegCompressQuality = quality;
+        if (quality < MIN_JPEG_COMPRESSION_QUALITY || quality > MAX_JPEG_COMPRESSION_QUALITY) {
+            Log.w(TAG, "Ignoring JPEG quality that falls outside the expected range");
+            return;
+        }
+        // This is safe because the positive numbers go up to 127.
+        mJpegCompressQuality = (byte) quality;
     }
 
     public int getPhotoJpegCompressionQuality() {
@@ -296,22 +311,15 @@ public class CameraSettings {
         mCurrentZoomIndex = index;
     }
 
-    /** Transformation **/
-
-    public void setPhotoRotationDegrees(float photoRotationDegrees) {
-        mPhotoRotationDegrees = photoRotationDegrees;
-    }
-
-    public float getCurrentPhotoRotationDegrees() {
-        return mPhotoRotationDegrees;
-    }
-
     /** Exposure **/
 
     public void setExposureCompensationIndex(int index) {
         mExposureCompensationIndex = index;
     }
 
+    /**
+     * @return The exposure compensation, with 0 meaning unadjusted.
+     */
     public int getExposureCompensationIndex() {
         return mExposureCompensationIndex;
     }

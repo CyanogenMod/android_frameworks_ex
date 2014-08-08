@@ -23,24 +23,15 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import android.content.Context;
 import android.hardware.camera2.CameraCaptureSession.CaptureListener;
 import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureRequest.Key;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.support.test.InjectContext;
 import android.view.Surface;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class Camera2UtilsTest {
+public class Camera2UtilsTest extends Camera2DeviceTester {
     private void captureListenerSplitterAllCallbacksReceived(CaptureListener splitter,
                                                              CaptureListener... terminals) {
         splitter.onCaptureCompleted(null, null, null);
@@ -150,65 +141,6 @@ public class Camera2UtilsTest {
         assertTrue(setUp.contains(CaptureRequest.CONTROL_AE_LOCK));
         setUp.unset(CaptureRequest.CONTROL_AE_LOCK);
         assertFalse(setUp.contains(CaptureRequest.CONTROL_AE_LOCK));
-    }
-
-    private static HandlerThread sThread;
-
-    private static Handler sHandler;
-
-    @BeforeClass
-    public static void setupBackgroundHandler() {
-        sThread = new HandlerThread("CameraFramework");
-        sThread.start();
-        sHandler = new Handler(sThread.getLooper());
-    }
-
-    @AfterClass
-    public static void teardownBackgroundHandler() throws Exception {
-        sThread.quitSafely();
-        sThread.join();
-    }
-
-    @InjectContext
-    public Context mContext;
-
-    public class DeviceCapturer extends CameraDevice.StateListener {
-        private CameraDevice mCamera;
-
-        public CameraDevice captureCameraDevice() throws Exception {
-            CameraManager manager =
-                    (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
-            String id = manager.getCameraIdList()[0];
-            synchronized (this) {
-                manager.openCamera(id, this, sHandler);
-                wait();
-            }
-            return mCamera;
-        }
-
-        @Override
-        public synchronized void onOpened(CameraDevice camera) {
-            mCamera = camera;
-            notify();
-        }
-
-        @Override
-        public void onDisconnected(CameraDevice camera) {}
-
-        @Override
-        public void onError(CameraDevice camera, int error) {}
-    }
-
-    private CameraDevice mCamera;
-
-    @Before
-    public void obtainCameraCaptureRequestBuilderFactory() throws Exception {
-        mCamera = new DeviceCapturer().captureCameraDevice();
-    }
-
-    @After
-    public void releaseCameraCaptureRequestBuilderFactory() {
-        mCamera.close();
     }
 
     @Test

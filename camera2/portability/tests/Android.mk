@@ -18,7 +18,8 @@ include $(CLEAR_VARS)
 LOCAL_PACKAGE_NAME := android-ex-camera2-portability-tests
 LOCAL_MODULE_TAGS := tests
 LOCAL_SDK_VERSION := current
-LOCAL_SRC_FILES := $(call all-java-files-under,src)
-LOCAL_STATIC_JAVA_LIBRARIES := android-ex-camera2-portability android-support-test
+LOCAL_SRC_FILES := $(call all-java-files-under,src) $(call all-java-files-under,../../utils/tests)
+LOCAL_STATIC_JAVA_LIBRARIES := android-ex-camera2-portability android-ex-camera2-utils \
+                               android-support-test mockito-target
 
 include $(BUILD_PACKAGE)
