@@ -488,6 +488,8 @@ public class CameraCapabilities {
         mMaxNumOfFacesSupported = src.mMaxNumOfFacesSupported;
         mMaxNumOfFocusAreas = src.mMaxNumOfFocusAreas;
         mMaxNumOfMeteringArea = src.mMaxNumOfMeteringArea;
+        mMaxZoomIndex = src.mMaxZoomIndex;
+        mZoomRatioList.addAll(src.mZoomRatioList);
         mMaxZoomRatio = src.mMaxZoomRatio;
         mHorizontalViewAngle = src.mHorizontalViewAngle;
         mVerticalViewAngle = src.mVerticalViewAngle;
