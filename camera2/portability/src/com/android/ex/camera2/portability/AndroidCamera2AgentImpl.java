@@ -19,7 +19,9 @@ package com.android.ex.camera2.portability;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -458,7 +460,6 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                     }*/
 
                     case CameraActions.SET_DISPLAY_ORIENTATION: {
-                        // TODO: Need to handle preview in addition to capture
                         // Only set the JPEG capture orientation if requested to do so; otherwise,
                         // capture in the sensor's physical orientation
                         mPersistentSettings.set(CaptureRequest.JPEG_ORIENTATION, msg.arg2 > 0 ?
@@ -1139,10 +1140,50 @@ class AndroidCamera2AgentImpl extends CameraAgent {
             }
 
             @Override
+            public Matrix getPreviewTransform(int currentDisplayOrientation,
+                                              RectF surfaceDimensions,
+                                              RectF desiredBounds) {
+                if (!orientationIsValid(currentDisplayOrientation)) {
+                    return new Matrix();
+                }
+
+                // The system transparently transforms the image to fill the surface
+                // when the device is in its natural orientation. We rotate the
+                // coordinates of the rectangle's corners to be relative to the
+                // original image, instead of to the current screen orientation.
+                float[] surfacePolygon = rotate(convertRectToPoly(surfaceDimensions),
+                        2 * currentDisplayOrientation / 90);
+                float[] desiredPolygon = convertRectToPoly(desiredBounds);
+
+                Matrix transform = new Matrix();
+                // Use polygons instead of rectangles so that rotation will be
+                // calculated, since that is not done by the new camera API.
+                transform.setPolyToPoly(surfacePolygon, 0, desiredPolygon, 0, 4);
+                return transform;
+            }
+
+            @Override
             public boolean canDisableShutterSound() {
                 // The new API doesn't support this operation, so don't encourage people to try it.
                 // TODO: What kind of assumptions have callers made about this result's meaning?
                 return false;
+            }
+
+            private static float[] convertRectToPoly(RectF rf) {
+                return new float[] {rf.left, rf.top, rf.right, rf.top,
+                        rf.right, rf.bottom, rf.left, rf.bottom};
+            }
+
+            private static float[] rotate(float[] arr, int times) {
+                if (times < 0) {
+                    times = times % arr.length + arr.length;
+                }
+
+                float[] res = new float[arr.length];
+                for (int offset = 0; offset < arr.length; ++offset) {
+                    res[offset] = arr[(times + offset) % arr.length];
+                }
+                return res;
             }
         }
     }
