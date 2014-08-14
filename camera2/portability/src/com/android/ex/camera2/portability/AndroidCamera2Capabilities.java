@@ -18,14 +18,14 @@ package com.android.ex.camera2.portability;
 
 import static android.hardware.camera2.CameraCharacteristics.*;
 
+import android.graphics.ImageFormat;
 import android.graphics.Point;
+import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.params.StreamConfigurationMap;
-import android.media.ImageReader;
 import android.media.MediaRecorder;
 import android.util.Range;
 import android.util.Rational;
-import android.view.SurfaceHolder;
 
 import com.android.ex.camera2.portability.debug.Log;
 
@@ -47,20 +47,20 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
             mSupportedPreviewFpsRange.add(new int[] { fpsRange.getLower(), fpsRange.getUpper() });
         }
 
-        // TODO: We only support SurfaceView preview rendering
+        // TODO: We only support TextureView preview rendering
         mSupportedPreviewSizes.addAll(Size.buildListFromAndroidSizes(Arrays.asList(
-                s.getOutputSizes(SurfaceHolder.class))));
+                s.getOutputSizes(SurfaceTexture.class))));
         for (int format : s.getOutputFormats()) {
             mSupportedPreviewFormats.add(format);
         }
 
-        // TODO: We only support MediaRecorder videos capture
+        // TODO: We only support MediaRecorder video capture
         mSupportedVideoSizes.addAll(Size.buildListFromAndroidSizes(Arrays.asList(
                 s.getOutputSizes(MediaRecorder.class))));
 
-        // TODO: We only support ImageReader image capture
+        // TODO: We only support JPEG image capture
         mSupportedPhotoSizes.addAll(Size.buildListFromAndroidSizes(Arrays.asList(
-                s.getOutputSizes(ImageReader.class))));
+                s.getOutputSizes(ImageFormat.JPEG))));
         mSupportedPhotoFormats.addAll(mSupportedPreviewFormats);
 
         buildSceneModes(p);
