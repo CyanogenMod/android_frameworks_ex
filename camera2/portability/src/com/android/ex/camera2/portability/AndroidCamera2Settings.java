@@ -84,13 +84,21 @@ public class AndroidCamera2Settings extends CameraSettings {
         // TODO: mCurrentZoomIndex
         mExposureCompensationIndex =
                 queryTemplateDefaultOrMakeOneUp(CONTROL_AE_EXPOSURE_COMPENSATION, 0);
+
         mCurrentFlashMode = flashModeFromRequest();
-        mCurrentFocusMode = AndroidCamera2Capabilities.focusModeFromInt(
-                mTemplateSettings.get(CONTROL_AF_MODE));
-        mCurrentSceneMode = AndroidCamera2Capabilities.sceneModeFromInt(
-                mTemplateSettings.get(CONTROL_SCENE_MODE));
-        mWhiteBalance = AndroidCamera2Capabilities.whiteBalanceFromInt(
-                mTemplateSettings.get(CONTROL_AWB_MODE));
+        Integer currentFocusMode = mTemplateSettings.get(CONTROL_AF_MODE);
+        if (currentFocusMode != null) {
+            mCurrentFocusMode = AndroidCamera2Capabilities.focusModeFromInt(currentFocusMode);
+        }
+        Integer currentSceneMode = mTemplateSettings.get(CONTROL_SCENE_MODE);
+        if (currentSceneMode != null) {
+            mCurrentSceneMode = AndroidCamera2Capabilities.sceneModeFromInt(currentSceneMode);
+        }
+        Integer whiteBalance = mTemplateSettings.get(CONTROL_AWB_MODE);
+        if (whiteBalance != null) {
+            mWhiteBalance = AndroidCamera2Capabilities.whiteBalanceFromInt(whiteBalance);
+        }
+
         mVideoStabilizationEnabled = queryTemplateDefaultOrMakeOneUp(
                         CONTROL_VIDEO_STABILIZATION_MODE, CONTROL_VIDEO_STABILIZATION_MODE_OFF) ==
                 CONTROL_VIDEO_STABILIZATION_MODE_ON;
