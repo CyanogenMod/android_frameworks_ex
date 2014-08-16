@@ -46,8 +46,6 @@ import java.util.StringTokenizer;
 class AndroidCameraAgentImpl extends CameraAgent {
     private static final Log.Tag TAG = new Log.Tag("AndCamAgntImp");
 
-    private Parameters mParameters;
-    private boolean mParametersIsDirty;
     private CameraDeviceInfo.Characteristics mCharacteristics;
     private AndroidCameraCapabilities mCapabilities;
 
@@ -204,15 +202,39 @@ class AndroidCameraAgentImpl extends CameraAgent {
         }
     }
 
+    private static class ParametersCache {
+        private Parameters mParameters;
+        private Camera mCamera;
+
+        public ParametersCache(Camera camera) {
+            mCamera = camera;
+        }
+
+        public synchronized void invalidate() {
+            mParameters = null;
+        }
+
+        /**
+         * Access parameters from the cache. If cache is empty, block by
+         * retrieving parameters directly from Camera, but if cache is present,
+         * returns immediately.
+         */
+        public synchronized Parameters getBlocking() {
+            if (mParameters == null) {
+                mParameters = mCamera.getParameters();
+            }
+            return mParameters;
+        }
+    }
+
     /**
      * The handler on which the actual camera operations happen.
      */
     private class CameraHandler extends HistoryHandler {
 
-        // Used to retain a copy of Parameters for setting parameters.
-        private Parameters mParamsToSet;
         private Camera mCamera;
         private int mCameraId;
+        private ParametersCache mParameterCache;
 
         private class CaptureCallbacks {
             public final ShutterCallback mShutter;
@@ -308,13 +330,12 @@ class AndroidCameraAgentImpl extends CameraAgent {
                         mCamera = android.hardware.Camera.open(cameraId);
                         if (mCamera != null) {
                             mCameraId = cameraId;
-                            mParametersIsDirty = true;
+                            mParameterCache = new ParametersCache(mCamera);
 
-                            // Get an instance of Camera.Parameters for later use.
-                            mParamsToSet = mCamera.getParameters();
                             mCharacteristics =
                                     AndroidCameraDeviceInfo.create().getCharacteristics(cameraId);
-                            mCapabilities = new AndroidCameraCapabilities(mParamsToSet);
+                            mCapabilities = new AndroidCameraCapabilities(
+                                    mParameterCache.getBlocking());
 
                             mCameraState.setState(AndroidCameraStateHolder.CAMERA_IDLE);
                             if (openCallback != null) {
@@ -443,9 +464,10 @@ class AndroidCameraAgentImpl extends CameraAgent {
                                 mCharacteristics.getPreviewOrientation(msg.arg1));
                         // Only set the JPEG capture orientation if requested to do so; otherwise,
                         // capture in the sensor's physical orientation
-                        mParamsToSet.setRotation(
+                        Parameters parameters = mParameterCache.getBlocking();
+                        parameters.setRotation(
                                 msg.arg2 > 0 ? mCharacteristics.getJpegOrientation(msg.arg1) : 0);
-                        mCamera.setParameters(mParamsToSet);
+                        mCamera.setParameters(parameters);
                         break;
                     }
 
@@ -475,25 +497,26 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     }
 
                     case CameraActions.APPLY_SETTINGS: {
-                        mParametersIsDirty = true;
+                        Parameters parameters = mParameterCache.getBlocking();
                         CameraSettings settings = (CameraSettings) msg.obj;
-                        applyToParameters(settings);
-                        mCamera.setParameters(mParamsToSet);
+                        applySettingsToParameters(settings, parameters);
+                        mCamera.setParameters(parameters);
+                        mParameterCache.invalidate();
                         break;
                     }
 
                     case CameraActions.SET_PARAMETERS: {
-                        mParametersIsDirty = true;
-                        mParamsToSet.unflatten((String) msg.obj);
-                        mCamera.setParameters(mParamsToSet);
+                        Parameters parameters = mParameterCache.getBlocking();
+                        parameters.unflatten((String) msg.obj);
+                        mCamera.setParameters(parameters);
+                        mParameterCache.invalidate();
                         break;
                     }
 
                     case CameraActions.GET_PARAMETERS: {
-                        if (mParametersIsDirty) {
-                            mParameters = mCamera.getParameters();
-                            mParametersIsDirty = false;
-                        }
+                        Parameters[] parametersHolder = (Parameters[]) msg.obj;
+                        Parameters parameters = mParameterCache.getBlocking();
+                        parametersHolder[0] = parameters;
                         break;
                     }
 
@@ -508,7 +531,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     }
 
                     case CameraActions.REFRESH_PARAMETERS: {
-                        mParametersIsDirty = true;
+                        mParameterCache.invalidate();;
                         break;
                     }
 
@@ -556,69 +579,70 @@ class AndroidCameraAgentImpl extends CameraAgent {
             }
         }
 
-        private void applyToParameters(final CameraSettings settings) {
+        private void applySettingsToParameters(final CameraSettings settings,
+                final Parameters parameters) {
             final CameraCapabilities.Stringifier stringifier = mCapabilities.getStringifier();
             Size photoSize = settings.getCurrentPhotoSize();
-            mParamsToSet.setPictureSize(photoSize.width(), photoSize.height());
+            parameters.setPictureSize(photoSize.width(), photoSize.height());
             Size previewSize = settings.getCurrentPreviewSize();
-            mParamsToSet.setPreviewSize(previewSize.width(), previewSize.height());
+            parameters.setPreviewSize(previewSize.width(), previewSize.height());
             if (settings.getPreviewFrameRate() == -1) {
-                mParamsToSet.setPreviewFpsRange(settings.getPreviewFpsRangeMin(),
+                parameters.setPreviewFpsRange(settings.getPreviewFpsRangeMin(),
                         settings.getPreviewFpsRangeMax());
             } else {
-                mParamsToSet.setPreviewFrameRate(settings.getPreviewFrameRate());
+                parameters.setPreviewFrameRate(settings.getPreviewFrameRate());
             }
-            mParamsToSet.setPreviewFormat(settings.getCurrentPreviewFormat());
-            mParamsToSet.setJpegQuality(settings.getPhotoJpegCompressionQuality());
+            parameters.setPreviewFormat(settings.getCurrentPreviewFormat());
+            parameters.setJpegQuality(settings.getPhotoJpegCompressionQuality());
             if (mCapabilities.supports(CameraCapabilities.Feature.ZOOM)) {
                 // Should use settings.getCurrentZoomRatio() instead here.
-                mParamsToSet.setZoom(settings.getCurrentZoomIndex());
+                parameters.setZoom(settings.getCurrentZoomIndex());
             }
-            mParamsToSet.setExposureCompensation(settings.getExposureCompensationIndex());
+            parameters.setExposureCompensation(settings.getExposureCompensationIndex());
             if (mCapabilities.supports(CameraCapabilities.Feature.AUTO_EXPOSURE_LOCK)) {
-                mParamsToSet.setAutoExposureLock(settings.isAutoExposureLocked());
+                parameters.setAutoExposureLock(settings.isAutoExposureLocked());
             }
-            mParamsToSet.setFocusMode(stringifier.stringify(settings.getCurrentFocusMode()));
+            parameters.setFocusMode(stringifier.stringify(settings.getCurrentFocusMode()));
             if (mCapabilities.supports(CameraCapabilities.Feature.AUTO_WHITE_BALANCE_LOCK)) {
-                mParamsToSet.setAutoWhiteBalanceLock(settings.isAutoWhiteBalanceLocked());
+                parameters.setAutoWhiteBalanceLock(settings.isAutoWhiteBalanceLocked());
             }
             if (mCapabilities.supports(CameraCapabilities.Feature.FOCUS_AREA)) {
                 if (settings.getFocusAreas().size() != 0) {
-                    mParamsToSet.setFocusAreas(settings.getFocusAreas());
+                    parameters.setFocusAreas(settings.getFocusAreas());
                 }
             }
             if (mCapabilities.supports(CameraCapabilities.Feature.METERING_AREA)) {
                 if (settings.getMeteringAreas().size() != 0) {
-                    mParamsToSet.setMeteringAreas(settings.getMeteringAreas());
+                    parameters.setMeteringAreas(settings.getMeteringAreas());
                 }
             }
             if (settings.getCurrentFlashMode() != CameraCapabilities.FlashMode.NO_FLASH) {
-                mParamsToSet.setFlashMode(stringifier.stringify(settings.getCurrentFlashMode()));
+                parameters.setFlashMode(stringifier.stringify(settings.getCurrentFlashMode()));
             }
             if (settings.getCurrentSceneMode() != CameraCapabilities.SceneMode.NO_SCENE_MODE) {
                 if (settings.getCurrentSceneMode() != null) {
-                    mParamsToSet
+                    parameters
                             .setSceneMode(stringifier.stringify(settings.getCurrentSceneMode()));
                 }
             }
-            mParamsToSet.setRecordingHint(settings.isRecordingHintEnabled());
+            parameters.setRecordingHint(settings.isRecordingHintEnabled());
             Size jpegThumbSize = settings.getExifThumbnailSize();
-            mParamsToSet.setJpegThumbnailSize(jpegThumbSize.width(), jpegThumbSize.height());
-            mParamsToSet.setPictureFormat(settings.getCurrentPhotoFormat());
+            parameters.setJpegThumbnailSize(jpegThumbSize.width(), jpegThumbSize.height());
+            parameters.setPictureFormat(settings.getCurrentPhotoFormat());
 
             CameraSettings.GpsData gpsData = settings.getGpsData();
             if (gpsData == null) {
-                mParamsToSet.removeGpsData();
+                parameters.removeGpsData();
             } else {
-                mParamsToSet.setGpsTimestamp(gpsData.timeStamp);
+                parameters.setGpsTimestamp(gpsData.timeStamp);
                 if (gpsData.processingMethod != null) {
                     // It's a hack since we always use GPS time stamp but does
                     // not use other fields sometimes. Setting processing
                     // method to null means the other fields should not be used.
-                    mParamsToSet.setGpsAltitude(gpsData.altitude);
-                    mParamsToSet.setGpsLatitude(gpsData.latitude);
-                    mParamsToSet.setGpsLongitude(gpsData.longitude);
-                    mParamsToSet.setGpsProcessingMethod(gpsData.processingMethod);
+                    parameters.setGpsAltitude(gpsData.altitude);
+                    parameters.setGpsLatitude(gpsData.latitude);
+                    parameters.setGpsLongitude(gpsData.longitude);
+                    parameters.setGpsProcessingMethod(gpsData.processingMethod);
                 }
             }
 
@@ -645,6 +669,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
             mCapabilities = capabilities;
         }
 
+        @Deprecated
         @Override
         public android.hardware.Camera getCamera() {
             return mCamera;
@@ -827,6 +852,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
             });
         }
 
+        @Deprecated
         @Override
         public void setParameters(final Parameters params) {
             if (params == null) {
@@ -845,17 +871,21 @@ class AndroidCameraAgentImpl extends CameraAgent {
             });
         }
 
+        @Deprecated
         @Override
         public Parameters getParameters() {
             final WaitDoneBundle bundle = new WaitDoneBundle();
+            final Parameters[] parametersHolder = new Parameters[1];
             mDispatchThread.runJobSync(new Runnable() {
                 @Override
                 public void run() {
-                    mCameraHandler.sendEmptyMessage(CameraActions.GET_PARAMETERS);
+                    Message getParametersMessage = mCameraHandler.obtainMessage(
+                            CameraActions.GET_PARAMETERS, parametersHolder);
+                    mCameraHandler.sendMessage(getParametersMessage);
                     mCameraHandler.post(bundle.mUnlockRunnable);
                 }
             }, bundle.mWaitLock, CAMERA_OPERATION_TIMEOUT_MS, "get parameters");
-            return mParameters;
+            return parametersHolder[0];
         }
 
         @Override
@@ -871,14 +901,19 @@ class AndroidCameraAgentImpl extends CameraAgent {
 
         @Override
         public String dumpDeviceSettings() {
-            String flattened = mParameters.flatten();
-            StringTokenizer tokenizer = new StringTokenizer(flattened, ";");
-            String dumpedSettings = new String();
-            while (tokenizer.hasMoreElements()) {
-                dumpedSettings += tokenizer.nextToken() + '\n';
-            }
+            Parameters parameters = getParameters();
+            if (parameters != null) {
+                String flattened = getParameters().flatten();
+                StringTokenizer tokenizer = new StringTokenizer(flattened, ";");
+                String dumpedSettings = new String();
+                while (tokenizer.hasMoreElements()) {
+                    dumpedSettings += tokenizer.nextToken() + '\n';
+                }
 
-            return dumpedSettings;
+                return dumpedSettings;
+            } else {
+                return "[no parameters retrieved]";
+            }
         }
 
         @Override
