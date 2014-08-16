@@ -304,6 +304,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
                             break;
                         }
 
+                        Log.i(TAG, "Opening camera " + cameraId + " with camera1 API");
                         mCamera = android.hardware.Camera.open(cameraId);
                         if (mCamera != null) {
                             mCameraId = cameraId;
