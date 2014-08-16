@@ -54,6 +54,10 @@ public abstract class CompositeCursorAdapter extends BaseAdapter {
         public boolean getHasHeader() {
             return hasHeader;
         }
+
+        public boolean isEmpty() {
+            return count == 0;
+        }
     }
 
     private final Context mContext;
@@ -110,7 +114,7 @@ public abstract class CompositeCursorAdapter extends BaseAdapter {
     /**
      * Removes cursors for all partitions.
      */
-    // TODO: Is this really what this is supposed to do? Just remove the cursors? Not close them? 
+    // TODO: Is this really what this is supposed to do? Just remove the cursors? Not close them?
     // Not remove the partitions themselves? Isn't this leaking?
 
     public void clearPartitions() {
