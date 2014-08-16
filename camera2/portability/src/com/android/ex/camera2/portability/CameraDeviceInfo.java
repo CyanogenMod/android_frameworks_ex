@@ -16,7 +16,8 @@
 
 package com.android.ex.camera2.portability;
 
-import android.hardware.Camera;
+import android.graphics.Matrix;
+import android.graphics.RectF;
 
 import com.android.ex.camera2.portability.debug.Log;
 
@@ -67,17 +68,18 @@ public interface CameraDeviceInfo {
         public abstract boolean isFacingFront();
 
         /**
-         * @return The camera image orientation, or the clockwise rotation angle
-         *         that must be applied to display it in its natural orientation
-         *         (in degrees, always a multiple of 90, and between [90,270]).
+         * @return The camera sensor orientation, or the counterclockwise angle
+         *          from its natural position that the device must be held at
+         *          for the sensor to be right side up (in degrees, always a
+         *          multiple of 90, and between 0 and 270, inclusive).
          */
         public abstract int getSensorOrientation();
 
         /**
          * @param currentDisplayOrientation
-         *          The current display orientation, as measured clockwise from
-         *          the device's natural orientation (in degrees, always a
-         *          multiple of 90, and between 0 and 270, inclusive).
+         *          The current display orientation, measured counterclockwise
+         *          from to the device's natural orientation (in degrees, always
+         *          a multiple of 90, and between 0 and 270, inclusive).
          * @return
          *          The relative preview image orientation, or the clockwise
          *          rotation angle that must be applied to display preview
@@ -92,9 +94,9 @@ public interface CameraDeviceInfo {
 
         /**
          * @param currentDisplayOrientation
-         *          The current display orientation, as measured clockwise from
-         *          the device's natural orientation (in degrees, always a
-         *          multiple of 90, and between 0 and 270, inclusive).
+         *          The current display orientation, measured counterclockwise
+         *          from to the device's natural orientation (in degrees, always
+         *          a multiple of 90, and between 0 and 270, inclusive).
          * @return
          *          The relative capture image orientation, or the clockwise
          *          rotation angle that must be applied to display these frames
@@ -120,11 +122,8 @@ public interface CameraDeviceInfo {
          */
         protected int getRelativeImageOrientation(int currentDisplayOrientation,
                                                   boolean compensateForMirroring) {
-            if (currentDisplayOrientation % 90 != 0) {
-                Log.e(TAG, "Provided display orientation is not divisible by 90");
-            }
-            if (currentDisplayOrientation < 0 || currentDisplayOrientation > 270) {
-                Log.e(TAG, "Provided display orientation is outside expected range");
+            if (!orientationIsValid(currentDisplayOrientation)) {
+                return 0;
             }
 
             int result = 0;
@@ -142,8 +141,70 @@ public interface CameraDeviceInfo {
         }
 
         /**
+         * @param currentDisplayOrientation
+         *          The current display orientation, measured counterclockwise
+         *          from to the device's natural orientation (in degrees, always
+         *          a multiple of 90, and between 0 and 270, inclusive).
+         * @param surfaceDimensions
+         *          The dimensions of the {@link android.view.Surface} on which
+         *          the preview image is being rendered. It usually only makes
+         *          sense for the upper-left corner to be at the origin.
+         * @return
+         *          The transform matrix that should be applied to the
+         *          {@link android.view.Surface} in order for the image to
+         *          display properly in the device's current orientation.
+         */
+        public Matrix getPreviewTransform(int currentDisplayOrientation, RectF surfaceDimensions) {
+            return getPreviewTransform(currentDisplayOrientation, surfaceDimensions,
+                    new RectF(surfaceDimensions));
+        }
+
+        /**
+         * @param currentDisplayOrientation
+         *          The current display orientation, measured counterclockwise
+         *          from to the device's natural orientation (in degrees, always
+         *          a multiple of 90, and between 0 and 270, inclusive).
+         * @param surfaceDimensions
+         *          The dimensions of the {@link android.view.Surface} on which
+         *          the preview image is being rendered. It usually only makes
+         *          sense for the upper-left corner to be at the origin.
+         * @param desiredBounds
+         *          The boundaries within the {@link android.view.Surface} where
+         *          the final image should appear. These can be used to
+         *          translate and scale the output, but note that the image will
+         *          be stretched to fit, possibly changing its aspect ratio.
+         * @return
+         *          The transform matrix that should be applied to the
+         *          {@link android.view.Surface} in order for the image to
+         *          display properly in the device's current orientation.
+         */
+        public Matrix getPreviewTransform(int currentDisplayOrientation, RectF surfaceDimensions,
+                                          RectF desiredBounds) {
+            if (!orientationIsValid(currentDisplayOrientation) ||
+                    surfaceDimensions.equals(desiredBounds)) {
+                return new Matrix();
+            }
+
+            Matrix transform = new Matrix();
+            transform.setRectToRect(surfaceDimensions, desiredBounds, Matrix.ScaleToFit.FILL);
+            return transform;
+        }
+
+        /**
          * @return Whether the shutter sound can be disabled.
          */
         public abstract boolean canDisableShutterSound();
+
+        protected static boolean orientationIsValid(int angle) {
+            if (angle % 90 != 0) {
+                Log.e(TAG, "Provided display orientation is not divisible by 90");
+                return false;
+            }
+            if (angle < 0 || angle > 270) {
+                Log.e(TAG, "Provided display orientation is outside expected range");
+                return false;
+            }
+            return true;
+        }
     }
 }
