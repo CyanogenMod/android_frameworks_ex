@@ -129,6 +129,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     Camera.getCameraInfo(i, cameraInfos[i]);
                 }
             } catch (RuntimeException ex) {
+                Log.e(TAG, "Exception while creating CameraDeviceInfo", ex);
                 return null;
             }
 
