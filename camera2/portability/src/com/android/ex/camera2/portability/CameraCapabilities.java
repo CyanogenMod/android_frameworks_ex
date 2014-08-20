@@ -36,6 +36,9 @@ public class CameraCapabilities {
 
     private static Log.Tag TAG = new Log.Tag("CamCapabs");
 
+    /** Zoom ratio used for seeing sensor's full field of view. */
+    protected static final float ZOOM_RATIO_UNZOOMED = 1.0f;
+
     /* All internal states are declared final and should be thread-safe. */
 
     protected final ArrayList<int[]> mSupportedPreviewFpsRange = new ArrayList<int[]>();
@@ -57,12 +60,10 @@ public class CameraCapabilities {
     protected int mMaxNumOfFacesSupported;
     protected int mMaxNumOfFocusAreas;
     protected int mMaxNumOfMeteringArea;
-    protected int mMaxZoomRatio;
+    protected float mMaxZoomRatio;
     protected float mHorizontalViewAngle;
     protected float mVerticalViewAngle;
     private final Stringifier mStringifier;
-    protected final ArrayList<Integer> mZoomRatioList = new ArrayList<Integer>();
-    protected int mMaxZoomIndex;
 
     /**
      * Focus modes.
@@ -488,8 +489,6 @@ public class CameraCapabilities {
         mMaxNumOfFacesSupported = src.mMaxNumOfFacesSupported;
         mMaxNumOfFocusAreas = src.mMaxNumOfFocusAreas;
         mMaxNumOfMeteringArea = src.mMaxNumOfMeteringArea;
-        mMaxZoomIndex = src.mMaxZoomIndex;
-        mZoomRatioList.addAll(src.mZoomRatioList);
         mMaxZoomRatio = src.mMaxZoomRatio;
         mHorizontalViewAngle = src.mHorizontalViewAngle;
         mVerticalViewAngle = src.mVerticalViewAngle;
@@ -635,17 +634,6 @@ public class CameraCapabilities {
         return mMaxZoomRatio;
     }
 
-    // We'll replace these old style methods with new ones.
-    @Deprecated
-    public int getMaxZoomIndex() {
-        return mMaxZoomIndex;
-    }
-
-    @Deprecated
-    public List<Integer> getZoomRatioList() {
-        return new ArrayList<Integer>(mZoomRatioList);
-    }
-
     /**
      * @return The min exposure compensation index. The EV is the compensation
      * index multiplied by the step value. If unsupported, both this method and
@@ -689,17 +677,15 @@ public class CameraCapabilities {
 
     private boolean zoomCheck(final CameraSettings settings) {
         final float ratio = settings.getCurrentZoomRatio();
-        final int index = settings.getCurrentZoomIndex();
         if (!supports(Feature.ZOOM)) {
-            if (ratio != 1.0f || index != 0) {
+            if (ratio != ZOOM_RATIO_UNZOOMED) {
                 Log.v(TAG, "Zoom is not supported");
                 return false;
             }
         } else {
-            if (settings.getCurrentZoomRatio() > getMaxZoomRatio() ||
-                    index > getMaxZoomIndex()) {
+            if (settings.getCurrentZoomRatio() > getMaxZoomRatio()) {
                 Log.v(TAG, "Zoom ratio is not supported: ratio = " +
-                        settings.getCurrentZoomRatio() + ", index = " + index);
+                        settings.getCurrentZoomRatio());
                 return false;
             }
         }

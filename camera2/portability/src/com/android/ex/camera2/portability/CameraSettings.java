@@ -47,7 +47,6 @@ public abstract class CameraSettings {
     protected byte mJpegCompressQuality;
     protected int mCurrentPhotoFormat;
     protected float mCurrentZoomRatio;
-    protected int mCurrentZoomIndex;
     protected int mExposureCompensationIndex;
     protected CameraCapabilities.FlashMode mCurrentFlashMode;
     protected CameraCapabilities.FocusMode mCurrentFocusMode;
@@ -117,7 +116,6 @@ public abstract class CameraSettings {
         mJpegCompressQuality = src.mJpegCompressQuality;
         mCurrentPhotoFormat = src.mCurrentPhotoFormat;
         mCurrentZoomRatio = src.mCurrentZoomRatio;
-        mCurrentZoomIndex = src.mCurrentZoomIndex;
         mExposureCompensationIndex = src.mExposureCompensationIndex;
         mCurrentFlashMode = src.mCurrentFlashMode;
         mCurrentFocusMode = src.mCurrentFocusMode;
@@ -301,16 +299,6 @@ public abstract class CameraSettings {
         mCurrentZoomRatio = ratio;
     }
 
-    @Deprecated
-    public int getCurrentZoomIndex() {
-        return mCurrentZoomIndex;
-    }
-
-    @Deprecated
-    public void setZoomIndex(int index) {
-        mCurrentZoomIndex = index;
-    }
-
     /** Exposure **/
 
     public void setExposureCompensationIndex(int index) {
@@ -332,6 +320,14 @@ public abstract class CameraSettings {
         return mAutoExposureLocked;
     }
 
+    /**
+     * @param areas The areas for autoexposure. The coordinate system has domain
+     *              and range [-1000,1000], measured relative to the visible
+     *              preview image, with orientation matching that of the sensor.
+     *              This means the coordinates must be transformed to account
+     *              for the devices rotation---but not the zoom level---before
+     *              being passed into this method.
+     */
     public void setMeteringAreas(List<Camera.Area> areas) {
         mMeteringAreas.clear();
         if (areas != null) {
@@ -371,7 +367,12 @@ public abstract class CameraSettings {
     }
 
     /**
-     * @param areas The areas to focus.
+     * @param areas The areas to focus. The coordinate system has domain and
+     *              range [-1000,1000], measured relative to the visible preview
+     *              image, with orientation matching that of the sensor. This
+     *              means the coordinates must be transformed to account for
+     *              the devices rotation---but not the zoom level---before being
+     *              passed into this method.
      */
     public void setFocusAreas(List<Camera.Area> areas) {
         mFocusAreas.clear();

@@ -31,6 +31,9 @@ class AndroidCameraCapabilities extends CameraCapabilities {
 
     private static Log.Tag TAG = new Log.Tag("AndCamCapabs");
 
+    /** Conversion from ratios to percentages. */
+    public static final float ZOOM_MULTIPLIER = 100f;
+
     private FpsComparator mFpsComparator = new FpsComparator();
     private SizeComparator mSizeComparator = new SizeComparator();
 
@@ -44,9 +47,7 @@ class AndroidCameraCapabilities extends CameraCapabilities {
         mPreferredPreviewSizeForVideo = new Size(p.getPreferredPreviewSizeForVideo());
         mSupportedPreviewFormats.addAll(p.getSupportedPreviewFormats());
         mSupportedPhotoFormats.addAll(p.getSupportedPictureFormats());
-        mMaxZoomIndex = p.getMaxZoom();
-        mZoomRatioList.addAll(p.getZoomRatios());
-        mMaxZoomRatio = mZoomRatioList.get(mMaxZoomIndex);
+        mMaxZoomRatio = p.getZoomRatios().get(p.getMaxZoom()) / ZOOM_MULTIPLIER;
         mHorizontalViewAngle = p.getHorizontalViewAngle();
         mVerticalViewAngle = p.getVerticalViewAngle();
         buildPreviewFpsRange(p);

@@ -81,7 +81,7 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
         mMaxNumOfFacesSupported = p.get(STATISTICS_INFO_MAX_FACE_COUNT);
         mMaxNumOfMeteringArea = p.get(CONTROL_MAX_REGIONS_AE);
 
-        // TODO: Populate mMaxZoomRatio
+        mMaxZoomRatio = p.get(SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
         // TODO: Populate mHorizontalViewAngle
         // TODO: Populate mVerticalViewAngle
         // TODO: Populate mZoomRatioList
@@ -95,6 +95,10 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
         }
         if (mMaxNumOfMeteringArea > 0) {
             mSupportedFeatures.add(Feature.METERING_AREA);
+        }
+
+        if (mMaxZoomRatio > CameraCapabilities.ZOOM_RATIO_UNZOOMED) {
+            mSupportedFeatures.add(Feature.ZOOM);
         }
 
         // TODO: Detect other features

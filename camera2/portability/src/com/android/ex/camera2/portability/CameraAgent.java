@@ -732,10 +732,11 @@ public abstract class CameraAgent {
         protected boolean applySettingsHelper(CameraSettings settings,
                                               final int statesToAwait) {
             if (settings == null) {
-                Log.v(TAG, "null parameters in applySettings()");
+                Log.v(TAG, "null argument in applySettings()");
                 return false;
             }
             if (!getCapabilities().supports(settings)) {
+                Log.w(TAG, "Unsupported settings in applySettings()");
                 return false;
             }
 
