@@ -223,6 +223,10 @@ class AndroidCameraAgentImpl extends CameraAgent {
         public synchronized Parameters getBlocking() {
             if (mParameters == null) {
                 mParameters = mCamera.getParameters();
+                if (mParameters == null) {
+                    Log.e(TAG, "Camera object returned null parameters!");
+                    throw new IllegalStateException("camera.getParameters returned null");
+                }
             }
             return mParameters;
         }
@@ -880,9 +884,8 @@ class AndroidCameraAgentImpl extends CameraAgent {
             mDispatchThread.runJobSync(new Runnable() {
                 @Override
                 public void run() {
-                    Message getParametersMessage = mCameraHandler.obtainMessage(
-                            CameraActions.GET_PARAMETERS, parametersHolder);
-                    mCameraHandler.sendMessage(getParametersMessage);
+                    mCameraHandler.obtainMessage(
+                            CameraActions.GET_PARAMETERS, parametersHolder).sendToTarget();
                     mCameraHandler.post(bundle.mUnlockRunnable);
                 }
             }, bundle.mWaitLock, CAMERA_OPERATION_TIMEOUT_MS, "get parameters");
