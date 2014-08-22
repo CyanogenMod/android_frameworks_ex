@@ -35,6 +35,7 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaActionSound;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -63,6 +64,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
     private final CameraStateHolder mCameraState;
     private final DispatchThread mDispatchThread;
     private final CameraManager mCameraManager;
+    private final MediaActionSound mNoisemaker;
 
     /**
      * Number of camera devices.  The length of {@code mCameraDevices} does not reveal this
@@ -88,6 +90,8 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         mDispatchThread = new DispatchThread(mCameraHandler, mCameraHandlerThread);
         mDispatchThread.start();
         mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+        mNoisemaker = new MediaActionSound();
+        mNoisemaker.load(MediaActionSound.SHUTTER_CLICK);
 
         mNumCameraDevices = 0;
         mCameraDevices = new ArrayList<String>();
@@ -915,7 +919,6 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 }});
         }
 
-        // TODO: Implement
         @Override
         public void takePicture(final Handler handler,
                                 final CameraShutterCallback shutter,
@@ -932,6 +935,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
+                                mNoisemaker.play(MediaActionSound.SHUTTER_CLICK);
                                 shutter.onShutter(AndroidCamera2ProxyImpl.this);
                             }});
                     }
