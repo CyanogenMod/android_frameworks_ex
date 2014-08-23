@@ -73,9 +73,20 @@ public abstract class CameraSettings {
         public final long timeStamp;
         public final String processingMethod;
 
-        /** Constructor. */
+        /**
+         * Construct what may or may not actually represent a location,
+         * depending on the value of {@code processingMethod}.
+         *
+         * <p>Setting {@code processingMethod} to {@code null} means that
+         * {@code latitude}, {@code longitude}, and {@code altitude} will be
+         * completely ignored.</p>
+         */
         public GpsData(double latitude, double longitude, double altitude, long timeStamp,
                 String processingMethod) {
+            if (processingMethod == null &&
+                    (latitude != 0.0 || longitude != 0.0 || altitude != 0.0)) {
+                Log.w(TAG, "GpsData's nonzero data will be ignored due to null processingMethod");
+            }
             this.latitude = latitude;
             this.longitude = longitude;
             this.altitude = altitude;
