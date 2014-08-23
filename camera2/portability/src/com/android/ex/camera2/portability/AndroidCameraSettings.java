@@ -41,10 +41,8 @@ public class AndroidCameraSettings extends CameraSettings {
         // Capture: Focus, flash, zoom, exposure, scene mode.
         if (capabilities.supports(CameraCapabilities.Feature.ZOOM)) {
             setZoomRatio(params.getZoomRatios().get(params.getZoom()) / 100f);
-            setZoomIndex(params.getZoom());
         } else {
-            setZoomRatio(1.0f);
-            setZoomIndex(0);
+            setZoomRatio(CameraCapabilities.ZOOM_RATIO_UNZOOMED);
         }
         setExposureCompensationIndex(params.getExposureCompensation());
         setFlashMode(stringifier.flashModeFromString(params.getFlashMode()));
