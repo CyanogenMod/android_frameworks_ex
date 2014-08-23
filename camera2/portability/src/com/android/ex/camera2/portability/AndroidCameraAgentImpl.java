@@ -38,6 +38,8 @@ import android.view.SurfaceHolder;
 import com.android.ex.camera2.portability.debug.Log;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.StringTokenizer;
 
 /**
@@ -596,8 +598,8 @@ class AndroidCameraAgentImpl extends CameraAgent {
             parameters.setPreviewFormat(settings.getCurrentPreviewFormat());
             parameters.setJpegQuality(settings.getPhotoJpegCompressionQuality());
             if (mCapabilities.supports(CameraCapabilities.Feature.ZOOM)) {
-                // Should use settings.getCurrentZoomRatio() instead here.
-                parameters.setZoom(settings.getCurrentZoomIndex());
+                parameters.setZoom(zoomRatioToIndex(settings.getCurrentZoomRatio(),
+                        parameters.getZoomRatios()));
             }
             parameters.setExposureCompensation(settings.getExposureCompensationIndex());
             if (mCapabilities.supports(CameraCapabilities.Feature.AUTO_EXPOSURE_LOCK)) {
@@ -647,6 +649,29 @@ class AndroidCameraAgentImpl extends CameraAgent {
                 }
             }
 
+        }
+
+        /**
+         * @param ratio Desired zoom ratio, in [1.0f,+Inf).
+         * @param percentages Available zoom ratios, as percentages.
+         * @return Index of the closest corresponding ratio, rounded up toward
+         *         that of the maximum available ratio.
+         */
+        private int zoomRatioToIndex(float ratio, List<Integer> percentages) {
+            int percent = (int) (ratio * AndroidCameraCapabilities.ZOOM_MULTIPLIER);
+            int index = Collections.binarySearch(percentages, percent);
+            if (index >= 0) {
+                // Found the desired ratio in the supported list
+                return index;
+            } else {
+                // Didn't find an exact match. Where would it have been?
+                index = -(index + 1);
+                if (index == percentages.size()) {
+                    // Put it back in bounds by setting to the maximum allowable zoom
+                    --index;
+                }
+                return index;
+            }
         }
     }
 

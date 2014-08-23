@@ -42,8 +42,9 @@ public class AndroidCamera2Settings extends CameraSettings {
     private static final Log.Tag TAG = new Log.Tag("AndCam2Set");
 
     private final Builder mTemplateSettings;
-    private final Rect mActiveArray;
     private final Camera2RequestSettingsSet mRequestSettings;
+    private final Rect mActiveArray;
+    private final Rect mCropRectangle;
 
     /**
      * Create a settings representation that answers queries of unspecified
@@ -57,19 +58,31 @@ public class AndroidCamera2Settings extends CameraSettings {
      * their effective values when submitting a capture request will be those of
      * the template that is provided to the camera framework at that time.</p>
      *
-     * @param camera Device from which to draw default settings.
+     * @param camera Device from which to draw default settings
+     *               (non-{@code null}).
      * @param template Specific template to use for the defaults.
-     * @param activeArray Boundary coordinates of the sensor's active array.
+     * @param activeArray Boundary coordinates of the sensor's active array
+     *                    (non-{@code null}).
      * @param preview Dimensions of preview streams.
      * @param photo Dimensions of captured images.
      *
+     * @throws IllegalArgumentException If {@code camera} or {@code activeArray}
+     *                                  is {@code null}.
      * @throws CameraAccessException Upon internal framework/driver failure.
      */
     public AndroidCamera2Settings(CameraDevice camera, int template, Rect activeArray,
                                   Size preview, Size photo) throws CameraAccessException {
+        if (camera == null) {
+            throw new NullPointerException("camera must not be null");
+        }
+        if (activeArray == null) {
+            throw new NullPointerException("activeArray must not be null");
+        }
+
         mTemplateSettings = camera.createCaptureRequest(template);
-        mActiveArray = activeArray;
         mRequestSettings = new Camera2RequestSettingsSet();
+        mActiveArray = activeArray;
+        mCropRectangle = new Rect(0, 0, activeArray.width(), activeArray.height());
 
         Range<Integer> previewFpsRange = mTemplateSettings.get(CONTROL_AE_TARGET_FPS_RANGE);
         if (previewFpsRange != null) {
@@ -80,8 +93,8 @@ public class AndroidCamera2Settings extends CameraSettings {
         setPhotoSize(photo);
         mJpegCompressQuality = queryTemplateDefaultOrMakeOneUp(JPEG_QUALITY, (byte) 0);
         // TODO: mCurrentPhotoFormat
-        // TODO: mCurrentZoomRatio
-        mCurrentZoomRatio = 1.0f;
+        // NB: We're assuming that templates won't be zoomed in by default.
+        mCurrentZoomRatio = CameraCapabilities.ZOOM_RATIO_UNZOOMED;
         // TODO: mCurrentZoomIndex
         mExposureCompensationIndex =
                 queryTemplateDefaultOrMakeOneUp(CONTROL_AE_EXPOSURE_COMPENSATION, 0);
@@ -117,8 +130,9 @@ public class AndroidCamera2Settings extends CameraSettings {
     public AndroidCamera2Settings(AndroidCamera2Settings other) {
         super(other);
         mTemplateSettings = other.mTemplateSettings;
-        mActiveArray = other.mActiveArray;
         mRequestSettings = new Camera2RequestSettingsSet(other.mRequestSettings);
+        mActiveArray = other.mActiveArray;
+        mCropRectangle = new Rect(other.mCropRectangle);
     }
 
     @Override
@@ -158,6 +172,18 @@ public class AndroidCamera2Settings extends CameraSettings {
             }
         }
         return null;
+    }
+
+    @Override
+    public void setZoomRatio(float ratio) {
+        super.setZoomRatio(ratio);
+        mCropRectangle.set(0, 0,
+                toIntConstrained(
+                        mActiveArray.width() / mCurrentZoomRatio, 0, mActiveArray.width()),
+                toIntConstrained(
+                        mActiveArray.height() / mCurrentZoomRatio, 0, mActiveArray.height()));
+        mCropRectangle.offsetTo((mActiveArray.width() - mCropRectangle.width()) / 2,
+                (mActiveArray.height() - mCropRectangle.height()) / 2);
     }
 
     private boolean matchesTemplateDefault(Key<?> setting) {
@@ -214,7 +240,7 @@ public class AndroidCamera2Settings extends CameraSettings {
         // TODO: mCurrentPreviewFormat
         updateRequestSettingOrForceToDefault(JPEG_QUALITY, mJpegCompressQuality);
         // TODO: mCurrentPhotoFormat
-        // TODO: mCurrentZoomRatio
+        mRequestSettings.set(SCALER_CROP_REGION, mCropRectangle);
         // TODO: mCurrentZoomIndex
         updateRequestSettingOrForceToDefault(CONTROL_AE_EXPOSURE_COMPENSATION,
                 mExposureCompensationIndex);
@@ -244,25 +270,25 @@ public class AndroidCamera2Settings extends CameraSettings {
             List<android.hardware.Camera.Area> reference) {
         MeteringRectangle[] transformed = null;
         if (reference.size() > 0) {
-
             transformed = new MeteringRectangle[reference.size()];
             for (int index = 0; index < reference.size(); ++index) {
                 android.hardware.Camera.Area source = reference.get(index);
                 Rect rectangle = source.rect;
 
                 // Old API coordinates were [-1000,1000]; new ones are [0,ACTIVE_ARRAY_SIZE).
+                // We're also going from preview image--relative to sensor active array--relative.
                 double oldLeft = (rectangle.left + 1000) / 2000.0;
                 double oldTop = (rectangle.top + 1000) / 2000.0;
                 double oldRight = (rectangle.right + 1000) / 2000.0;
                 double oldBottom = (rectangle.bottom + 1000) / 2000.0;
-                int left = toIntConstrained( mActiveArray.width() * oldLeft + mActiveArray.left,
-                        0, mActiveArray.width() - 1);
-                int top = toIntConstrained( mActiveArray.height() * oldTop + mActiveArray.top,
-                        0, mActiveArray.height() - 1);
-                int right = toIntConstrained( mActiveArray.width() * oldRight + mActiveArray.left,
-                        0, mActiveArray.width() - 1);
-                int bottom = toIntConstrained( mActiveArray.height() * oldBottom + mActiveArray.top,
-                        0, mActiveArray.height() - 1);
+                int left = mCropRectangle.left + toIntConstrained(
+                        mCropRectangle.width() * oldLeft, 0, mCropRectangle.width() - 1);
+                int top = mCropRectangle.top + toIntConstrained(
+                        mCropRectangle.height() * oldTop, 0, mCropRectangle.height() - 1);
+                int right = mCropRectangle.left + toIntConstrained(
+                        mCropRectangle.width() * oldRight, 0, mCropRectangle.width() - 1);
+                int bottom = mCropRectangle.top + toIntConstrained(
+                        mCropRectangle.height() * oldBottom, 0, mCropRectangle.height() - 1);
                 transformed[index] = new MeteringRectangle(left, top, right - left, bottom - top,
                         source.weight);
             }

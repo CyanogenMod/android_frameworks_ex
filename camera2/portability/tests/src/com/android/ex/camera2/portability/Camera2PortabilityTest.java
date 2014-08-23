@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
@@ -40,6 +41,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 
 public class Camera2PortabilityTest extends Camera2DeviceTester {
+    /**
+     * Ensure that applying {@code Stringifier#.*FromString()} reverses
+     * {@link Stringifier#stringify} for {@link FocusMode}, {@link FlashMode},
+     * {@link SceneMode}, and {@link WhiteBalance}.
+     */
     @Test
     public void cameraCapabilitiesStringifier() {
         Stringifier strfy = new Stringifier();
@@ -57,6 +63,11 @@ public class Camera2PortabilityTest extends Camera2DeviceTester {
         }
     }
 
+    /**
+     * Ensure that {@code Stringifier#.*FromString()} default to the correct
+     * {@link FocusMode}, {@link FlashMode}, {@link SceneMode}, and
+     * {@link WhiteBalance} when given a {@code null}.
+     */
     @Test
     public void cameraCapabilitiesStringifierNull() {
         Stringifier strfy = new Stringifier();
@@ -66,6 +77,11 @@ public class Camera2PortabilityTest extends Camera2DeviceTester {
         assertEquals(strfy.whiteBalanceFromString(null), WhiteBalance.AUTO);
     }
 
+    /**
+     * Ensure that {@code Stringifier#.*FromString()} default to the correct
+     * {@link FocusMode}, {@link FlashMode}, {@link SceneMode}, and
+     * {@link WhiteBalance} when given an unrecognized string.
+     */
     @Test
     public void cameraCapabilitiesStringifierInvalid() {
         Stringifier strfy = new Stringifier();
@@ -86,10 +102,19 @@ public class Camera2PortabilityTest extends Camera2DeviceTester {
         assertEquals(apiVal, setts.getRequestSettings().get(apiKey));
     }
 
+    /**
+     * Ensure that {@link AndroidCamera2Settings} correctly translates its
+     * {@code FocusMode}, {@code SceneMode}, and {@code WhiteBalance} to the
+     * corresponding framework API 2 representations.
+     */
     @Test
     public void camera2SettingsSetOptionsAndGetRequestSettings() throws CameraAccessException {
+        // We're only testing the focus modes, scene modes and white balances,
+        // and won't use the activeArray, previewSize, or photoSize. The
+        // constructor requires the former, so pass a degenerate rectangle.
         AndroidCamera2Settings set = new AndroidCamera2Settings(
-                mCamera, CameraDevice.TEMPLATE_PREVIEW, null, null, null);
+                mCamera, CameraDevice.TEMPLATE_PREVIEW, /*activeArray*/new Rect(),
+                /*previewSize*/null, /*photoSize*/null);
 
         // Focus modes
         set.setFocusMode(FocusMode.AUTO);
@@ -158,6 +183,11 @@ public class Camera2PortabilityTest extends Camera2DeviceTester {
 
     // TODO: Add a test checking whether stringification matches API 1 representation
 
+    /**
+     * Ensure that {@code AndroidCamera2Capabilities#.*FromInt} correctly
+     * translates from framework API 2 representations to the equivalent
+     * {@code FocusMode}s, {@code SceneMode}s, and {@code WhiteBalance}s.
+     */
     @Test
     public void camera2CapabilitiesFocusModeFromInt() throws CameraAccessException {
         CameraCharacteristics chars = buildFrameworkCharacteristics();
