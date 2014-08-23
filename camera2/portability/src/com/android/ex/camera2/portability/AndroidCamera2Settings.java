@@ -22,6 +22,7 @@ import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.params.MeteringRectangle;
+import android.location.Location;
 import android.util.Range;
 
 import com.android.ex.camera2.portability.CameraCapabilities.FlashMode;
@@ -231,7 +232,7 @@ public class AndroidCamera2Settings extends CameraSettings {
         updateRequestSettingOrForceToDefault(CONTROL_AE_LOCK, mAutoExposureLocked);
         updateRequestSettingOrForceToDefault(CONTROL_AWB_LOCK, mAutoWhiteBalanceLocked);
         // TODO: mRecordingHintEnabled
-        // TODO: mGpsData
+        updateRequestGpsData();
         updateRequestSettingOrForceToDefault(JPEG_THUMBNAIL_SIZE,
                 new android.util.Size(
                         mExifThumbnailSize.width(), mExifThumbnailSize.height()));
@@ -468,5 +469,21 @@ public class AndroidCamera2Settings extends CameraSettings {
             }
         }
         mRequestSettings.set(CONTROL_AWB_MODE, mode);
+    }
+
+    private void updateRequestGpsData() {
+        if (mGpsData == null || mGpsData.processingMethod == null) {
+            // It's a hack since we always use GPS time stamp but does
+            // not use other fields sometimes. Setting processing
+            // method to null means the other fields should not be used.
+            mRequestSettings.set(JPEG_GPS_LOCATION, null);
+        } else {
+            Location location = new Location(mGpsData.processingMethod);
+            location.setTime(mGpsData.timeStamp);
+            location.setAltitude(mGpsData.altitude);
+            location.setLatitude(mGpsData.latitude);
+            location.setLongitude(mGpsData.longitude);
+            mRequestSettings.set(JPEG_GPS_LOCATION, location);
+        }
     }
 }
