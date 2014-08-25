@@ -237,19 +237,19 @@ public class Camera2UtilsTest extends Camera2DeviceTester {
     @Test(expected=NullPointerException.class)
     public void requestSettingsSetNullArgToCreateRequest0() throws Exception {
         Camera2RequestSettingsSet setUp = new Camera2RequestSettingsSet();
-        setUp.createRequest(null, 0);
+        setUp.createRequest(null, CameraDevice.TEMPLATE_PREVIEW);
     }
 
     @Test(expected=NullPointerException.class)
     public void requestSettingsSetNullArgToCreateRequest2() throws Exception {
         Camera2RequestSettingsSet setUp = new Camera2RequestSettingsSet();
-        setUp.createRequest(mCamera, 0, (Surface) null);
+        setUp.createRequest(mCamera, CameraDevice.TEMPLATE_PREVIEW, (Surface) null);
     }
 
     @Test(expected=NullPointerException.class)
     public void requestSettingsSetNullArgToCreateRequest02() throws Exception {
         Camera2RequestSettingsSet setUp = new Camera2RequestSettingsSet();
-        setUp.createRequest(null, 0, (Surface) null);
+        setUp.createRequest(null, CameraDevice.TEMPLATE_PREVIEW, (Surface) null);
     }
 
     @Test
