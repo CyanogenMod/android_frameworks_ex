@@ -720,9 +720,16 @@ public class CameraCapabilities {
     private boolean focusCheck(final CameraSettings settings) {
         FocusMode focusMode = settings.getCurrentFocusMode();
         if (!supports(focusMode)) {
-            Log.v(TAG,
-                    "Focus mode not supported:" + (focusMode != null ? focusMode.name() : "null"));
-            return false;
+            if (supports(FocusMode.FIXED)) {
+                // Workaround for devices whose templates define defaults they don't really support
+                // TODO: Remove workaround (b/17177436)
+                Log.w(TAG, "Focus mode not supported... trying FIXED");
+                settings.setFocusMode(FocusMode.FIXED);
+            } else {
+                Log.v(TAG, "Focus mode not supported:" +
+                        (focusMode != null ? focusMode.name() : "null"));
+                return false;
+            }
         }
         return true;
     }
