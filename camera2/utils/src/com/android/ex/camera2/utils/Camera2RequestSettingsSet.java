@@ -146,7 +146,7 @@ public class Camera2RequestSettingsSet {
      * to its default value or simply unset. While {@link #get} will return
      * {@code null} in both these cases, this method will return {@code true}
      * and {@code false}, respectively.</p>
-
+     *
      * @param key Which setting to look for.
      * @return Whether that setting has a value that will propagate with unions.
      *
@@ -160,8 +160,23 @@ public class Camera2RequestSettingsSet {
     }
 
     /**
+     * Check whether the value of the specified setting matches the given one.
+     *
+     * <p>This method uses the {@code T} type's {@code equals} method, but is
+     * {@code null}-tolerant.</p>
+     *
+     * @param key Which of this class's settings to check.
+     * @param value Value to test for equality against.
+     * @return Whether they are the same.
+     */
+    public <T> boolean matches(Key<T> key, T value) {
+        return Objects.equals(get(key), value);
+    }
+
+    /**
      * Get this set of settings's revision identifier, which can be compared
      * against cached past values to determine whether it has been modified.
+     *
      * <p>Distinct revisions across the same object do not necessarily indicate
      * that the object's key/value pairs have changed at all, but the same
      * revision on the same object does imply that they've stayed the same.</p>

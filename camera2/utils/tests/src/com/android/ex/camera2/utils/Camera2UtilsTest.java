@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import android.graphics.Rect;
 import android.hardware.camera2.CameraCaptureSession.CaptureListener;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CaptureRequest;
@@ -232,6 +233,45 @@ public class Camera2UtilsTest extends Camera2DeviceTester {
     public void requestSettingsSetNullArgToGet() {
         Camera2RequestSettingsSet setUp = new Camera2RequestSettingsSet();
         setUp.get(null);
+    }
+
+    @Test
+    public void requestSettingsSetMatchesPrimitives() {
+        Camera2RequestSettingsSet setUp = new Camera2RequestSettingsSet();
+        assertTrue(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, null));
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, false));
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, true));
+
+        setUp.set(CaptureRequest.CONTROL_AE_LOCK, null);
+        assertTrue(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, null));
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, false));
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, true));
+
+        setUp.set(CaptureRequest.CONTROL_AE_LOCK, false);
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, null));
+        assertTrue(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, false));
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, true));
+
+        setUp.set(CaptureRequest.CONTROL_AE_LOCK, true);
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, null));
+        assertFalse(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, false));
+        assertTrue(setUp.matches(CaptureRequest.CONTROL_AE_LOCK, true));
+    }
+
+    @Test
+    public void requestSettingsSetMatchesReferences() {
+        Camera2RequestSettingsSet setUp = new Camera2RequestSettingsSet();
+        assertTrue(setUp.matches(CaptureRequest.SCALER_CROP_REGION, null));
+        assertFalse(setUp.matches(CaptureRequest.SCALER_CROP_REGION, new Rect(0, 0, 0, 0)));
+
+        setUp.set(CaptureRequest.SCALER_CROP_REGION, null);
+        assertTrue(setUp.matches(CaptureRequest.SCALER_CROP_REGION, null));
+        assertFalse(setUp.matches(CaptureRequest.SCALER_CROP_REGION, new Rect(0, 0, 0, 0)));
+
+        setUp.set(CaptureRequest.SCALER_CROP_REGION, new Rect(0, 0, 0, 0));
+        assertFalse(setUp.matches(CaptureRequest.SCALER_CROP_REGION, null));
+        assertTrue(setUp.matches(CaptureRequest.SCALER_CROP_REGION, new Rect(0, 0, 0, 0)));
+        assertFalse(setUp.matches(CaptureRequest.SCALER_CROP_REGION, new Rect(0, 0, 1, 1)));
     }
 
     @Test(expected=NullPointerException.class)
