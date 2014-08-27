@@ -930,6 +930,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         private final CameraDevice mCamera;
         private final CameraDeviceInfo.Characteristics mCharacteristics;
         private final AndroidCamera2Capabilities mCapabilities;
+        private CameraSettings mLastSettings;
 
         public AndroidCamera2ProxyImpl(int cameraIndex, CameraDevice camera,
                 CameraDeviceInfo.Characteristics characteristics,
@@ -938,6 +939,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
             mCamera = camera;
             mCharacteristics = characteristics;
             mCapabilities = new AndroidCamera2Capabilities(properties);
+            mLastSettings = null;
         }
 
         // TODO: Implement
@@ -1108,7 +1110,10 @@ class AndroidCamera2AgentImpl extends CameraAgent {
 
         @Override
         public CameraSettings getSettings() {
-            return mCameraHandler.buildSettings(mCapabilities);
+            if (mLastSettings == null) {
+                mLastSettings = mCameraHandler.buildSettings(mCapabilities);
+            }
+            return mLastSettings;
         }
 
         @Override
@@ -1122,9 +1127,13 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 return false;
             }
 
-            return applySettingsHelper(settings, AndroidCamera2StateHolder.CAMERA_UNCONFIGURED |
+            if (applySettingsHelper(settings, AndroidCamera2StateHolder.CAMERA_UNCONFIGURED |
                     AndroidCamera2StateHolder.CAMERA_CONFIGURED |
-                    AndroidCamera2StateHolder.CAMERA_PREVIEW_READY);
+                    AndroidCamera2StateHolder.CAMERA_PREVIEW_READY)) {
+                mLastSettings = settings;
+                return true;
+            }
+            return false;
         }
 
         // TODO: Implement
