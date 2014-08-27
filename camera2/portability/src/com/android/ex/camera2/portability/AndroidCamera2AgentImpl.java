@@ -854,6 +854,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
 
                             case CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED:
                             case CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED: {
+                                // This check must be made regardless of whether the focus state has
+                                // changed recently to avoid infinite waiting during autoFocus()
+                                // when the algorithm has already either converged or failed to.
                                 if (mOneshotAfCallback != null) {
                                     // A call to autoFocus() was just made to request a focus lock.
                                     // Notify the caller that the lens is now indefinitely fixed,
@@ -876,8 +879,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                     // might get the final callbacks for an earlier frame after receiving one or
                     // more that correspond to the next one. To prevent our data from oscillating,
                     // we never consider AE states that are older than the last one we've seen.
-                    if (aeState != mCurrentAeState &&
-                            result.getFrameNumber() > mLastAeFrameNumber) {
+                    if (result.getFrameNumber() > mLastAeFrameNumber) {
                         mCurrentAeState = aeStateMaybe;
                         mLastAeFrameNumber = result.getFrameNumber();
 
@@ -885,6 +887,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             case CaptureResult.CONTROL_AE_STATE_CONVERGED:
                             case CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED:
                             case CaptureResult.CONTROL_AE_STATE_LOCKED: {
+                                // This check must be made regardless of whether the exposure state
+                                // has changed recently to avoid infinite waiting during
+                                // takePicture() when the algorithm has already converged.
                                 if (mOneshotCaptureCallback != null) {
                                     // A call to takePicture() was just made, and autoexposure
                                     // converged so it's time to initiate the capture!
