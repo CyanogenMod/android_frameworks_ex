@@ -215,7 +215,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                         CameraOpenCallback openCallback = (CameraOpenCallback) msg.obj;
                         int cameraIndex = msg.arg1;
 
-                        if (mCameraState.getState() != AndroidCamera2StateHolder.CAMERA_UNOPENED) {
+                        if (mCameraState.getState() > AndroidCamera2StateHolder.CAMERA_UNOPENED) {
                             openCallback.onDeviceOpenedAlready(cameraIndex,
                                     generateHistoryString(cameraIndex));
                             break;
@@ -1077,8 +1077,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
             mDispatchThread.runJob(new Runnable() {
                 @Override
                 public void run() {
-                    mCameraState.waitForStates(AndroidCamera2StateHolder.CAMERA_PREVIEW_ACTIVE |
-                            AndroidCamera2StateHolder.CAMERA_FOCUS_LOCKED);
+                    // Wait until PREVIEW_ACTIVE or better
+                    mCameraState.waitForStates(
+                            ~(AndroidCamera2StateHolder.CAMERA_PREVIEW_ACTIVE - 1));
                     mCameraHandler.obtainMessage(CameraActions.CAPTURE_PHOTO, picListener)
                             .sendToTarget();
                 }});
@@ -1132,9 +1133,8 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 return false;
             }
 
-            if (applySettingsHelper(settings, AndroidCamera2StateHolder.CAMERA_UNCONFIGURED |
-                    AndroidCamera2StateHolder.CAMERA_CONFIGURED |
-                    AndroidCamera2StateHolder.CAMERA_PREVIEW_READY)) {
+            // Wait for any state that isn't OPENED
+            if (applySettingsHelper(settings, ~AndroidCamera2StateHolder.CAMERA_UNOPENED)) {
                 mLastSettings = settings;
                 return true;
             }
@@ -1165,19 +1165,22 @@ class AndroidCamera2AgentImpl extends CameraAgent {
     private static class AndroidCamera2StateHolder extends CameraStateHolder {
         // Usage flow: openCamera() -> applySettings() -> setPreviewTexture() -> startPreview() ->
         //             autoFocus() -> takePicture()
+        // States are mutually exclusive, but must be separate bits so that they can be used with
+        // the StateHolder#waitForStates() and StateHolder#waitToAvoidStates() methods.
+        // Do not set the state to be a combination of these values!
         /* Camera states */
         /** No camera device is opened. */
-        public static final int CAMERA_UNOPENED = 1;
+        public static final int CAMERA_UNOPENED = 1 << 0;
         /** A camera is opened, but no settings have been provided. */
-        public static final int CAMERA_UNCONFIGURED = 2;
+        public static final int CAMERA_UNCONFIGURED = 1 << 1;
         /** The open camera has been configured by providing it with settings. */
-        public static final int CAMERA_CONFIGURED = 3;
+        public static final int CAMERA_CONFIGURED = 1 << 2;
         /** A capture session is ready to stream a preview, but still has no repeating request. */
-        public static final int CAMERA_PREVIEW_READY = 4;
+        public static final int CAMERA_PREVIEW_READY = 1 << 3;
         /** A preview is currently being streamed. */
-        public static final int CAMERA_PREVIEW_ACTIVE = 5;
+        public static final int CAMERA_PREVIEW_ACTIVE = 1 << 4;
         /** The lens is locked on a particular region. */
-        public static final int CAMERA_FOCUS_LOCKED = 6;
+        public static final int CAMERA_FOCUS_LOCKED = 1 << 5;
 
         public AndroidCamera2StateHolder() {
             this(CAMERA_UNOPENED);
