@@ -936,6 +936,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         private final CameraDeviceInfo.Characteristics mCharacteristics;
         private final AndroidCamera2Capabilities mCapabilities;
         private CameraSettings mLastSettings;
+        private boolean mShutterSoundEnabled;
 
         public AndroidCamera2ProxyImpl(int cameraIndex, CameraDevice camera,
                 CameraDeviceInfo.Characteristics characteristics,
@@ -945,6 +946,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
             mCharacteristics = characteristics;
             mCapabilities = new AndroidCamera2Capabilities(properties);
             mLastSettings = null;
+            mShutterSoundEnabled = true;
         }
 
         // TODO: Implement
@@ -1053,7 +1055,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-                                mNoisemaker.play(MediaActionSound.SHUTTER_CLICK);
+                                if (mShutterSoundEnabled) {
+                                    mNoisemaker.play(MediaActionSound.SHUTTER_CLICK);
+                                }
                                 shutter.onShutter(AndroidCamera2ProxyImpl.this);
                             }});
                     }
@@ -1139,6 +1143,11 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 return true;
             }
             return false;
+        }
+
+        @Override
+        public void enableShutterSound(boolean enable) {
+            mShutterSoundEnabled = enable;
         }
 
         // TODO: Implement
@@ -1301,9 +1310,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
 
             @Override
             public boolean canDisableShutterSound() {
-                // The new API doesn't support this operation, so don't encourage people to try it.
-                // TODO: What kind of assumptions have callers made about this result's meaning?
-                return false;
+                return true;
             }
 
             private static float[] convertRectToPoly(RectF rf) {
