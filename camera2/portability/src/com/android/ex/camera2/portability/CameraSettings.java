@@ -38,6 +38,7 @@ public abstract class CameraSettings {
     protected final Map<String, String> mGeneralSetting = new TreeMap<>();
     protected final List<Camera.Area> mMeteringAreas = new ArrayList<>();
     protected final List<Camera.Area> mFocusAreas = new ArrayList<>();
+    protected boolean mSizesLocked;
     protected int mPreviewFpsRangeMin;
     protected int mPreviewFpsRangeMax;
     protected int mPreviewFrameRate;
@@ -116,6 +117,7 @@ public abstract class CameraSettings {
         mGeneralSetting.putAll(src.mGeneralSetting);
         mMeteringAreas.addAll(src.mMeteringAreas);
         mFocusAreas.addAll(src.mFocusAreas);
+        mSizesLocked = src.mSizesLocked;
         mPreviewFpsRangeMin = src.mPreviewFpsRangeMin;
         mPreviewFpsRangeMax = src.mPreviewFpsRangeMax;
         mPreviewFrameRate = src.mPreviewFrameRate;
@@ -149,6 +151,19 @@ public abstract class CameraSettings {
     @Deprecated
     public void setSetting(String key, String value) {
         mGeneralSetting.put(key, value);
+    }
+
+    /**
+     * Changes whether classes outside this class are allowed to set the preview
+     * and photo capture sizes.
+     *
+     * @param locked Whether to prevent changes to these fields.
+     *
+     * @see #setPhotoSize
+     * @see #setPreviewSize
+     */
+    /*package*/ void setSizesLocked(boolean locked) {
+        mSizesLocked = locked;
     }
 
     /**  Preview **/
@@ -212,9 +227,16 @@ public abstract class CameraSettings {
 
     /**
      * @param previewSize The size to use for preview.
+     * @return Whether the operation was allowed (i.e. the sizes are unlocked).
      */
-    public void setPreviewSize(Size previewSize) {
+    public boolean setPreviewSize(Size previewSize) {
+        if (mSizesLocked) {
+            Log.w(TAG, "Attempt to change preview size while locked");
+            return false;
+        }
+
         mCurrentPreviewSize = new Size(previewSize);
+        return true;
     }
 
     /**
@@ -245,12 +267,17 @@ public abstract class CameraSettings {
     }
 
     /**
-     * Sets the size for the photo.
-     *
-     * @param photoSize The photo size.
+     * @param photoSize The size to use for preview.
+     * @return Whether the operation was allowed (i.e. the sizes are unlocked).
      */
-    public void setPhotoSize(Size photoSize) {
+    public boolean setPhotoSize(Size photoSize) {
+        if (mSizesLocked) {
+            Log.w(TAG, "Attempt to change photo size while locked");
+            return false;
+        }
+
         mCurrentPhotoSize = new Size(photoSize);
+        return true;
     }
 
     /**
