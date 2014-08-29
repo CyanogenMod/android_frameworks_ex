@@ -612,11 +612,15 @@ class AndroidCameraAgentImpl extends CameraAgent {
             if (mCapabilities.supports(CameraCapabilities.Feature.FOCUS_AREA)) {
                 if (settings.getFocusAreas().size() != 0) {
                     parameters.setFocusAreas(settings.getFocusAreas());
+                } else {
+                    parameters.setFocusAreas(null);
                 }
             }
             if (mCapabilities.supports(CameraCapabilities.Feature.METERING_AREA)) {
                 if (settings.getMeteringAreas().size() != 0) {
                     parameters.setMeteringAreas(settings.getMeteringAreas());
+                } else {
+                    parameters.setMeteringAreas(null);
                 }
             }
             if (settings.getCurrentFlashMode() != CameraCapabilities.FlashMode.NO_FLASH) {
