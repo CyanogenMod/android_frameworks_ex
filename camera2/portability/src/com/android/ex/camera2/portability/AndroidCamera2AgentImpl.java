@@ -305,6 +305,10 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                         break;
                     }
 
+                    // FIXME: We need to tear down the CameraCaptureSession here
+                    // (and unlock the CameraSettings object from our
+                    // CameraProxy) so that the preview/photo sizes can be
+                    // changed again while no preview is running.
                     case CameraActions.STOP_PREVIEW: {
                         if (mCameraState.getState() <
                                         AndroidCamera2StateHolder.CAMERA_PREVIEW_ACTIVE) {
@@ -968,6 +972,26 @@ class AndroidCamera2AgentImpl extends CameraAgent {
 
         private AndroidCamera2Capabilities getSpecializedCapabilities() {
             return mCapabilities;
+        }
+
+        // FIXME: Unlock the sizes in stopPreview(), as per the corresponding
+        // explanation on the STOP_PREVIEW case in the handler.
+        @Override
+        public void setPreviewTexture(SurfaceTexture surfaceTexture) {
+            // Once the Surface has been selected, we configure the session and
+            // are no longer able to change the sizes.
+            getSettings().setSizesLocked(true);
+            super.setPreviewTexture(surfaceTexture);
+        }
+
+        // FIXME: Unlock the sizes in stopPreview(), as per the corresponding
+        // explanation on the STOP_PREVIEW case in the handler.
+        @Override
+        public void setPreviewTextureSync(SurfaceTexture surfaceTexture) {
+            // Once the Surface has been selected, we configure the session and
+            // are no longer able to change the sizes.
+            getSettings().setSizesLocked(true);
+            super.setPreviewTexture(surfaceTexture);
         }
 
         // TODO: Implement

@@ -400,6 +400,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
                         break;
                     }
 
+                    // TODO: Lock the CameraSettings object's sizes
                     case CameraActions.SET_PREVIEW_TEXTURE_ASYNC: {
                         setPreviewTexture(msg.obj);
                         break;
@@ -424,6 +425,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
                         break;
                     }
 
+                    // TODO: Unlock the CameraSettings object's sizes
                     case CameraActions.STOP_PREVIEW: {
                         mCamera.stopPreview();
                         break;

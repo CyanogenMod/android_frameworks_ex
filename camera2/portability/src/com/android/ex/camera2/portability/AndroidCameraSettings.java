@@ -28,6 +28,8 @@ public class AndroidCameraSettings extends CameraSettings {
     public AndroidCameraSettings(CameraCapabilities capabilities, Camera.Parameters params) {
         CameraCapabilities.Stringifier stringifier = capabilities.getStringifier();
 
+        setSizesLocked(false);
+
         // Preview
         Camera.Size paramPreviewSize = params.getPreviewSize();
         setPreviewSize(new Size(paramPreviewSize.width, paramPreviewSize.height));

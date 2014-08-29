@@ -18,7 +18,9 @@ package com.android.ex.camera2.portability;
 
 import static android.hardware.camera2.CaptureRequest.*;
 
+import android.graphics.Matrix;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.params.MeteringRectangle;
@@ -43,8 +45,12 @@ public class AndroidCamera2Settings extends CameraSettings {
 
     private final Builder mTemplateSettings;
     private final Camera2RequestSettingsSet mRequestSettings;
+    /** Sensor's active array bounds. */
     private final Rect mActiveArray;
+    /** Crop rectangle for digital zoom (measured WRT the active array). */
     private final Rect mCropRectangle;
+    /** Bounds of visible preview portion (measured WRT the active array). */
+    private Rect mVisiblePreviewRectangle;
 
     /**
      * Create a settings representation that answers queries of unspecified
@@ -83,6 +89,8 @@ public class AndroidCamera2Settings extends CameraSettings {
         mRequestSettings = new Camera2RequestSettingsSet();
         mActiveArray = activeArray;
         mCropRectangle = new Rect(0, 0, activeArray.width(), activeArray.height());
+
+        mSizesLocked = false;
 
         Range<Integer> previewFpsRange = mTemplateSettings.get(CONTROL_AE_TARGET_FPS_RANGE);
         if (previewFpsRange != null) {
@@ -177,6 +185,8 @@ public class AndroidCamera2Settings extends CameraSettings {
     @Override
     public void setZoomRatio(float ratio) {
         super.setZoomRatio(ratio);
+
+        // Compute the crop rectangle to be passed to the framework
         mCropRectangle.set(0, 0,
                 toIntConstrained(
                         mActiveArray.width() / mCurrentZoomRatio, 0, mActiveArray.width()),
@@ -184,6 +194,10 @@ public class AndroidCamera2Settings extends CameraSettings {
                         mActiveArray.height() / mCurrentZoomRatio, 0, mActiveArray.height()));
         mCropRectangle.offsetTo((mActiveArray.width() - mCropRectangle.width()) / 2,
                 (mActiveArray.height() - mCropRectangle.height()) / 2);
+
+        // Compute the effective crop rectangle to be used for computing focus/metering coordinates
+        mVisiblePreviewRectangle =
+                effectiveCropRectFromRequested(mCropRectangle, mCurrentPreviewSize);
     }
 
     private boolean matchesTemplateDefault(Key<?> setting) {
@@ -511,5 +525,50 @@ public class AndroidCamera2Settings extends CameraSettings {
             location.setLongitude(mGpsData.longitude);
             mRequestSettings.set(JPEG_GPS_LOCATION, location);
         }
+    }
+
+    /**
+     * Calculate the effective crop rectangle for this preview viewport;
+     * assumes the preview is centered to the sensor and scaled to fit across one of the dimensions
+     * without skewing.
+     *
+     * <p>Assumes the zoom level of the provided desired crop rectangle.</p>
+     *
+     * @param requestedCrop Desired crop rectangle, in active array space.
+     * @param previewSize Size of the preview buffer render target, in pixels (not in sensor space).
+     * @return A rectangle that serves as the preview stream's effective crop region (unzoomed), in
+     *          sensor space.
+     *
+     * @throws NullPointerException
+     *          If any of the args were {@code null}.
+     */
+    private static Rect effectiveCropRectFromRequested(Rect requestedCrop, Size previewSize) {
+        float aspectRatioArray = requestedCrop.width() * 1.0f / requestedCrop.height();
+        float aspectRatioPreview = previewSize.width() * 1.0f / previewSize.height();
+
+        float cropHeight, cropWidth;
+        if (aspectRatioPreview < aspectRatioArray) {
+            // The new width must be smaller than the height, so scale the width by AR
+            cropHeight = requestedCrop.height();
+            cropWidth = cropHeight * aspectRatioPreview;
+        } else {
+            // The new height must be smaller (or equal) than the width, so scale the height by AR
+            cropWidth = requestedCrop.width();
+            cropHeight = cropWidth / aspectRatioPreview;
+        }
+
+        Matrix translateMatrix = new Matrix();
+        RectF cropRect = new RectF(/*left*/0, /*top*/0, cropWidth, cropHeight);
+
+        // Now center the crop rectangle so its center is in the center of the active array
+        translateMatrix.setTranslate(requestedCrop.exactCenterX(), requestedCrop.exactCenterY());
+        translateMatrix.postTranslate(-cropRect.centerX(), -cropRect.centerY());
+
+        translateMatrix.mapRect(/*inout*/cropRect);
+
+        // Round the rect corners towards the nearest integer values
+        Rect result = new Rect();
+        cropRect.roundOut(result);
+        return result;
     }
 }
