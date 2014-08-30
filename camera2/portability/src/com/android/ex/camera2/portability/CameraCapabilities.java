@@ -184,7 +184,7 @@ public class CameraCapabilities {
          * Capture a scene using high dynamic range imaging techniques.
          * @see {@link android.hardware.Camera.Parameters#SCENE_MODE_HDR}.
          */
-        // TODO: Unsupported on API 2
+        // Note: Supported as a vendor tag on the Camera2 API for some LEGACY devices.
         HDR,
         /**
          * Take pictures on distant objects.
