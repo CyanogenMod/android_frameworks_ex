@@ -419,7 +419,10 @@ public class AndroidCamera2Settings extends CameraSettings {
                     mode = CONTROL_SCENE_MODE_FIREWORKS;
                     break;
                 }
-                // TODO: We cannot support HDR
+                case HDR: {
+                    mode = LegacyVendorTags.CONTROL_SCENE_MODE_HDR;
+                    break;
+                }
                 case LANDSCAPE: {
                     mode = CONTROL_SCENE_MODE_LANDSCAPE;
                     break;

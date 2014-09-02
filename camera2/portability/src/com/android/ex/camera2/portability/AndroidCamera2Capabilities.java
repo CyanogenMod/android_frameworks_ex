@@ -204,7 +204,6 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
                 return SceneMode.CANDLELIGHT;
             case CONTROL_SCENE_MODE_FIREWORKS:
                 return SceneMode.FIREWORKS;
-            // TODO: We cannot support HDR
             case CONTROL_SCENE_MODE_LANDSCAPE:
                 return SceneMode.LANDSCAPE;
             case CONTROL_SCENE_MODE_NIGHT:
@@ -226,6 +225,11 @@ public class AndroidCamera2Capabilities extends CameraCapabilities {
                 return SceneMode.THEATRE;
             // TODO: We cannot expose FACE_PRIORITY, or HIGH_SPEED_VIDEO
         }
+
+        if (sm == LegacyVendorTags.CONTROL_SCENE_MODE_HDR) {
+            return SceneMode.HDR;
+        }
+
         Log.w(TAG, "Unable to convert from API 2 scene mode: " + sm);
         return null;
     }
