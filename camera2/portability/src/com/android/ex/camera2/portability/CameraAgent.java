@@ -436,8 +436,24 @@ public abstract class CameraAgent {
         /**
          * Sets the {@link android.graphics.SurfaceTexture} for preview.
          *
+         * <p>Note that, once this operation has been performed, it is no longer
+         * possible to change the preview or photo sizes in the
+         * {@link CameraSettings} instance for this camera, and the mutators for
+         * these fields are allowed to ignore all further invocations until the
+         * preview is stopped with {@link #stopPreview}.</p>
+         *
          * @param surfaceTexture The {@link SurfaceTexture} for preview.
+         *
+         * @see CameraSettings#setPhotoSize
+         * @see CameraSettings#setPreviewSize
          */
+        // XXX: Despite the above documentation about locking the sizes, the API
+        // 1 implementation doesn't currently enforce this at all, although the
+        // Camera class warns that preview sizes shouldn't be changed while a
+        // preview is running. Furthermore, the API 2 implementation doesn't yet
+        // unlock the sizes when stopPreview() is invoked (see related FIXME on
+        // the STOP_PREVIEW case in its handler; in the meantime, changing API 2
+        // sizes would require closing and reopening the camera.
         public void setPreviewTexture(final SurfaceTexture surfaceTexture) {
             getDispatchThread().runJob(new Runnable() {
                 @Override
@@ -452,7 +468,15 @@ public abstract class CameraAgent {
          * Blocks until a {@link android.graphics.SurfaceTexture} has been set
          * for preview.
          *
+         * <p>Note that, once this operation has been performed, it is no longer
+         * possible to change the preview or photo sizes in the
+         * {@link CameraSettings} instance for this camera, and the mutators for
+         * these fields are allowed to ignore all further invocations.</p>
+         *
          * @param surfaceTexture The {@link SurfaceTexture} for preview.
+         *
+         * @see CameraSettings#setPhotoSize
+         * @see CameraSettings#setPreviewSize
          */
         public void setPreviewTextureSync(final SurfaceTexture surfaceTexture) {
             final WaitDoneBundle bundle = new WaitDoneBundle();
