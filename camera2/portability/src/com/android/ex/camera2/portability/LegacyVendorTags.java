@@ -17,6 +17,7 @@
 package com.android.ex.camera2.portability;
 
 import android.hardware.camera2.CameraCharacteristics;
+import android.util.Log;
 
 import java.lang.ExceptionInInitializerError;
 import java.lang.reflect.Field;
@@ -27,19 +28,24 @@ import java.lang.reflect.Method;
  */
 public class LegacyVendorTags {
 
+    private static final String TAG = "LegacyVendorTags";
+
     /**
      * Hidden enum for scene modes supported only by the Camera1 API.
      */
     public static final int CONTROL_SCENE_MODE_HDR;
 
     static {
+        int tempSceneMode = -1;
         try {
-            CONTROL_SCENE_MODE_HDR =
+            tempSceneMode =
                     Class.forName("android.hardware.camera2.CameraCharacteristics").
                             getField("CONTROL_SCENE_MODE_HDR").getInt(null);
         } catch (Exception e) {
-            throw new ExceptionInInitializerError(
-                    "Error while reflecting on LegacyVendorTags: " + e);
+            Log.e(TAG, "Error while reflecting on SCENE_MODE_HDR enum, HDR will not be available: "
+                    + e);
+        } finally {
+            CONTROL_SCENE_MODE_HDR = tempSceneMode;
         }
     }
 
