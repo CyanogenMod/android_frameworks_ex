@@ -52,7 +52,7 @@ public class Camera2DeviceTester {
     @InjectContext
     public Context mContext;
 
-    private class DeviceCapturer extends CameraDevice.StateListener {
+    private class DeviceCapturer extends CameraDevice.StateCallback {
         private CameraDevice mCamera;
 
         public CameraDevice captureCameraDevice() throws Exception {

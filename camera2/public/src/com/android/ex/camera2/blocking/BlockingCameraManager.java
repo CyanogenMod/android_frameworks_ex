@@ -66,7 +66,7 @@ public class BlockingCameraManager {
 
         /**
          * Returns the error code {@link ERROR_DISCONNECTED} if disconnected, or one of
-         * {@code CameraDevice.StateListener#ERROR_*} if there was another error.
+         * {@code CameraDevice.StateCallback#ERROR_*} if there was another error.
          *
          * @return int Disconnect/error code
          */
@@ -81,7 +81,7 @@ public class BlockingCameraManager {
          * @param errorCode
          * @param message
          *
-         * @see {@link CameraDevice.StateListener#ERROR_CAMERA_DEVICE}
+         * @see {@link CameraDevice.StateCallback#ERROR_CAMERA_DEVICE}
          */
         public BlockingOpenException(int errorCode, String message) {
             super(message);
@@ -117,8 +117,8 @@ public class BlockingCameraManager {
      * does.</p>
      *
      * <p>Throws {@link BlockingOpenException} when the open fails asynchronously (due to
-     * {@link CameraDevice.StateListener#onDisconnected(CameraDevice)} or
-     * ({@link CameraDevice.StateListener#onError(CameraDevice)}.</p>
+     * {@link CameraDevice.StateCallback#onDisconnected(CameraDevice)} or
+     * ({@link CameraDevice.StateCallback#onError(CameraDevice)}.</p>
      *
      * <p>Throws {@link TimeoutRuntimeException} if opening times out. This is usually
      * highly unrecoverable, and all future calls to opening that camera will fail since the
@@ -142,7 +142,7 @@ public class BlockingCameraManager {
      * @throws TimeoutRuntimeException
      *            If opening times out. Typically unrecoverable.
      */
-    public CameraDevice openCamera(String cameraId, CameraDevice.StateListener listener,
+    public CameraDevice openCamera(String cameraId, CameraDevice.StateCallback listener,
             Handler handler) throws CameraAccessException, BlockingOpenException {
 
         if (handler == null) {
@@ -163,17 +163,17 @@ public class BlockingCameraManager {
     /**
      * Block until CameraManager#openCamera finishes with onOpened/onError/onDisconnected
      *
-     * <p>Pass-through all StateListener changes to the proxy.</p>
+     * <p>Pass-through all StateCallback changes to the proxy.</p>
      *
      * <p>Time out after {@link #OPEN_TIME_OUT} and unblock. Clean up camera if it arrives
      * later.</p>
      */
-    private class OpenListener extends CameraDevice.StateListener {
+    private class OpenListener extends CameraDevice.StateCallback {
         private static final int ERROR_UNINITIALIZED = -1;
 
         private final String mCameraId;
 
-        private final CameraDevice.StateListener mProxy;
+        private final CameraDevice.StateCallback mProxy;
 
         private final Object mLock = new Object();
         private final ConditionVariable mDeviceReady = new ConditionVariable();
@@ -187,7 +187,7 @@ public class BlockingCameraManager {
         private boolean mTimedOut = false;
 
         OpenListener(CameraManager manager, String cameraId,
-                CameraDevice.StateListener listener, Handler handler)
+                CameraDevice.StateCallback listener, Handler handler)
                 throws CameraAccessException {
             mCameraId = cameraId;
             mProxy = listener;

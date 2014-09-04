@@ -160,7 +160,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
     }
 
     private static abstract class CaptureAvailableListener
-            extends CameraCaptureSession.CaptureListener
+            extends CameraCaptureSession.CaptureCallback
             implements ImageReader.OnImageAvailableListener {};
 
     private class Camera2Handler extends HistoryHandler {
@@ -231,7 +231,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             mOpenCallback.onCameraDisabled(msg.arg1);
                             break;
                         }
-                        mCameraManager.openCamera(mCameraId, mCameraDeviceStateListener, this);
+                        mCameraManager.openCamera(mCameraId, mCameraDeviceStateCallback, this);
 
                         break;
                     }
@@ -297,7 +297,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             mSession.setRepeatingRequest(
                                     mPersistentSettings.createRequest(mCamera,
                                             CameraDevice.TEMPLATE_PREVIEW, mPreviewSurface),
-                                    /*listener*/mCameraResultStateListener, /*handler*/this);
+                                    /*listener*/mCameraResultStateCallback, /*handler*/this);
                         } catch(CameraAccessException ex) {
                             Log.w(TAG, "Unable to start preview", ex);
                             changeState(AndroidCamera2StateHolder.CAMERA_PREVIEW_READY);
@@ -379,8 +379,8 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                         // However, it will probably take longer than that, so once that happens,
                         // just start checking the repeating preview requests as they complete.
                         final CameraAFCallback callback = (CameraAFCallback) msg.obj;
-                        CameraCaptureSession.CaptureListener deferredCallbackSetter =
-                                new CameraCaptureSession.CaptureListener() {
+                        CameraCaptureSession.CaptureCallback deferredCallbackSetter =
+                                new CameraCaptureSession.CaptureCallback() {
                             private boolean mAlreadyDispatched = false;
 
                             @Override
@@ -400,13 +400,13 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             private void checkAfState(CaptureResult result) {
                                 if (result.get(CaptureResult.CONTROL_AF_STATE) != null &&
                                         !mAlreadyDispatched) {
-                                    // Now our mCameraResultStateListener will invoke the callback
+                                    // Now our mCameraResultStateCallback will invoke the callback
                                     // the first time it finds the focus motor to be locked.
                                     mAlreadyDispatched = true;
                                     mOneshotAfCallback = callback;
                                     // This is an optimization: check the AF state of this frame
                                     // instead of simply waiting for the next.
-                                    mCameraResultStateListener.monitorControlStates(result);
+                                    mCameraResultStateCallback.monitorControlStates(result);
                                 }
                             }
 
@@ -542,8 +542,8 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             // trigger capture has made it into the pipeline, we'll start checking
                             // for the completion of that convergence, capturing when that happens.
                             Log.i(TAG, "Forcing pre-capture autoexposure convergence");
-                            CameraCaptureSession.CaptureListener deferredCallbackSetter =
-                                    new CameraCaptureSession.CaptureListener() {
+                            CameraCaptureSession.CaptureCallback deferredCallbackSetter =
+                                    new CameraCaptureSession.CaptureCallback() {
                                 private boolean mAlreadyDispatched = false;
 
                                 @Override
@@ -563,13 +563,13 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                                 private void checkAeState(CaptureResult result) {
                                     if (result.get(CaptureResult.CONTROL_AE_STATE) != null &&
                                             !mAlreadyDispatched) {
-                                        // Now our mCameraResultStateListener will invoke the
+                                        // Now our mCameraResultStateCallback will invoke the
                                         // callback once the autoexposure routine has converged.
                                         mAlreadyDispatched = true;
                                         mOneshotCaptureCallback = listener;
                                         // This is an optimization: check the AE state of this frame
                                         // instead of simply waiting for the next.
-                                        mCameraResultStateListener.monitorControlStates(result);
+                                        mCameraResultStateCallback.monitorControlStates(result);
                                     }
                                 }
 
@@ -663,7 +663,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                     mSession.setRepeatingRequest(
                             mPersistentSettings.createRequest(mCamera,
                                     CameraDevice.TEMPLATE_PREVIEW, mPreviewSurface),
-                            /*listener*/mCameraResultStateListener, /*handler*/this);
+                            /*listener*/mCameraResultStateCallback, /*handler*/this);
                 } catch (CameraAccessException ex) {
                     Log.e(TAG, "Failed to apply updated request settings", ex);
                 }
@@ -710,7 +710,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
             try {
                 mCamera.createCaptureSession(
                         Arrays.asList(mPreviewSurface, mCaptureReader.getSurface()),
-                        mCameraPreviewStateListener, this);
+                        mCameraPreviewStateCallback, this);
             } catch (CameraAccessException ex) {
                 Log.e(TAG, "Failed to create camera capture session", ex);
             }
@@ -731,14 +731,14 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 mCameraState.setState(newState);
                 if (newState < AndroidCamera2StateHolder.CAMERA_PREVIEW_ACTIVE) {
                     mCurrentAeState = CaptureResult.CONTROL_AE_STATE_INACTIVE;
-                    mCameraResultStateListener.resetState();
+                    mCameraResultStateCallback.resetState();
                 }
             }
         }
 
-        // This listener monitors our connection to and disconnection from camera devices.
-        private CameraDevice.StateListener mCameraDeviceStateListener =
-                new CameraDevice.StateListener() {
+        // This callback monitors our connection to and disconnection from camera devices.
+        private CameraDevice.StateCallback mCameraDeviceStateCallback =
+                new CameraDevice.StateCallback() {
             @Override
             public void onOpened(CameraDevice camera) {
                 mCamera = camera;
@@ -778,9 +778,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 }
             }};
 
-        // This listener monitors our camera session (i.e. our transition into and out of preview).
-        private CameraCaptureSession.StateListener mCameraPreviewStateListener =
-                new CameraCaptureSession.StateListener() {
+        // This callback monitors our camera session (i.e. our transition into and out of preview).
+        private CameraCaptureSession.StateCallback mCameraPreviewStateCallback =
+                new CameraCaptureSession.StateCallback() {
             @Override
             public void onConfigured(CameraCaptureSession session) {
                 mSession = session;
@@ -802,16 +802,16 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 }
             }};
 
-        private abstract class CameraResultStateListener
-                extends CameraCaptureSession.CaptureListener {
+        private abstract class CameraResultStateCallback
+                extends CameraCaptureSession.CaptureCallback {
             public abstract void monitorControlStates(CaptureResult result);
 
             public abstract void resetState();
         }
 
-        // This listener monitors requested captures and notifies any relevant callbacks.
-        private CameraResultStateListener mCameraResultStateListener =
-                new CameraResultStateListener() {
+        // This callback monitors requested captures and notifies any relevant callbacks.
+        private CameraResultStateCallback mCameraResultStateCallback =
+                new CameraResultStateCallback() {
             private int mLastAfState = -1;
             private long mLastAfFrameNumber = -1;
             private long mLastAeFrameNumber = -1;
@@ -905,7 +905,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                                                 mPersistentSettings.createRequest(mCamera,
                                                         CameraDevice.TEMPLATE_STILL_CAPTURE,
                                                         mCaptureReader.getSurface()),
-                                                /*listener*/mOneshotCaptureCallback,
+                                                /*callback*/mOneshotCaptureCallback,
                                                 /*handler*/Camera2Handler.this);
                                     } catch (CameraAccessException ex) {
                                         Log.e(TAG, "Unable to initiate capture", ex);
