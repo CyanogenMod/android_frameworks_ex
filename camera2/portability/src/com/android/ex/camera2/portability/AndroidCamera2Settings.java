@@ -206,7 +206,7 @@ public class AndroidCamera2Settings extends CameraSettings {
         } else if (setting == CONTROL_AF_REGIONS) {
             return mFocusAreas.size() == 0;
         } else if (setting == CONTROL_AE_TARGET_FPS_RANGE) {
-            Range defaultFpsRange = mTemplateSettings.get(CONTROL_AE_TARGET_FPS_RANGE);
+            Range<Integer> defaultFpsRange = mTemplateSettings.get(CONTROL_AE_TARGET_FPS_RANGE);
             return (mPreviewFpsRangeMin == 0 && mPreviewFpsRangeMax == 0) ||
                     (defaultFpsRange != null && mPreviewFpsRangeMin == defaultFpsRange.getLower() &&
                             mPreviewFpsRangeMax == defaultFpsRange.getUpper());
