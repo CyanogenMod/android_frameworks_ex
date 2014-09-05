@@ -36,7 +36,7 @@ import com.android.ex.camera2.utils.StateWaiter;
  *
  * @see #getStateWaiter
  */
-public class BlockingCaptureListener extends CameraCaptureSession.CaptureListener {
+public class BlockingCaptureCallback extends CameraCaptureSession.CaptureCallback {
 
     /**
      * {@link #onCaptureStarted} has been called.
@@ -80,10 +80,10 @@ public class BlockingCaptureListener extends CameraCaptureSession.CaptureListene
             "CAPTURE_SEQUENCE_ABORTED"
     };
 
-    private static final String TAG = "BlockingCaptureListener";
+    private static final String TAG = "BlockingCaptureCallback";
     private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
-    private final CameraCaptureSession.CaptureListener mProxy;
+    private final CameraCaptureSession.CaptureCallback mProxy;
 
     private final StateWaiter mStateWaiter = new StateWaiter(sStateNames);
     private final StateChangeListener mStateChangeListener = mStateWaiter.getListener();
@@ -92,7 +92,7 @@ public class BlockingCaptureListener extends CameraCaptureSession.CaptureListene
      * Create a blocking capture listener without forwarding the capture listener invocations
      * to another capture listener.
      */
-    public BlockingCaptureListener() {
+    public BlockingCaptureCallback() {
         mProxy = null;
     }
 
@@ -104,7 +104,7 @@ public class BlockingCaptureListener extends CameraCaptureSession.CaptureListene
      *
      * @throws NullPointerException if {@code listener} was {@code null}
      */
-    public BlockingCaptureListener(CameraCaptureSession.CaptureListener listener) {
+    public BlockingCaptureCallback(CameraCaptureSession.CaptureCallback listener) {
         if (listener == null) {
             throw new NullPointerException("listener must not be null");
         }

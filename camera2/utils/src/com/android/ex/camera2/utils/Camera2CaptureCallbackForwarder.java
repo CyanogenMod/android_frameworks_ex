@@ -17,7 +17,7 @@
 package com.android.ex.camera2.utils;
 
 import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraCaptureSession.CaptureListener;
+import android.hardware.camera2.CameraCaptureSession.CaptureCallback;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
@@ -25,14 +25,14 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.os.Handler;
 
 /**
- * Proxy that forwards all updates to another {@link CaptureListener}, invoking
+ * Proxy that forwards all updates to another {@link CaptureCallback}, invoking
  * its callbacks on a separate {@link Handler}.
  */
-public class Camera2CaptureListenerForwarder extends CaptureListener {
-    private CaptureListener mListener;
+public class Camera2CaptureCallbackForwarder extends CaptureCallback {
+    private CaptureCallback mListener;
     private Handler mHandler;
 
-    public Camera2CaptureListenerForwarder(CaptureListener listener, Handler handler) {
+    public Camera2CaptureCallbackForwarder(CaptureCallback listener, Handler handler) {
         mListener = listener;
         mHandler = handler;
     }

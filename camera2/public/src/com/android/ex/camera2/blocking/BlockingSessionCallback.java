@@ -36,11 +36,11 @@ import java.util.concurrent.TimeoutException;
  * <p>Provides a waiter that can be used to block until the next unobserved state of the
  * requested type arrives.</p>
  *
- * <p>Pass-through all StateListener changes to the proxy.</p>
+ * <p>Pass-through all StateCallback changes to the proxy.</p>
  *
  * @see #getStateWaiter
  */
-public class BlockingSessionListener extends CameraCaptureSession.StateListener {
+public class BlockingSessionCallback extends CameraCaptureSession.StateCallback {
     /**
      * Session is configured, ready for captures
      */
@@ -71,10 +71,10 @@ public class BlockingSessionListener extends CameraCaptureSession.StateListener 
     /*
      * Private fields
      */
-    private static final String TAG = "BlockingSessionListener";
+    private static final String TAG = "BlockingSessionCallback";
     private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
-    private final CameraCaptureSession.StateListener mProxy;
+    private final CameraCaptureSession.StateCallback mProxy;
     private final SessionFuture mSessionFuture = new SessionFuture();
 
     private final StateWaiter mStateWaiter = new StateWaiter(sStateNames);
@@ -92,7 +92,7 @@ public class BlockingSessionListener extends CameraCaptureSession.StateListener 
      * Create a blocking session listener without forwarding the session listener invocations
      * to another session listener.
      */
-    public BlockingSessionListener() {
+    public BlockingSessionCallback() {
         mProxy = null;
     }
 
@@ -104,7 +104,7 @@ public class BlockingSessionListener extends CameraCaptureSession.StateListener 
      *
      * @throws NullPointerException if {@code listener} was {@code null}
      */
-    public BlockingSessionListener(CameraCaptureSession.StateListener listener) {
+    public BlockingSessionCallback(CameraCaptureSession.StateCallback listener) {
         if (listener == null) {
             throw new NullPointerException("listener must not be null");
         }
@@ -142,7 +142,7 @@ public class BlockingSessionListener extends CameraCaptureSession.StateListener 
     }
 
     /*
-     * CameraCaptureSession.StateListener implementation
+     * CameraCaptureSession.StateCallback implementation
      */
 
     @Override
