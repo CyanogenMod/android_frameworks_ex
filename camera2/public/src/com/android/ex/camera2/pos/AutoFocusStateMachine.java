@@ -91,7 +91,7 @@ public class AutoFocusStateMachine {
 
     /**
      * Invoke every time we get a new CaptureResult via
-     * {@link CameraDevice.CaptureListener#onCaptureCompleted}.
+     * {@link CameraDevice.CaptureCallback#onCaptureCompleted}.
      *
      * <p>This function is responsible for dispatching updates via the
      * {@link AutoFocusStateListener} so without calling this on a regular basis, no

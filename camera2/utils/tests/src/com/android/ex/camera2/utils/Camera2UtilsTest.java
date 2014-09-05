@@ -24,7 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.graphics.Rect;
-import android.hardware.camera2.CameraCaptureSession.CaptureListener;
+import android.hardware.camera2.CameraCaptureSession.CaptureCallback;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureRequest.Key;
@@ -33,65 +33,65 @@ import android.view.Surface;
 import org.junit.Test;
 
 public class Camera2UtilsTest extends Camera2DeviceTester {
-    private void captureListenerSplitterAllCallbacksReceived(CaptureListener splitter,
-                                                             CaptureListener... terminals) {
+    private void captureListenerSplitterAllCallbacksReceived(CaptureCallback splitter,
+                                                             CaptureCallback... terminals) {
         splitter.onCaptureCompleted(null, null, null);
-        for (CaptureListener each : terminals) {
+        for (CaptureCallback each : terminals) {
             verify(each).onCaptureCompleted(null, null, null);
         }
         splitter.onCaptureFailed(null, null, null);
-        for (CaptureListener each : terminals) {
+        for (CaptureCallback each : terminals) {
             verify(each).onCaptureFailed(null, null, null);
         }
         splitter.onCaptureProgressed(null, null, null);
-        for (CaptureListener each : terminals) {
+        for (CaptureCallback each : terminals) {
             verify(each).onCaptureProgressed(null, null, null);
         }
         splitter.onCaptureSequenceAborted(null, 0);
-        for (CaptureListener each : terminals) {
+        for (CaptureCallback each : terminals) {
             verify(each).onCaptureSequenceAborted(null, 0);
         }
         splitter.onCaptureSequenceCompleted(null, 0, 0L);
-        for (CaptureListener each : terminals) {
+        for (CaptureCallback each : terminals) {
             verify(each).onCaptureSequenceCompleted(null, 0, 0L);
         }
         splitter.onCaptureStarted(null, null, 0L);
-        for (CaptureListener each : terminals) {
+        for (CaptureCallback each : terminals) {
             verify(each).onCaptureStarted(null, null, 0L);
         }
     }
 
     @Test
     public void captureListenerSplitter() {
-        CaptureListener firstBackingListener = mock(CaptureListener.class);
-        CaptureListener secondBackingListener = mock(CaptureListener.class);
+        CaptureCallback firstBackingListener = mock(CaptureCallback.class);
+        CaptureCallback secondBackingListener = mock(CaptureCallback.class);
         captureListenerSplitterAllCallbacksReceived(
-                new Camera2CaptureListenerSplitter(firstBackingListener, secondBackingListener),
+                new Camera2CaptureCallbackSplitter(firstBackingListener, secondBackingListener),
                 firstBackingListener, secondBackingListener);
     }
 
     @Test
     public void captureListenerSplitterEmpty() {
-        captureListenerSplitterAllCallbacksReceived(new Camera2CaptureListenerSplitter());
+        captureListenerSplitterAllCallbacksReceived(new Camera2CaptureCallbackSplitter());
     }
 
     @Test
     public void captureListenerSplitterNoNpe() {
         captureListenerSplitterAllCallbacksReceived(
-                new Camera2CaptureListenerSplitter((CaptureListener) null));
+                new Camera2CaptureCallbackSplitter((CaptureCallback) null));
     }
 
     @Test
     public void captureListenerSplitterMultipleNulls() {
         captureListenerSplitterAllCallbacksReceived(
-                new Camera2CaptureListenerSplitter(null, null, null));
+                new Camera2CaptureCallbackSplitter(null, null, null));
     }
 
     @Test
     public void captureListenerSplitterValidAndNull() {
-        CaptureListener onlyRealBackingListener = mock(CaptureListener.class);
+        CaptureCallback onlyRealBackingListener = mock(CaptureCallback.class);
         captureListenerSplitterAllCallbacksReceived(
-                new Camera2CaptureListenerSplitter(null, onlyRealBackingListener),
+                new Camera2CaptureCallbackSplitter(null, onlyRealBackingListener),
                 onlyRealBackingListener);
     }
 

@@ -17,7 +17,7 @@
 package com.android.ex.camera2.utils;
 
 import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraCaptureSession.CaptureListener;
+import android.hardware.camera2.CameraCaptureSession.CaptureCallback;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
@@ -28,18 +28,18 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Junction that allows notifying multiple {@link CaptureListener}s whenever
+ * Junction that allows notifying multiple {@link CaptureCallback}s whenever
  * the {@link CameraCaptureSession} posts a capture-related update.
  */
-public class Camera2CaptureListenerSplitter extends CaptureListener {
-    private final List<CaptureListener> mRecipients = new LinkedList<>();
+public class Camera2CaptureCallbackSplitter extends CaptureCallback {
+    private final List<CaptureCallback> mRecipients = new LinkedList<>();
 
     /**
      * @param recipients The listeners to notify. Any {@code null} passed here
      *                   will be completely ignored.
      */
-    public Camera2CaptureListenerSplitter(CaptureListener... recipients) {
-        for (CaptureListener listener : recipients) {
+    public Camera2CaptureCallbackSplitter(CaptureCallback... recipients) {
+        for (CaptureCallback listener : recipients) {
             if (listener != null) {
                 mRecipients.add(listener);
             }
@@ -49,7 +49,7 @@ public class Camera2CaptureListenerSplitter extends CaptureListener {
     @Override
     public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
                                    TotalCaptureResult result) {
-        for (CaptureListener target : mRecipients) {
+        for (CaptureCallback target : mRecipients) {
             target.onCaptureCompleted(session, request, result);
         }
     }
@@ -57,7 +57,7 @@ public class Camera2CaptureListenerSplitter extends CaptureListener {
     @Override
     public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request,
                                 CaptureFailure failure) {
-        for (CaptureListener target : mRecipients) {
+        for (CaptureCallback target : mRecipients) {
             target.onCaptureFailed(session, request, failure);
         }
     }
@@ -65,14 +65,14 @@ public class Camera2CaptureListenerSplitter extends CaptureListener {
     @Override
     public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
                                     CaptureResult partialResult) {
-        for (CaptureListener target : mRecipients) {
+        for (CaptureCallback target : mRecipients) {
             target.onCaptureProgressed(session, request, partialResult);
         }
     }
 
     @Override
     public void onCaptureSequenceAborted(CameraCaptureSession session, int sequenceId) {
-        for (CaptureListener target : mRecipients) {
+        for (CaptureCallback target : mRecipients) {
             target.onCaptureSequenceAborted(session, sequenceId);
         }
     }
@@ -80,7 +80,7 @@ public class Camera2CaptureListenerSplitter extends CaptureListener {
     @Override
     public void onCaptureSequenceCompleted(CameraCaptureSession session, int sequenceId,
                                            long frameNumber) {
-        for (CaptureListener target : mRecipients) {
+        for (CaptureCallback target : mRecipients) {
             target.onCaptureSequenceCompleted(session, sequenceId, frameNumber);
         }
     }
@@ -88,7 +88,7 @@ public class Camera2CaptureListenerSplitter extends CaptureListener {
     @Override
     public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
                                  long timestamp) {
-        for (CaptureListener target : mRecipients) {
+        for (CaptureCallback target : mRecipients) {
             target.onCaptureStarted(session, request, timestamp);
         }
     }

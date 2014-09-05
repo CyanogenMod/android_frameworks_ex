@@ -36,14 +36,14 @@ import java.util.concurrent.TimeUnit;
  * the last wait, or that will be received from the camera device in the
  * future.</p>
  *
- * <p>Pass-through all StateListener changes to the proxy.</p>
+ * <p>Pass-through all StateCallback changes to the proxy.</p>
  *
  */
-public class BlockingStateListener extends CameraDevice.StateListener {
-    private static final String TAG = "BlockingStateListener";
+public class BlockingStateCallback extends CameraDevice.StateCallback {
+    private static final String TAG = "BlockingStateCallback";
     private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
-    private final CameraDevice.StateListener mProxy;
+    private final CameraDevice.StateCallback mProxy;
 
     // Guards mWaiting
     private final Object mLock = new Object();
@@ -99,11 +99,11 @@ public class BlockingStateListener extends CameraDevice.StateListener {
      */
     private static int NUM_STATES = 4;
 
-    public BlockingStateListener() {
+    public BlockingStateCallback() {
         mProxy = null;
     }
 
-    public BlockingStateListener(CameraDevice.StateListener listener) {
+    public BlockingStateCallback(CameraDevice.StateCallback listener) {
         mProxy = listener;
     }
 
