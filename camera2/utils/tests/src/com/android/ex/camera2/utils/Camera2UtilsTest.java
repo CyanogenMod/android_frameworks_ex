@@ -55,9 +55,9 @@ public class Camera2UtilsTest extends Camera2DeviceTester {
         for (CaptureCallback each : terminals) {
             verify(each).onCaptureSequenceCompleted(null, 0, 0L);
         }
-        splitter.onCaptureStarted(null, null, 0L);
+        splitter.onCaptureStarted(null, null, 0L, 1L);
         for (CaptureCallback each : terminals) {
-            verify(each).onCaptureStarted(null, null, 0L);
+            verify(each).onCaptureStarted(null, null, 0L, 1L);
         }
     }
 
