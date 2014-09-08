@@ -50,6 +50,7 @@ class CameraActions {
     // Presentation
     public static final int ENABLE_SHUTTER_SOUND =    501;
     public static final int SET_DISPLAY_ORIENTATION = 502;
+    public static final int SET_JPEG_ORIENTATION = 503;
     // Capture
     public static final int CAPTURE_PHOTO = 601;
 }
