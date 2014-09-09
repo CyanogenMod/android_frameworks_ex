@@ -30,6 +30,9 @@ public abstract class CameraStateHolder {
     }
 
     public synchronized void setState(int state) {
+        if (mState != state) {
+            Log.v(TAG, "setState - state = " + Integer.toBinaryString(state));
+        }
         mState = state;
         this.notifyAll();
     }
@@ -83,6 +86,7 @@ public abstract class CameraStateHolder {
      *         reached.
      */
     public boolean waitForStates(final int states) {
+        Log.v(TAG, "waitForStates - states = " + Integer.toBinaryString(states));
         return waitForCondition(new ConditionChecker() {
             @Override
             public boolean success() {
@@ -100,6 +104,7 @@ public abstract class CameraStateHolder {
      *         reached.
      */
     public boolean waitToAvoidStates(final int states) {
+        Log.v(TAG, "waitToAvoidStates - states = " + Integer.toBinaryString(states));
         return waitForCondition(new ConditionChecker() {
             @Override
             public boolean success() {
