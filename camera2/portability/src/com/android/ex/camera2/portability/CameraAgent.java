@@ -672,6 +672,16 @@ public abstract class CameraAgent {
                 }});
         }
 
+        public void setJpegOrientation(final int degrees) {
+            getDispatchThread().runJob(new Runnable() {
+                @Override
+                public void run() {
+                    getCameraHandler()
+                            .obtainMessage(CameraActions.SET_JPEG_ORIENTATION, degrees, 0)
+                            .sendToTarget();
+                }});
+        }
+
         /**
          * Sets the listener for zoom change.
          *

@@ -493,9 +493,15 @@ class AndroidCamera2AgentImpl extends CameraAgent {
 
                     case CameraActions.SET_DISPLAY_ORIENTATION: {
                         // Only set the JPEG capture orientation if requested to do so; otherwise,
-                        // capture in the sensor's physical orientation
+                        // capture in the sensor's physical orientation. (e.g., JPEG rotation is
+                        // necessary in auto-rotate mode.
                         mPersistentSettings.set(CaptureRequest.JPEG_ORIENTATION, msg.arg2 > 0 ?
                                 mCameraProxy.getCharacteristics().getJpegOrientation(msg.arg1) : 0);
+                        break;
+                    }
+
+                    case CameraActions.SET_JPEG_ORIENTATION: {
+                        mPersistentSettings.set(CaptureRequest.JPEG_ORIENTATION, msg.arg1);
                         break;
                     }
 

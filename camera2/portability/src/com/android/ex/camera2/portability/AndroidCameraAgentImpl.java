@@ -472,11 +472,21 @@ class AndroidCameraAgentImpl extends CameraAgent {
                         mCamera.setDisplayOrientation(
                                 mCharacteristics.getPreviewOrientation(msg.arg1));
                         // Only set the JPEG capture orientation if requested to do so; otherwise,
-                        // capture in the sensor's physical orientation
+                        // capture in the sensor's physical orientation. (e.g., JPEG rotation is
+                        // necessary in auto-rotate mode.
                         Parameters parameters = mParameterCache.getBlocking();
                         parameters.setRotation(
                                 msg.arg2 > 0 ? mCharacteristics.getJpegOrientation(msg.arg1) : 0);
                         mCamera.setParameters(parameters);
+                        mParameterCache.invalidate();
+                        break;
+                    }
+
+                    case CameraActions.SET_JPEG_ORIENTATION: {
+                        Parameters parameters = mParameterCache.getBlocking();
+                        parameters.setRotation(msg.arg1);
+                        mCamera.setParameters(parameters);
+                        mParameterCache.invalidate();
                         break;
                     }
 
