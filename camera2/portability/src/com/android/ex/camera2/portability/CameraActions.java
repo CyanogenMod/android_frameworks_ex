@@ -42,6 +42,7 @@ class CameraActions {
     public static final int CANCEL_AUTO_FOCUS =            302;
     public static final int SET_AUTO_FOCUS_MOVE_CALLBACK = 303;
     public static final int SET_ZOOM_CHANGE_LISTENER =     304;
+    public static final int CANCEL_AUTO_FOCUS_FINISH =     305;
     // Face detection
     public static final int SET_FACE_DETECTION_LISTENER = 461;
     public static final int START_FACE_DETECTION =        462;
@@ -52,4 +53,73 @@ class CameraActions {
     public static final int SET_DISPLAY_ORIENTATION = 502;
     // Capture
     public static final int CAPTURE_PHOTO = 601;
+
+    public static String stringify(int action) {
+        switch (action) {
+            case OPEN_CAMERA:
+                return "OPEN_CAMERA";
+            case RELEASE:
+                return "RELEASE";
+            case RECONNECT:
+                return "RECONNECT";
+            case UNLOCK:
+                return "UNLOCK";
+            case LOCK:
+                return "LOCK";
+            case SET_PREVIEW_TEXTURE_ASYNC:
+                return "SET_PREVIEW_TEXTURE_ASYNC";
+            case START_PREVIEW_ASYNC:
+                return "START_PREVIEW_ASYNC";
+            case STOP_PREVIEW:
+                return "STOP_PREVIEW";
+            case SET_PREVIEW_CALLBACK_WITH_BUFFER:
+                return "SET_PREVIEW_CALLBACK_WITH_BUFFER";
+            case ADD_CALLBACK_BUFFER:
+                return "ADD_CALLBACK_BUFFER";
+            case SET_PREVIEW_DISPLAY_ASYNC:
+                return "SET_PREVIEW_DISPLAY_ASYNC";
+            case SET_PREVIEW_CALLBACK:
+                return "SET_PREVIEW_CALLBACK";
+            case SET_ONE_SHOT_PREVIEW_CALLBACK:
+                return "SET_ONE_SHOT_PREVIEW_CALLBACK";
+            case SET_PARAMETERS:
+                return "SET_PARAMETERS";
+            case GET_PARAMETERS:
+                return "GET_PARAMETERS";
+            case REFRESH_PARAMETERS:
+                return "REFRESH_PARAMETERS";
+            case APPLY_SETTINGS:
+                return "APPLY_SETTINGS";
+            case AUTO_FOCUS:
+                return "AUTO_FOCUS";
+            case CANCEL_AUTO_FOCUS:
+                return "CANCEL_AUTO_FOCUS";
+            case SET_AUTO_FOCUS_MOVE_CALLBACK:
+                return "SET_AUTO_FOCUS_MOVE_CALLBACK";
+            case SET_ZOOM_CHANGE_LISTENER:
+                return "SET_ZOOM_CHANGE_LISTENER";
+            case CANCEL_AUTO_FOCUS_FINISH:
+                return "CANCEL_AUTO_FOCUS_FINISH";
+            case SET_FACE_DETECTION_LISTENER:
+                return "SET_FACE_DETECTION_LISTENER";
+            case START_FACE_DETECTION:
+                return "START_FACE_DETECTION";
+            case STOP_FACE_DETECTION:
+                return "STOP_FACE_DETECTION";
+            case SET_ERROR_CALLBACK:
+                return "SET_ERROR_CALLBACK";
+            case ENABLE_SHUTTER_SOUND:
+                return "ENABLE_SHUTTER_SOUND";
+            case SET_DISPLAY_ORIENTATION:
+                return "SET_DISPLAY_ORIENTATION";
+            case CAPTURE_PHOTO:
+                return "CAPTURE_PHOTO";
+            default:
+                return "UNKNOWN(" + action + ")";
+        }
+    }
+
+    private CameraActions() {
+        throw new AssertionError();
+    }
 }

@@ -242,6 +242,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
         private Camera mCamera;
         private int mCameraId;
         private ParametersCache mParameterCache;
+        private int mCancelAfPending = 0;
 
         private class CaptureCallbacks {
             public final ShutterCallback mShutter;
@@ -323,6 +324,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
         @Override
         public void handleMessage(final Message msg) {
             super.handleMessage(msg);
+            Log.v(TAG, "handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
             try {
                 switch (msg.what) {
                     case CameraActions.OPEN_CAMERA: {
@@ -451,14 +453,29 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     }
 
                     case CameraActions.AUTO_FOCUS: {
+                        if (mCancelAfPending > 0) {
+                            Log.v(TAG, "handleMessage - Ignored AUTO_FOCUS because there was "
+                                    + mCancelAfPending + " pending CANCEL_AUTO_FOCUS messages");
+                            break; // ignore AF because a CANCEL_AF is queued after this
+                        }
                         mCameraState.setState(AndroidCameraStateHolder.CAMERA_FOCUSING);
                         mCamera.autoFocus((AutoFocusCallback) msg.obj);
                         break;
                     }
 
                     case CameraActions.CANCEL_AUTO_FOCUS: {
+                        // Ignore all AFs that were already queued until we see
+                        // a CANCEL_AUTO_FOCUS_FINISH
+                        mCancelAfPending++;
                         mCamera.cancelAutoFocus();
                         mCameraState.setState(AndroidCameraStateHolder.CAMERA_IDLE);
+                        break;
+                    }
+
+                    case CameraActions.CANCEL_AUTO_FOCUS_FINISH: {
+                        // Stop ignoring AUTO_FOCUS messages unless there are additional
+                        // CANCEL_AUTO_FOCUSes that were added
+                        mCancelAfPending--;
                         break;
                     }
 
@@ -585,6 +602,8 @@ class AndroidCameraAgentImpl extends CameraAgent {
                             }
                         });
                 }
+            } finally {
+                WaitDoneBundle.unblockSyncWaiters(msg);
             }
         }
 
