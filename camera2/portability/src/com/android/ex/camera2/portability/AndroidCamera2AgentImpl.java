@@ -168,6 +168,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         private CameraOpenCallback mOpenCallback;
         private int mCameraIndex;
         private String mCameraId;
+        private int mCancelAfPending = 0;
 
         // Available in CAMERA_UNCONFIGURED state and above:
         private CameraDevice mCamera;
@@ -208,6 +209,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         @Override
         public void handleMessage(final Message msg) {
             super.handleMessage(msg);
+            Log.v(TAG, "handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
             try {
                 switch(msg.what) {
                     case CameraActions.OPEN_CAMERA:
@@ -360,6 +362,11 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                     }
 
                     case CameraActions.AUTO_FOCUS: {
+                        if (mCancelAfPending > 0) {
+                            Log.v(TAG, "handleMessage - Ignored AUTO_FOCUS because there was "
+                                    + mCancelAfPending + " pending CANCEL_AUTO_FOCUS messages");
+                            break; // ignore AF because a CANCEL_AF is queued after this
+                        }
                         // We only support locking the focus while a preview is being displayed.
                         // However, it can be requested multiple times in succession; the effect of
                         // the subsequent invocations is determined by the focus mode defined in the
@@ -437,6 +444,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                     }
 
                     case CameraActions.CANCEL_AUTO_FOCUS: {
+                        // Ignore all AFs that were already queued until we see
+                        // a CANCEL_AUTO_FOCUS_FINISH
+                        mCancelAfPending++;
                         // Why would you want to unlock the lens if it isn't already locked?
                         if (mCameraState.getState() <
                                 AndroidCamera2StateHolder.CAMERA_PREVIEW_ACTIVE) {
@@ -459,6 +469,13 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             Log.e(TAG, "Unable to cancel autofocus", ex);
                             changeState(AndroidCamera2StateHolder.CAMERA_FOCUS_LOCKED);
                         }
+                        break;
+                    }
+
+                    case CameraActions.CANCEL_AUTO_FOCUS_FINISH: {
+                        // Stop ignoring AUTO_FOCUS messages unless there are additional
+                        // CANCEL_AUTO_FOCUSes that were added
+                        mCancelAfPending--;
                         break;
                     }
 
@@ -628,6 +645,8 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             sCameraExceptionCallback.onCameraException((RuntimeException) ex);
                         }});
                 }
+            } finally {
+                WaitDoneBundle.unblockSyncWaiters(msg);
             }
         }
 
