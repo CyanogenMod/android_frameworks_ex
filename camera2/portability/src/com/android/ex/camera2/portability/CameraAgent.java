@@ -23,6 +23,7 @@ import android.hardware.Camera.OnZoomChangeListener;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Message;
 import android.view.SurfaceHolder;
 
 import com.android.ex.camera2.portability.debug.Log;
@@ -541,8 +542,8 @@ public abstract class CameraAgent {
             getDispatchThread().runJobSync(new Runnable() {
                 @Override
                 public void run() {
-                    getCameraHandler().sendEmptyMessage(CameraActions.STOP_PREVIEW);
-                    getCameraHandler().post(bundle.mUnlockRunnable);
+                    getCameraHandler().obtainMessage(CameraActions.STOP_PREVIEW, bundle)
+                            .sendToTarget();
                 }}, bundle.mWaitLock, CAMERA_OPERATION_TIMEOUT_MS, "stop preview");
         }
 
@@ -602,14 +603,18 @@ public abstract class CameraAgent {
 
         /**
          * Cancels the auto-focus process.
+         *
+         * <p>This action has the highest priority and will get processed before anything
+         * else that is pending. Moreover, any pending auto-focuses that haven't yet
+         * began will also be ignored.</p>
          */
         public void cancelAutoFocus() {
-            getDispatchThread().runJob(new Runnable() {
-                @Override
-                public void run() {
-                    getCameraHandler().removeMessages(CameraActions.AUTO_FOCUS);
-                    getCameraHandler().sendEmptyMessage(CameraActions.CANCEL_AUTO_FOCUS);
-                }});
+             // Do not use the dispatch thread since we want to avoid a wait-cycle
+             // between applySettingsHelper which waits until the state is not FOCUSING.
+             // cancelAutoFocus should get executed asap, set the state back to idle.
+            getCameraHandler().sendMessageAtFrontOfQueue(
+                    getCameraHandler().obtainMessage(CameraActions.CANCEL_AUTO_FOCUS));
+            getCameraHandler().sendEmptyMessage(CameraActions.CANCEL_AUTO_FOCUS_FINISH);
         }
 
         /**
@@ -788,6 +793,9 @@ public abstract class CameraAgent {
         /**
          * Applies the settings to the camera device.
          *
+         * <p>If the camera is either focusing or capturing; settings applications
+         * will be (asynchronously) deferred until those operations complete.</p>
+         *
          * @param settings The settings to use on the device.
          * @return Whether the settings can be applied.
          */
@@ -860,6 +868,21 @@ public abstract class CameraAgent {
                         mWaitLock.notifyAll();
                     }
                 }};
+        }
+
+        /**
+         * Notify all synchronous waiters waiting on message completion with {@link #mWaitLock}.
+         *
+         * <p>This assumes that the message was sent with {@code this} as the {@code Message#obj}.
+         * Otherwise the message is ignored.</p>
+         */
+        /*package*/ static void unblockSyncWaiters(Message msg) {
+            if (msg == null) return;
+
+            if (msg.obj instanceof WaitDoneBundle) {
+                WaitDoneBundle bundle = (WaitDoneBundle)msg.obj;
+                bundle.mUnlockRunnable.run();
+            }
         }
     }
 }
