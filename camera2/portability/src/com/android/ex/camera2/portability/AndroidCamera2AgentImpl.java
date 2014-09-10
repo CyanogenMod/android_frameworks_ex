@@ -1099,7 +1099,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                     new CaptureAvailableListener() {
                 @Override
                 public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
-                                             long timestamp) {
+                                             long timestamp, long frameNumber) {
                     if (shutter != null) {
                         handler.post(new Runnable() {
                             @Override

@@ -87,9 +87,9 @@ public class Camera2CaptureCallbackSplitter extends CaptureCallback {
 
     @Override
     public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
-                                 long timestamp) {
+                                 long timestamp, long frameNumber) {
         for (CaptureCallback target : mRecipients) {
-            target.onCaptureStarted(session, request, timestamp);
+            target.onCaptureStarted(session, request, timestamp, frameNumber);
         }
     }
 }
