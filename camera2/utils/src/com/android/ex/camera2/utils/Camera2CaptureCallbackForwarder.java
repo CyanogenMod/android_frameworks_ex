@@ -89,11 +89,11 @@ public class Camera2CaptureCallbackForwarder extends CaptureCallback {
 
     @Override
     public void onCaptureStarted(final CameraCaptureSession session, final CaptureRequest request,
-                                 final long timestamp) {
+                                 final long timestamp, final long frameNumber) {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                mListener.onCaptureStarted(session, request, timestamp);
+                mListener.onCaptureStarted(session, request, timestamp, frameNumber);
             }});
     }
 }

@@ -123,8 +123,8 @@ public class BlockingCaptureCallback extends CameraCaptureSession.CaptureCallbac
 
     @Override
     public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
-                                 long timestamp) {
-        if (mProxy != null) mProxy.onCaptureStarted(session, request, timestamp);
+                                 long timestamp, long frameNumber) {
+        if (mProxy != null) mProxy.onCaptureStarted(session, request, timestamp, frameNumber);
         mStateChangeListener.onStateChanged(CAPTURE_STARTED);
     }
 
