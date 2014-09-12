@@ -14,6 +14,7 @@
 #
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
+LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 
 # TODO: Remove the .cc extension, just .cpp.
 # TODO: Change module name to use underscores not hyphens.
@@ -36,14 +37,12 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
     $(call include-path-for, wilhelm) \
-    external/stlport/stlport \
-    bionic \
 
 LOCAL_SHARED_LIBRARIES := \
     libOpenSLES \
-    libstlport \
     libutils \
     libcutils \
     liblog \
 
+include external/stlport/libstlport.mk
 include $(BUILD_SHARED_LIBRARY)
