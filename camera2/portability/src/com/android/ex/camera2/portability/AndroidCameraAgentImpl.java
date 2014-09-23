@@ -582,6 +582,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     }
                 }
             } catch (final RuntimeException e) {
+                Log.e(TAG, "Exception during camera operation " + msg.what, e);
                 if (msg.what != CameraActions.RELEASE && mCamera != null) {
                     try {
                         mCamera.release();
