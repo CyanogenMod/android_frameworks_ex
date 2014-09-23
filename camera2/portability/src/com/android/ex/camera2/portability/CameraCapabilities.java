@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -323,17 +324,17 @@ public class CameraCapabilities {
          * @return The converted string.
          */
         private static String toApiCase(String enumCase) {
-            return enumCase.toLowerCase().replaceAll("_", "-");
+            return enumCase.toLowerCase(Locale.US).replaceAll("_", "-");
         }
 
         /**
-         * Conerts the string to underscore-delimited uppercase to match the enum constant names.
+         * Converts the string to underscore-delimited uppercase to match the enum constant names.
          *
          * @param apiCase An API-related string representation.
          * @return The converted string.
          */
         private static String toEnumCase(String apiCase) {
-            return apiCase.toUpperCase().replaceAll("-", "_");
+            return apiCase.toUpperCase(Locale.US).replaceAll("-", "_");
         }
 
         /**
