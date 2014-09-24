@@ -17,15 +17,23 @@
 package com.android.ex.camera2.portability;
 
 import android.hardware.Camera;
+import com.android.ex.camera2.portability.debug.Log;
 
 /**
  * The subclass of {@link CameraSettings} for Android Camera 1 API.
  */
 public class AndroidCameraSettings extends CameraSettings {
+    private static final Log.Tag TAG = new Log.Tag("AndCamSet");
+
     private static final String TRUE = "true";
     private static final String RECORDING_HINT = "recording-hint";
 
     public AndroidCameraSettings(CameraCapabilities capabilities, Camera.Parameters params) {
+        if (params == null) {
+            Log.w(TAG, "Settings ctor requires a non-null Camera.Parameters.");
+            return;
+        }
+
         CameraCapabilities.Stringifier stringifier = capabilities.getStringifier();
 
         setSizesLocked(false);
