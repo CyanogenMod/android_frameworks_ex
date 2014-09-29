@@ -670,7 +670,9 @@ class AndroidCameraAgentImpl extends CameraAgent {
             }
             parameters.setRecordingHint(settings.isRecordingHintEnabled());
             Size jpegThumbSize = settings.getExifThumbnailSize();
-            parameters.setJpegThumbnailSize(jpegThumbSize.width(), jpegThumbSize.height());
+            if (jpegThumbSize != null) {
+                parameters.setJpegThumbnailSize(jpegThumbSize.width(), jpegThumbSize.height());
+            }
             parameters.setPictureFormat(settings.getCurrentPhotoFormat());
 
             CameraSettings.GpsData gpsData = settings.getGpsData();
