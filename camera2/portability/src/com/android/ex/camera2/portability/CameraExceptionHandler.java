@@ -28,10 +28,12 @@ public class CameraExceptionHandler {
     private CameraExceptionCallback mCallback =
             new CameraExceptionCallback() {
                 @Override
+                public void onCameraError(int errorCode) {
+                }
+                @Override
                 public void onCameraException(RuntimeException e) {
                     throw e;
                 }
-
                 @Override
                 public void onDispatchThreadException(RuntimeException e) {
                     throw e;
@@ -42,6 +44,7 @@ public class CameraExceptionHandler {
      * A callback helps to handle RuntimeException thrown by camera framework.
      */
     public static interface CameraExceptionCallback {
+        public void onCameraError(int errorCode);
         public void onCameraException(RuntimeException e);
         public void onDispatchThreadException(RuntimeException e);
     }
@@ -66,6 +69,21 @@ public class CameraExceptionHandler {
      */
     public CameraExceptionHandler(Handler handler) {
         mHandler = handler;
+    }
+
+    /**
+     * Invoke @{link CameraExceptionCallback} when an error is reported by Android camera framework.
+     *
+     * @param errorCode An integer to represent the error code.
+     * @see android.hardware.Camera#setErrorCallback(android.hardware.Camera.ErrorCallback)
+     */
+    public void onCameraError(final int errorCode) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                mCallback.onCameraError(errorCode);
+            }
+        });
     }
 
     /**
