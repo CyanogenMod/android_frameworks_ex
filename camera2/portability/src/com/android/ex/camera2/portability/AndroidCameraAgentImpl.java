@@ -236,7 +236,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
     /**
      * The handler on which the actual camera operations happen.
      */
-    private class CameraHandler extends HistoryHandler {
+    private class CameraHandler extends HistoryHandler implements Camera.ErrorCallback {
         private CameraAgent mAgent;
         private Camera mCamera;
         private int mCameraId;
@@ -307,6 +307,14 @@ class AndroidCameraAgentImpl extends CameraAgent {
             obtainMessage(CameraActions.CAPTURE_PHOTO, callbacks).sendToTarget();
         }
 
+        @Override
+        public void onError(final int errorCode, Camera camera) {
+            mExceptionHandler.onCameraError(errorCode);
+            if (errorCode == android.hardware.Camera.CAMERA_ERROR_SERVER_DIED) {
+                mExceptionHandler.onCameraException(new RuntimeException("Media server died."));
+            }
+        }
+
         /**
          * This method does not deal with the API level check.  Everyone should
          * check first for supported operations before sending message to this handler.
@@ -341,6 +349,8 @@ class AndroidCameraAgentImpl extends CameraAgent {
                                     AndroidCameraDeviceInfo.create().getCharacteristics(cameraId);
                             mCapabilities = new AndroidCameraCapabilities(
                                     mParameterCache.getBlocking());
+
+                            mCamera.setErrorCallback(this);
 
                             mCameraState.setState(AndroidCameraStateHolder.CAMERA_IDLE);
                             if (openCallback != null) {
@@ -519,11 +529,6 @@ class AndroidCameraAgentImpl extends CameraAgent {
 
                     case CameraActions.STOP_FACE_DETECTION: {
                         stopFaceDetection();
-                        break;
-                    }
-
-                    case CameraActions.SET_ERROR_CALLBACK: {
-                        mCamera.setErrorCallback((ErrorCallback) msg.obj);
                         break;
                     }
 
@@ -943,23 +948,6 @@ class AndroidCameraAgentImpl extends CameraAgent {
             }
         }
 
-        @Override
-        public void setErrorCallback(final Handler handler, final CameraErrorCallback cb) {
-            try {
-                mDispatchThread.runJob(new Runnable() {
-                    @Override
-                    public void run() {
-                        mCameraHandler.obtainMessage(CameraActions.SET_ERROR_CALLBACK,
-                                ErrorCallbackForward.getNewInstance(
-                                        handler, AndroidCameraProxyImpl.this, cb))
-                                .sendToTarget();
-                    }
-                });
-            } catch (final RuntimeException ex) {
-                mCameraAgent.getCameraExceptionHandler().onDispatchThreadException(ex);
-            }
-        }
-
         @Deprecated
         @Override
         public void setParameters(final Parameters params) {
@@ -1104,49 +1092,6 @@ class AndroidCameraAgentImpl extends CameraAgent {
                 @Override
                 public void run() {
                     mCallback.onAutoFocus(b, mCamera);
-                }
-            });
-        }
-    }
-
-    /**
-     * A helper class to forward ErrorCallback to another thread.
-     */
-    private static class ErrorCallbackForward implements Camera.ErrorCallback {
-        private final Handler mHandler;
-        private final CameraProxy mCamera;
-        private final CameraErrorCallback mCallback;
-
-        /**
-         * Returns a new instance of {@link AFCallbackForward}.
-         *
-         * @param handler The handler in which the callback will be invoked in.
-         * @param camera  The {@link CameraProxy} which the callback is from.
-         * @param cb      The callback to be invoked.
-         * @return        The instance of the {@link AFCallbackForward},
-         *                or null if any parameter is null.
-         */
-        public static ErrorCallbackForward getNewInstance(
-                Handler handler, CameraProxy camera, CameraErrorCallback cb) {
-            if (handler == null || camera == null || cb == null) {
-                return null;
-            }
-            return new ErrorCallbackForward(handler, camera, cb);
-        }
-
-        private ErrorCallbackForward(
-                Handler h, CameraProxy camera, CameraErrorCallback cb) {
-            mHandler = h;
-            mCamera = camera;
-            mCallback = cb;
-        }
-
-        @Override
-        public void onError(final int error, Camera camera) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mCallback.onError(error, mCamera);
                 }
             });
         }
