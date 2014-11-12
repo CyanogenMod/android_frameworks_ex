@@ -55,7 +55,23 @@ class AndroidCameraAgentImpl extends CameraAgent {
     private final HandlerThread mCameraHandlerThread;
     private final CameraStateHolder mCameraState;
     private final DispatchThread mDispatchThread;
-    private CameraExceptionHandler mExceptionHandler;
+    private CameraExceptionHandler mExceptionHandler = new CameraExceptionHandler(null) {
+        @Override
+        public void onCameraError(int errorCode) {
+            Log.w(TAG, "onCameraError called before handler set: " + errorCode);
+        }
+
+        @Override
+        public void onCameraException(RuntimeException ex, String commandHistory, int action,
+                int state) {
+            Log.w(TAG, "onCameraException called before handler set", ex);
+        }
+
+        @Override
+        public void onDispatchThreadException(RuntimeException ex) {
+            Log.w(TAG, "onDispatchThreadException called before handler set", ex);
+        }
+    };
 
     AndroidCameraAgentImpl() {
         mCameraHandlerThread = new HandlerThread("Camera Handler Thread");
