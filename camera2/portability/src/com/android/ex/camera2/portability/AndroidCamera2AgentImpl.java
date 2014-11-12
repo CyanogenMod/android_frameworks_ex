@@ -1195,10 +1195,6 @@ class AndroidCamera2AgentImpl extends CameraAgent {
 
         // TODO: Implement
         @Override
-        public void setErrorCallback(Handler handler, CameraErrorCallback cb) {}
-
-        // TODO: Implement
-        @Override
         public void setParameters(android.hardware.Camera.Parameters params) {}
 
         // TODO: Implement

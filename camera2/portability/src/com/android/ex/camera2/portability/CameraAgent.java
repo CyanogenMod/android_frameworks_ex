@@ -814,15 +814,6 @@ public abstract class CameraAgent {
         }
 
         /**
-         * Registers an error callback.
-         *
-         * @param handler  The handler on which the callback will be invoked.
-         * @param cb The error callback.
-         * @see android.hardware.Camera#setErrorCallback(android.hardware.Camera.ErrorCallback)
-         */
-        public abstract void setErrorCallback(Handler handler, CameraErrorCallback cb);
-
-        /**
          * Sets the camera parameters.
          *
          * @param params The camera parameters to use.
