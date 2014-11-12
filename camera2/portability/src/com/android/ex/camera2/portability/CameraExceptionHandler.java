@@ -31,7 +31,8 @@ public class CameraExceptionHandler {
                 public void onCameraError(int errorCode) {
                 }
                 @Override
-                public void onCameraException(RuntimeException e) {
+                public void onCameraException(
+                        RuntimeException e, String commandHistory, int action, int state) {
                     throw e;
                 }
                 @Override
@@ -45,7 +46,8 @@ public class CameraExceptionHandler {
      */
     public static interface CameraExceptionCallback {
         public void onCameraError(int errorCode);
-        public void onCameraException(RuntimeException e);
+        public void onCameraException(
+                RuntimeException e, String commandHistory, int action, int state);
         public void onDispatchThreadException(RuntimeException e);
     }
 
@@ -92,11 +94,13 @@ public class CameraExceptionHandler {
      *
      * @param ex The runtime exception object.
      */
-    public void onCameraException(final RuntimeException ex) {
+    public void onCameraException(
+            final RuntimeException ex, final String commandHistory,
+            final int action, final int state) {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                mCallback.onCameraException(ex);
+                mCallback.onCameraException(ex, commandHistory, action, state);
             }
         });
     }
