@@ -55,23 +55,27 @@ class AndroidCameraAgentImpl extends CameraAgent {
     private final HandlerThread mCameraHandlerThread;
     private final CameraStateHolder mCameraState;
     private final DispatchThread mDispatchThread;
-    private CameraExceptionHandler mExceptionHandler = new CameraExceptionHandler(null) {
+
+    private static final CameraExceptionHandler sDefaultExceptionHandler =
+            new CameraExceptionHandler(null) {
         @Override
         public void onCameraError(int errorCode) {
-            Log.w(TAG, "onCameraError called before handler set: " + errorCode);
+            Log.w(TAG, "onCameraError called with no handler set: " + errorCode);
         }
 
         @Override
         public void onCameraException(RuntimeException ex, String commandHistory, int action,
                 int state) {
-            Log.w(TAG, "onCameraException called before handler set", ex);
+            Log.w(TAG, "onCameraException called with no handler set", ex);
         }
 
         @Override
         public void onDispatchThreadException(RuntimeException ex) {
-            Log.w(TAG, "onDispatchThreadException called before handler set", ex);
+            Log.w(TAG, "onDispatchThreadException called with no handler set", ex);
         }
     };
+
+    private CameraExceptionHandler mExceptionHandler = sDefaultExceptionHandler;
 
     AndroidCameraAgentImpl() {
         mCameraHandlerThread = new HandlerThread("Camera Handler Thread");
@@ -117,7 +121,8 @@ class AndroidCameraAgentImpl extends CameraAgent {
 
     @Override
     public void setCameraExceptionHandler(CameraExceptionHandler exceptionHandler) {
-        mExceptionHandler = exceptionHandler;
+        // In case of null set the default handler to route exceptions to logs
+        mExceptionHandler = exceptionHandler != null ? exceptionHandler : sDefaultExceptionHandler;
     }
 
     private static class AndroidCameraDeviceInfo implements CameraDeviceInfo {
