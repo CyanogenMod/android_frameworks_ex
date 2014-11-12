@@ -239,7 +239,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
     private class CameraHandler extends HistoryHandler implements Camera.ErrorCallback {
         private CameraAgent mAgent;
         private Camera mCamera;
-        private int mCameraId;
+        private int mCameraId = -1;
         private ParametersCache mParameterCache;
         private int mCancelAfPending = 0;
 
@@ -311,7 +311,12 @@ class AndroidCameraAgentImpl extends CameraAgent {
         public void onError(final int errorCode, Camera camera) {
             mExceptionHandler.onCameraError(errorCode);
             if (errorCode == android.hardware.Camera.CAMERA_ERROR_SERVER_DIED) {
-                mExceptionHandler.onCameraException(new RuntimeException("Media server died."));
+                int lastCameraAction = getCurrentMessage();
+                mExceptionHandler.onCameraException(
+                        new RuntimeException("Media server died."),
+                        generateHistoryString(mCameraId),
+                        lastCameraAction,
+                        mCameraState.getState());
             }
         }
 
@@ -329,8 +334,9 @@ class AndroidCameraAgentImpl extends CameraAgent {
             }
             Log.v(TAG, "handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
 
+            int cameraAction = msg.what;
             try {
-                switch (msg.what) {
+                switch (cameraAction) {
                     case CameraActions.OPEN_CAMERA: {
                         final CameraOpenCallback openCallback = (CameraOpenCallback) msg.obj;
                         final int cameraId = msg.arg1;
@@ -371,6 +377,7 @@ class AndroidCameraAgentImpl extends CameraAgent {
                             mCamera.release();
                             mCameraState.setState(AndroidCameraStateHolder.CAMERA_UNOPENED);
                             mCamera = null;
+                            mCameraId = -1;
                         } else {
                             Log.w(TAG, "Releasing camera without any camera opened.");
                         }
@@ -587,10 +594,9 @@ class AndroidCameraAgentImpl extends CameraAgent {
                     }
                 }
             } catch (final RuntimeException ex) {
-                String cameraAction = CameraActions.stringify(msg.what);
                 int cameraState = mCameraState.getState();
-                String errorContext =
-                        "CameraAction[" + cameraAction + "] at CameraState[" + cameraState + "]";
+                String errorContext = "CameraAction[" + CameraActions.stringify(cameraAction) +
+                        "] at CameraState[" + cameraState + "]";
                 Log.e(TAG, "RuntimeException during " + errorContext, ex);
 
                 // Be conservative by invalidating both CameraAgent and CameraProxy objects.
@@ -615,7 +621,9 @@ class AndroidCameraAgentImpl extends CameraAgent {
                                 msg.arg1, generateHistoryString(cameraId));
                     }
                 } else {
-                    mAgent.getCameraExceptionHandler().onCameraException(ex);
+                    CameraExceptionHandler exceptionHandler = mAgent.getCameraExceptionHandler();
+                    exceptionHandler.onCameraException(
+                            ex, generateHistoryString(mCameraId), cameraAction, cameraState);
                 }
             } finally {
                 WaitDoneBundle.unblockSyncWaiters(msg);

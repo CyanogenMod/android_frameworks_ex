@@ -222,8 +222,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         public void handleMessage(final Message msg) {
             super.handleMessage(msg);
             Log.v(TAG, "handleMessage - action = '" + CameraActions.stringify(msg.what) + "'");
+            int cameraAction = msg.what;
             try {
-                switch(msg.what) {
+                switch (cameraAction) {
                     case CameraActions.OPEN_CAMERA:
                     case CameraActions.RECONNECT: {
                         CameraOpenCallback openCallback = (CameraOpenCallback) msg.obj;
@@ -640,12 +641,12 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                     }
                 }
             } catch (final Exception ex) {
-                if (msg.what != CameraActions.RELEASE && mCamera != null) {
+                if (cameraAction != CameraActions.RELEASE && mCamera != null) {
                     // TODO: Handle this better
                     mCamera.close();
                     mCamera = null;
                 } else if (mCamera == null) {
-                    if (msg.what == CameraActions.OPEN_CAMERA) {
+                    if (cameraAction == CameraActions.OPEN_CAMERA) {
                         if (mOpenCallback != null) {
                             mOpenCallback.onDeviceOpenFailure(mCameraIndex,
                                     generateHistoryString(mCameraIndex));
@@ -657,7 +658,9 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                 }
 
                 if (ex instanceof RuntimeException) {
-                    mExceptionHandler.onCameraException((RuntimeException) ex);
+                    String commandHistory = generateHistoryString(Integer.parseInt(mCameraId));
+                    mExceptionHandler.onCameraException((RuntimeException) ex, commandHistory,
+                            cameraAction, mCameraState.getState());
                 }
             } finally {
                 WaitDoneBundle.unblockSyncWaiters(msg);
