@@ -16,6 +16,8 @@
 
 #include "ring_buffer.h"
 
+#include <algorithm>
+
 #include "integral_types.h"
 
 namespace video_editing {
@@ -68,7 +70,7 @@ int RingBuffer::overhead() const {
 }
 
 int64 RingBuffer::GetTail() const {
-  return *min_element(readers_.begin(), readers_.end());
+  return *std::min_element(readers_.begin(), readers_.end());
 }
 
 int64 RingBuffer::Tell(int reader) const {
