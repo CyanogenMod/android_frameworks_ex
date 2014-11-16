@@ -17,8 +17,6 @@ include $(CLEAR_VARS)
 LOCAL_ADDITIONAL_DEPENDENCIES := $(LOCAL_PATH)/Android.mk
 
 # TODO: Remove the .cc extension, just .cpp.
-# TODO: Change module name to use underscores not hyphens.
-# TODO: Work out if the log and android libs are needed.
 
 # Add in extra warnings.
 LOCAL_CFLAGS += -Wall
@@ -40,9 +38,7 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_SHARED_LIBRARIES := \
     libOpenSLES \
-    libutils \
-    libcutils \
     liblog \
 
-include external/stlport/libstlport.mk
+LOCAL_CLANG := true
 include $(BUILD_SHARED_LIBRARY)
