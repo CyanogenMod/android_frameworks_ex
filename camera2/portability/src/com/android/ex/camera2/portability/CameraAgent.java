@@ -43,7 +43,7 @@ import com.android.ex.camera2.portability.debug.Log;
  * {@code android.hardware.Camera.OnZoomChangeListener}, and
  */
 public abstract class CameraAgent {
-    public static final long CAMERA_OPERATION_TIMEOUT_MS = 2500;
+    public static final long CAMERA_OPERATION_TIMEOUT_MS = 5000;
 
     private static final Log.Tag TAG = new Log.Tag("CamAgnt");
 
