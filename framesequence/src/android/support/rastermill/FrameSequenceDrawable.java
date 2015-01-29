@@ -76,9 +76,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         }
 
         @Override
-        public void releaseBitmap(Bitmap bitmap) {
-            bitmap.recycle();
-        }
+        public void releaseBitmap(Bitmap bitmap) {}
     };
 
     /**
@@ -270,9 +268,6 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     protected void finalize() throws Throwable {
         try {
             mFrameSequenceState.destroy();
-            if (!mDestroyed) {
-                destroy();
-            }
         } finally {
             super.finalize();
         }
