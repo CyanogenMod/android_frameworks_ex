@@ -2085,7 +2085,6 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
         int start = getChipStart(chip);
         int end = getChipEnd(chip);
         Editable editable = getText();
-        mSelectedChip = null;
         if (start == -1 || end == -1) {
             Log.w(TAG, "The chip doesn't exist or may be a chip a user was editing");
             setSelection(editable.length());
@@ -2102,6 +2101,7 @@ public class RecipientEditTextView extends MultiAutoCompleteTextView implements
             } catch (NullPointerException e) {
                 Log.e(TAG, e.getMessage(), e);
             }
+            mSelectedChip = null;
         }
         setCursorVisible(true);
         setSelection(editable.length());
