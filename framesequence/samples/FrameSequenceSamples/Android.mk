@@ -35,6 +35,6 @@ LOCAL_SDK_VERSION := 19
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_RESOURCE_DIR := $(addprefix $(LOCAL_PATH)/, res)
 LOCAL_AAPT_FLAGS := --auto-add-overlay
-LOCAL_AAPT_FLAGS += --extra-packages com.android.rastermill.samples
+LOCAL_AAPT_FLAGS += --extra-packages com.android.framesequence.samples
 
 include $(BUILD_PACKAGE)
