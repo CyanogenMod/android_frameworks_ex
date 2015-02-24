@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.rastermill.samples;
+package com.android.framesequence.samples;
 
 import android.app.ListActivity;
 import android.content.Intent;
@@ -31,17 +31,20 @@ public class SamplesList extends ListActivity {
 
     static final String KEY_NAME = "name";
     static final String KEY_CLASS = "clazz";
+    static final String KEY_RESOURCE = "res";
 
-    static Map<String,?> makeSample(String name, Class<?> activity) {
+    static Map<String,?> makeSample(String name, Class<?> activity, int resourceId) {
         Map<String,Object> ret = new HashMap<String,Object>();
         ret.put(KEY_NAME, name);
         ret.put(KEY_CLASS, activity);
+        ret.put(KEY_RESOURCE, resourceId);
         return ret;
     }
 
     @SuppressWarnings("serial")
     static final ArrayList<Map<String,?>> SAMPLES = new ArrayList<Map<String,?>>() {{
-        add(makeSample("Animation Test", AnimatedGifTest.class));
+            add(makeSample("GIF animation", FrameSequenceTest.class, R.raw.animated_gif));
+            add(makeSample("WEBP animation", FrameSequenceTest.class, R.raw.animated_webp));
     }};
 
     @Override
@@ -55,7 +58,11 @@ public class SamplesList extends ListActivity {
     @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
         Class<?> clazz = (Class<?>) SAMPLES.get(position).get(KEY_CLASS);
-        startActivity(new Intent(this, clazz));
+        int resourceId = ((Integer) SAMPLES.get(position).get(KEY_RESOURCE)).intValue();
+
+        Intent intent = new Intent(this, clazz);
+        intent.putExtra("resourceId", resourceId);
+        startActivity(intent);
     }
 
 }

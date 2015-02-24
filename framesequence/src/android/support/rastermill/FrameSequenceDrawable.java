@@ -270,9 +270,6 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
     protected void finalize() throws Throwable {
         try {
             mFrameSequenceState.destroy();
-            if (!mDestroyed) {
-                destroy();
-            }
         } finally {
             super.finalize();
         }
