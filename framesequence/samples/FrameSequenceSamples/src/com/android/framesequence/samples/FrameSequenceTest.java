@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.rastermill.samples;
+package com.android.framesequence.samples;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -27,8 +27,9 @@ import android.widget.Toast;
 import java.io.InputStream;
 import java.util.HashSet;
 
-public class AnimatedGifTest extends Activity {
+public class FrameSequenceTest extends Activity {
     FrameSequenceDrawable mDrawable;
+    int mResourceId;
 
     // This provider is entirely unnecessary, just here to validate the acquire/release process
     private class CheckingProvider implements FrameSequenceDrawable.BitmapProvider {
@@ -58,6 +59,8 @@ public class AnimatedGifTest extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mResourceId = getIntent().getIntExtra("resourceId", R.raw.animated_gif);
 
         setContentView(R.layout.basic_test_activity);
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
@@ -91,7 +94,7 @@ public class AnimatedGifTest extends Activity {
         super.onResume();
 
         ImageView imageView = (ImageView) findViewById(R.id.imageview);
-        InputStream is = getResources().openRawResource(R.raw.animated);
+        InputStream is = getResources().openRawResource(mResourceId);
 
         FrameSequence fs = FrameSequence.decodeStream(is);
         mDrawable = new FrameSequenceDrawable(fs, mProvider);
@@ -99,7 +102,7 @@ public class AnimatedGifTest extends Activity {
             @Override
             public void onFinished(FrameSequenceDrawable drawable) {
                 Toast.makeText(getApplicationContext(),
-                        "THE ANIMATION HAS FINISHED", Toast.LENGTH_SHORT).show();
+                        "The animation has finished", Toast.LENGTH_SHORT).show();
             }
         });
         imageView.setImageDrawable(mDrawable);
