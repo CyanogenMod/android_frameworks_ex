@@ -76,9 +76,7 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
         }
 
         @Override
-        public void releaseBitmap(Bitmap bitmap) {
-            bitmap.recycle();
-        }
+        public void releaseBitmap(Bitmap bitmap) {}
     };
 
     /**
