@@ -66,7 +66,7 @@ public class BlockingSessionCallback extends CameraCaptureSession.StateCallback 
      */
     public static final int SESSION_CLOSED = 4;
 
-    private final int NUM_STATES = 5;
+    private static final int NUM_STATES = 5;
 
     /*
      * Private fields
@@ -162,21 +162,27 @@ public class BlockingSessionCallback extends CameraCaptureSession.StateCallback 
     @Override
     public void onConfigured(CameraCaptureSession session) {
         mSessionFuture.setSession(session);
-        if (mProxy != null) mProxy.onConfigured(session);
+        if (mProxy != null) {
+            mProxy.onConfigured(session);
+        }
         mStateChangeListener.onStateChanged(SESSION_CONFIGURED);
     }
 
     @Override
     public void onConfigureFailed(CameraCaptureSession session) {
         mSessionFuture.setSession(session);
-        if (mProxy != null) mProxy.onConfigureFailed(session);
+        if (mProxy != null) {
+            mProxy.onConfigureFailed(session);
+        }
         mStateChangeListener.onStateChanged(SESSION_CONFIGURE_FAILED);
     }
 
     @Override
     public void onReady(CameraCaptureSession session) {
         mSessionFuture.setSession(session);
-        if (mProxy != null) mProxy.onReady(session);
+        if (mProxy != null) {
+            mProxy.onReady(session);
+        }
         mStateChangeListener.onStateChanged(SESSION_READY);
     }
 
