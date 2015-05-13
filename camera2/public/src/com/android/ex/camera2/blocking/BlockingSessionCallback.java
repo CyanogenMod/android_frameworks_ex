@@ -18,6 +18,7 @@ package com.android.ex.camera2.blocking;
 import android.hardware.camera2.CameraCaptureSession;
 import android.os.ConditionVariable;
 import android.util.Log;
+import android.view.Surface;
 
 import com.android.ex.camera2.exceptions.TimeoutRuntimeException;
 import com.android.ex.camera2.utils.StateChangeListener;
@@ -184,6 +185,16 @@ public class BlockingSessionCallback extends CameraCaptureSession.StateCallback 
             mProxy.onReady(session);
         }
         mStateChangeListener.onStateChanged(SESSION_READY);
+    }
+
+    @Override
+    public void onSurfacePrepared(CameraCaptureSession session, Surface surface) {
+        mSessionFuture.setSession(session);
+        if (mProxy != null) {
+            mProxy.onSurfacePrepared(session, surface);
+        }
+        // Surface prepared doesn't cause a session state change, so don't trigger the
+        // state change listener
     }
 
     private static class SessionFuture implements Future<CameraCaptureSession> {
