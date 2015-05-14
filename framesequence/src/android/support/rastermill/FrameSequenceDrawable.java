@@ -30,6 +30,15 @@ import android.os.Process;
 import android.os.SystemClock;
 
 public class FrameSequenceDrawable extends Drawable implements Animatable, Runnable {
+    /**
+     * These constants are chosen to imitate common browser behavior for WebP/GIF.
+     * If other decoders are added, this behavior should be moved into the WebP/GIF decoders.
+     *
+     * Note that 0 delay is undefined behavior in the GIF standard.
+     */
+    private static final long MIN_DELAY_MS = 20;
+    private static final long DEFAULT_DELAY_MS = 100;
+
     private static final Object sLock = new Object();
     private static HandlerThread sDecodingThread;
     private static Handler sDecodingThreadHandler;
@@ -160,6 +169,9 @@ public class FrameSequenceDrawable extends Drawable implements Animatable, Runna
             }
             int lastFrame = nextFrame - 2;
             long invalidateTimeMs = mFrameSequenceState.getFrame(nextFrame, bitmap, lastFrame);
+            if (invalidateTimeMs < MIN_DELAY_MS) {
+                invalidateTimeMs = DEFAULT_DELAY_MS;
+            }
 
             boolean schedule = false;
             Bitmap bitmapToRelease = null;
