@@ -16,8 +16,6 @@
 
 package com.android.ex.variablespeed;
 
-import com.google.common.io.Closeables;
-
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.res.AssetManager;
@@ -532,17 +530,11 @@ public abstract class MediaPlayerProxyTestCase extends InstrumentationTestCase {
         Uri uri = getContentResolver().insert(
                 VoicemailContract.Voicemails.buildSourceUri(packageName), values);
         AssetManager assets = getAssets();
-        OutputStream outputStream = null;
-        InputStream inputStream = null;
-        try {
-            inputStream = assets.open(assetFilename);
-            outputStream = getContentResolver().openOutputStream(uri);
+        try (InputStream inputStream = assets.open(assetFilename);
+             OutputStream outputStream = getContentResolver().openOutputStream(uri)) {
             copyBetweenStreams(inputStream, outputStream);
             mContentUriMap.put(key, uri);
             return uri;
-        } finally {
-            Closeables.closeQuietly(outputStream);
-            Closeables.closeQuietly(inputStream);
         }
     }
 
