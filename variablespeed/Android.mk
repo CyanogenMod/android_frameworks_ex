@@ -33,8 +33,5 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_STATIC_JAVA_LIBRARY)
 
-# Build the native code, library.
-
-include $(CLEAR_VARS)
-
-include $(LOCAL_PATH)/jni/Android.mk
+# Build the native code library and tests.
+include $(call all-makefiles-under, $(LOCAL_PATH))
