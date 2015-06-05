@@ -17,6 +17,7 @@ package com.android.ex.camera2.blocking;
 
 import android.hardware.camera2.CameraCaptureSession;
 import android.os.ConditionVariable;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
 
@@ -24,8 +25,9 @@ import com.android.ex.camera2.exceptions.TimeoutRuntimeException;
 import com.android.ex.camera2.utils.StateChangeListener;
 import com.android.ex.camera2.utils.StateWaiter;
 
+import java.util.List;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
+import java.util.HashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -80,6 +82,7 @@ public class BlockingSessionCallback extends CameraCaptureSession.StateCallback 
 
     private final StateWaiter mStateWaiter = new StateWaiter(sStateNames);
     private final StateChangeListener mStateChangeListener = mStateWaiter.getListener();
+    private final HashMap<CameraCaptureSession, List<Surface> > mPreparedSurfaces = new HashMap<>();
 
     private static final String[] sStateNames = {
         "SESSION_CONFIGURED",
@@ -158,6 +161,9 @@ public class BlockingSessionCallback extends CameraCaptureSession.StateCallback 
         mSessionFuture.setSession(session);
         if (mProxy != null) mProxy.onClosed(session);
         mStateChangeListener.onStateChanged(SESSION_CLOSED);
+        synchronized (mPreparedSurfaces) {
+            mPreparedSurfaces.remove(session);
+        }
     }
 
     @Override
@@ -195,6 +201,52 @@ public class BlockingSessionCallback extends CameraCaptureSession.StateCallback 
         }
         // Surface prepared doesn't cause a session state change, so don't trigger the
         // state change listener
+        synchronized (mPreparedSurfaces) {
+            List<Surface> preparedSurfaces = mPreparedSurfaces.get(session);
+            if (preparedSurfaces == null) {
+                preparedSurfaces = new ArrayList<Surface>();
+            }
+            preparedSurfaces.add(surface);
+            mPreparedSurfaces.put(session, preparedSurfaces);
+            mPreparedSurfaces.notifyAll();
+        }
+    }
+
+    /**
+     * Wait until the designated surface is prepared by the camera capture session.
+     *
+     * @param session the input {@link CameraCaptureSession} to wait for
+     * @param surface the input {@link Surface} to wait for
+     * @param timeoutMs how many milliseconds to wait for
+     *
+     * @throws TimeoutRuntimeException if waiting for more than {@long timeoutMs}
+     */
+    public void waitForSurfacePrepared(
+            CameraCaptureSession session, Surface surface, long timeoutMs) {
+        synchronized (mPreparedSurfaces) {
+            List<Surface> preparedSurfaces = mPreparedSurfaces.get(session);
+            if (preparedSurfaces != null && preparedSurfaces.contains(surface)) {
+                return;
+            }
+            try {
+                long waitTimeRemaining = timeoutMs;
+                while (waitTimeRemaining > 0) {
+                    long waitStartTime = SystemClock.elapsedRealtime();
+                    mPreparedSurfaces.wait(timeoutMs);
+                    long waitTime = SystemClock.elapsedRealtime() - waitStartTime;
+                    waitTimeRemaining -= waitTime;
+                    preparedSurfaces = mPreparedSurfaces.get(session);
+                    if (waitTimeRemaining >= 0 && preparedSurfaces != null &&
+                            preparedSurfaces.contains(surface)) {
+                        return;
+                    }
+                }
+                throw new TimeoutRuntimeException(
+                        "Unable to get Surface prepared in " + timeoutMs + "ms");
+            } catch (InterruptedException ie) {
+                throw new AssertionError();
+            }
+        }
     }
 
     private static class SessionFuture implements Future<CameraCaptureSession> {
